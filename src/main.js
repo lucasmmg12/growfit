@@ -44,13 +44,7 @@ window.router = {
 
 // --- APP STARTUP (NO AUTH) ---
 const startApp = async () => {
-  // 1. Mostrar carga...
-  app.innerHTML = `<div class="flex h-screen items-center justify-center bg-[#102212] text-primary animate-pulse font-bold">SYNERGYZING...</div>`;
-
-  // 2. Cargar datos (Nube o Local)
   await initializeState();
-
-  // 3. Iniciar App
   window.router.navigate('dashboard');
 };
 
