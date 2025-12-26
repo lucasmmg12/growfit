@@ -8,29 +8,37 @@ export const loadFullState = async () => {
         console.log("Sincronizando tablas...");
 
         // 1. Perfil
-        const { data: profileData } = await supabase
+        const { data: profileData, error: pError } = await supabase
             .from('profiles')
             .select('data')
             .eq('user_id', USER_ID)
             .single();
 
+        if (pError && pError.code !== 'PGRST116') throw pError;
+
         // 2. Comidas
-        const { data: meals } = await supabase
+        const { data: meals, error: mError } = await supabase
             .from('meals')
             .select('*')
             .eq('user_id', USER_ID);
 
+        if (mError) throw mError;
+
         // 3. Mediciones
-        const { data: measurements } = await supabase
+        const { data: measurements, error: measError } = await supabase
             .from('measurements')
             .select('*')
             .eq('user_id', USER_ID);
 
+        if (measError) throw measError;
+
         // 4. Entrenamientos
-        const { data: workouts } = await supabase
+        const { data: workouts, error: wError } = await supabase
             .from('workouts')
             .select('*')
             .eq('user_id', USER_ID);
+
+        if (wError) throw wError;
 
         return {
             profile: profileData?.data || null,
@@ -39,8 +47,8 @@ export const loadFullState = async () => {
             workouts: workouts || []
         };
     } catch (e) {
-        console.error("Error loading DB:", e);
-        return null;
+        console.error("Error loading DB (Offline or Missing Tables):", e);
+        return null; // Return null so initializeState keeps LocalStorage
     }
 };
 
