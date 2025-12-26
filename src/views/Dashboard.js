@@ -15,7 +15,6 @@ export const renderDashboard = () => {
 
         generateSmartHabits(state.profile, `Ayer: ${yCals}kcal. Peso: ${lastW}`).then(habits => {
             setDailyHabits(habits);
-            window.location.reload();
         });
     }
     const dayStats = state.days?.[today] || {};
