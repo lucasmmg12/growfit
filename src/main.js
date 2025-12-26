@@ -1,24 +1,27 @@
 import './style.css';
+import { initializeState } from './state';
 import { renderDashboard, attachDashboardEvents } from './views/Dashboard';
 import { renderTracker, attachTrackerEvents } from './views/Tracker';
 import { renderWorkouts, attachWorkoutsEvents } from './views/Workouts';
 import { renderProfile, attachProfileEvents } from './views/Profile';
 import { renderInsights } from './views/Insights';
 import { renderMeasurements, attachMeasurementsEvents } from './views/Measurements';
-import { renderChatWidget, attachChatWidgetEvents } from './views/ChatWidget'; // Import Chat
+import { renderChatWidget, attachChatWidgetEvents } from './views/ChatWidget';
 
 const app = document.querySelector('#app');
 
-// --- CHAT INITIALIZATION ---
+// --- CHAT ---
 const initChat = () => {
-  const chatRoot = document.createElement('div');
-  chatRoot.id = 'chat-root';
-  document.body.appendChild(chatRoot);
-  chatRoot.innerHTML = renderChatWidget();
-  attachChatWidgetEvents();
+  if (!document.getElementById('chat-root')) {
+    const chatRoot = document.createElement('div');
+    chatRoot.id = 'chat-root';
+    document.body.appendChild(chatRoot);
+    chatRoot.innerHTML = renderChatWidget();
+    attachChatWidgetEvents();
+  }
 };
-initChat(); // Run once
 
+// --- ROUTER ---
 const routes = {
   'dashboard': { render: renderDashboard, attach: attachDashboardEvents },
   'tracker': { render: renderTracker, attach: attachTrackerEvents },
@@ -28,22 +31,27 @@ const routes = {
   'measurements': { render: renderMeasurements, attach: attachMeasurementsEvents }
 };
 
-// Main Entry Point with Router Logic
-
 window.router = {
   navigate: (path) => {
-    const route = routes[path] || routes['dashboard'];
-
-    // 1. Render content
-    app.innerHTML = route.render();
-
-    // 2. Attach sub-view events (like form handling)
-    if (route.attach) route.attach();
-
-    // 3. Navigation is now handled inside each view or via sidebar
+    const route = routes[path];
+    if (route) {
+      app.innerHTML = route.render();
+      if (route.attach) route.attach();
+      initChat();
+    }
   }
 };
 
-// Initial Render
-window.router.navigate('dashboard');
+// --- APP STARTUP (NO AUTH) ---
+const startApp = async () => {
+  // 1. Mostrar carga...
+  app.innerHTML = `<div class="flex h-screen items-center justify-center bg-[#102212] text-primary animate-pulse font-bold">SYNERGYZING...</div>`;
 
+  // 2. Cargar datos (Nube o Local)
+  await initializeState();
+
+  // 3. Iniciar App
+  window.router.navigate('dashboard');
+};
+
+startApp();
