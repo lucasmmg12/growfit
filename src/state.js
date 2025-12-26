@@ -48,7 +48,14 @@ const defaultState = {
 export const getState = () => {
     const stored = localStorage.getItem(STORAGE_KEY);
     const state = stored ? { ...defaultState, ...JSON.parse(stored) } : defaultState;
-    // Fix Dates if DB returned strings (should be fine as strings)
+    // Migration logic
+    if (state.habits) {
+        state.habits = state.habits.filter(h => !h.name.includes('Ayuno'));
+    }
+    // Remove Mocks (IDs 1, 2, 3)
+    if (state.measurements) {
+        state.measurements = state.measurements.filter(m => m.id > 10000);
+    }
     return state;
 };
 
@@ -157,6 +164,7 @@ export const addMeasurement = (data) => {
     const { weight, neck, waist, hip } = data;
     const profile = state.profile;
     const height = profile.height || 175;
+    const gender = profile.gender || 'male';
 
     // BF Calc (Navy Seal Method)
     let bodyFat = 0;
@@ -257,4 +265,38 @@ export const getBMR = () => {
     const height = p.height || 175;
     const age = p.age || 30;
     return Math.round((10 * weight) + (6.25 * height) - (5 * age) + 5); // Simple calculation
+};
+
+export const getDailyBurn = (dateStr) => {
+    const state = getState();
+    const bmr = getBMR();
+    const date = dateStr || new Date().toISOString().split('T')[0];
+
+    const workouts = state.workouts || [];
+    const dailyWorkouts = workouts.filter(w => w.date === date);
+
+    const activityBurn = dailyWorkouts.reduce((sum, w) => sum + w.calories, 0);
+
+    return {
+        bmr,
+        activity: activityBurn,
+        total: bmr + activityBurn,
+        workouts: dailyWorkouts
+    };
+};
+
+export const updateDayStat = (date, key, value) => {
+    const state = getState();
+    if (!state.days) state.days = {};
+    if (!state.days[date]) state.days[date] = {};
+
+    state.days[date][key] = value;
+    saveState(state);
+};
+
+export const setDailyTip = (content) => {
+    const state = getState();
+    const today = new Date().toISOString().split('T')[0];
+    state.dailyTip = { date: today, content };
+    saveState(state);
 };
