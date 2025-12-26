@@ -193,7 +193,7 @@ export const attachMeasurementsEvents = () => {
         form.classList.toggle('hidden');
     });
 
-    saveBtn?.addEventListener('click', () => {
+    saveBtn?.addEventListener('click', async () => {
         const date = document.getElementById('m-date').value;
         const weight = parseFloat(document.getElementById('m-weight').value);
         const neck = parseFloat(document.getElementById('m-neck').value);
@@ -205,7 +205,8 @@ export const attachMeasurementsEvents = () => {
             return;
         }
 
-        addMeasurement({ date, weight, neck, waist, hip });
+        saveBtn.textContent = 'Guardando...';
+        await addMeasurement({ date, weight, neck, waist, hip });
         window.location.reload();
     });
 

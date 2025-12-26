@@ -159,7 +159,7 @@ export const updateMeal = (id, updates) => {
     }
 };
 
-export const addMeasurement = (data) => {
+export const addMeasurement = async (data) => {
     const state = getState();
     const { weight, neck, waist, hip } = data;
     const profile = state.profile;
@@ -197,7 +197,7 @@ export const addMeasurement = (data) => {
     state.measurements.push(newEntry);
 
     saveState(state);
-    addMeasurementDB(newEntry);
+    await addMeasurementDB(newEntry);
 
     return newEntry;
 };
