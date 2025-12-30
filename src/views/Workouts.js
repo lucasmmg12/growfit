@@ -479,8 +479,8 @@ export const attachWorkoutsEvents = () => {
             calories: calories
         });
         stopWorkout();
-        alert(`¡Terminado! +${calories} kcal`);
-        window.location.reload();
+        window.showAlert('¡Buen trabajo!', `Has completado el entrenamiento: +${calories} kcal`, 'success');
+        setTimeout(() => window.location.reload(), 2000);
     });
 
     const stopWorkout = () => {
@@ -510,10 +510,10 @@ export const attachWorkoutsEvents = () => {
             }
 
             if (added) {
-                alert("Actividad registrada con éxito.");
-                window.location.reload();
+                window.showAlert('Éxito', "Actividad registrada correctamente.", 'success');
+                setTimeout(() => window.location.reload(), 1500);
             } else {
-                alert("Ingresa distancia o tiempo para registrar.");
+                window.showAlert('Atención', "Ingresa distancia o tiempo para registrar.", 'info');
             }
         });
     }

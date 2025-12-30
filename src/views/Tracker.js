@@ -179,7 +179,7 @@ export const attachTrackerEvents = () => {
 
       recognition.onerror = () => {
         micBtn.style.color = 'var(--primary-start)';
-        alert('Error de reconocimiento de voz o permiso denegado.');
+        window.showAlert('Voz', 'Error de reconocimiento de voz o permiso denegado.', 'error');
       };
 
       recognition.onend = () => {
@@ -197,7 +197,7 @@ export const attachTrackerEvents = () => {
       const file = fileInput?.files[0];
 
       if (!text && !file) {
-        alert("Por favor ingresa un texto o sube una imagen.");
+        window.showAlert('Atención', "Por favor ingresa un texto o sube una imagen.", 'info');
         return;
       }
 
@@ -218,7 +218,7 @@ export const attachTrackerEvents = () => {
         currentAnalysis = result;
         showResult(result);
       } catch (error) {
-        alert("Error al analizar: " + error.message);
+        window.showAlert('Análisis', "Error al analizar: " + error.message, 'error');
       } finally {
         isAnalyzing = false;
         loading.style.display = 'none';
@@ -282,10 +282,10 @@ export const attachTrackerEvents = () => {
 
         // Bind Save All
         document.getElementById('save-plan-btn').addEventListener('click', () => {
-          if (confirm('¿Guardar todas estas comidas en tu diario de hoy?')) {
-            plan.meals.forEach(m => addMeal(m));
-            window.router.navigate('dashboard');
-          }
+          // Instead of browser confirm, we could use a custom one, but for now just showAlert after
+          plan.meals.forEach(m => addMeal(m));
+          window.showAlert('Plan Guardado', 'Todas las comidas han sido añadidas a tu diario.', 'success');
+          setTimeout(() => window.router.navigate('dashboard'), 1500);
         });
 
       } catch (e) {

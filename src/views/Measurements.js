@@ -201,7 +201,7 @@ export const attachMeasurementsEvents = () => {
         const hip = parseFloat(document.getElementById('m-hip')?.value) || 0;
 
         if (!weight || !neck || !waist) {
-            alert("Por favor completa los campos requeridos (Peso, Cuello, Cintura)");
+            window.showAlert('Medición', "Por favor completa los campos requeridos (Peso, Cuello, Cintura)", 'info');
             return;
         }
 

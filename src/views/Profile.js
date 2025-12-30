@@ -315,31 +315,6 @@ export const renderProfile = () => {
                 Guardar Cambios
             </button>
         </div>
-        <!-- Success Modal -->
-        <div id="success-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center fade-in">
-            <div class="bg-[#102212] border border-[#13ec25]/30 p-8 rounded-2xl shadow-[0_0_50px_rgba(19,236,37,0.2)] max-w-sm w-full text-center transform scale-100 animate-scale-up relative overflow-hidden">
-                <!-- Background Glow -->
-                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-primary/20 blur-[50px] rounded-full pointer-events-none"></div>
-                
-                <div class="relative z-10 flex flex-col items-center gap-4">
-                    <div class="bg-primary/20 p-4 rounded-full border-2 border-primary text-primary">
-                        <span class="material-symbols-outlined text-4xl">check</span>
-                    </div>
-                    
-                    <div>
-                        <h3 class="text-2xl font-black text-white mb-2">¡Cambios Guardados!</h3>
-                        <p class="text-text-secondary text-sm leading-relaxed">
-                            Tu perfil biológico y objetivos han sido actualizados correctamente.
-                        </p>
-                    </div>
-
-                    <button id="modal-close-btn" class="mt-2 w-full bg-primary text-[#102212] font-bold py-3 rounded-xl hover:bg-[#0fd620] transition-colors shadow-lg shadow-primary/20">
-                        Entendido
-                    </button>
-                </div>
-            </div>
-        </div>
-
     </div>
     `;
 };
@@ -417,26 +392,9 @@ export const attachProfileEvents = () => {
 
             saveState(state);
 
-            // Show Success Modal
-            const modal = document.getElementById('success-modal');
-            modal.classList.remove('hidden');
+            window.showAlert('Ajustes', 'Tu perfil y objetivos se han actualizado correctamente.', 'success');
         } else {
-            alert('Por favor verifica tus datos.');
-        }
-    });
-
-    // Modal Close Logic
-    const modal = document.getElementById('success-modal');
-    const closeBtn = document.getElementById('modal-close-btn');
-
-    closeBtn?.addEventListener('click', () => {
-        modal.classList.add('hidden');
-    });
-
-    // Close on click outside
-    modal?.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.add('hidden');
+            window.showAlert('Ajustes', 'Por favor verifica tus datos.', 'error');
         }
     });
 };

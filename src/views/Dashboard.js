@@ -613,7 +613,7 @@ export const attachDashboardEvents = () => {
             clearPreview();
 
         } catch (e) {
-            alert(e.message);
+            window.showAlert('Error', e.message, 'error');
         } finally {
             loader.classList.add('hidden');
         }
