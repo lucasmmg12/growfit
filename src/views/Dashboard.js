@@ -476,7 +476,7 @@ const renderMealsList = (state) => {
                         </div>
                     `).join('')}
                 </div>
-            </div >
+            </div>
     `;
     }).join('');
 };
@@ -631,10 +631,10 @@ export const attachDashboardEvents = () => {
             const formattedDate = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
             dateWarning = `
-    < div class="bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-4 py-2 rounded-xl text-center text-sm font-bold mb-4" >
+    <div class="bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-4 py-2 rounded-xl text-center text-sm font-bold mb-4">
         <span class="material-symbols-outlined text-base align-middle mr-1">event</span>
                     Se registrará para: <span class="uppercase">${formattedDate}</span>
-                </div >
+                </div>
     `;
         }
 
@@ -655,7 +655,7 @@ export const attachDashboardEvents = () => {
       )`;
 
         modal.innerHTML = `
-    < div class="bg-[#1A261C]/90 backdrop-blur-xl border border-[#28392a] rounded-3xl p-8 w-full max-w-md shadow-2xl flex flex-col gap-6 relative" >
+    <div class="bg-[#1A261C]/90 backdrop-blur-xl border border-[#28392a] rounded-3xl p-8 w-full max-w-md shadow-2xl flex flex-col gap-6 relative">
             <button id="modal-close-btn" class="absolute top-4 right-4 text-text-secondary hover:text-white transition-colors">
                 <span class="material-symbols-outlined">close</span>
             </button>
@@ -669,7 +669,7 @@ export const attachDashboardEvents = () => {
                 </div>
             </div>
 
-            <!--Pie Chart Container-- >
+            <!--Pie Chart Container-->
             <div class="flex items-center justify-center py-2">
                 <div class="relative size-48 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(16,185,129,0.1)] transition-transform hover:scale-105 duration-500" style="${conicStyle}">
                     <div class="size-36 bg-[#1A261C] rounded-full flex items-center justify-center shadow-inner relative z-10">
@@ -681,7 +681,7 @@ export const attachDashboardEvents = () => {
                 </div>
             </div>
 
-            <!--Legend with Glass cards-- >
+            <!--Legend with Glass cards-->
             <div class="grid grid-cols-3 gap-3">
                 <div class="flex flex-col items-center p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
                     <span class="text-[10px] text-text-secondary uppercase tracking-wider mb-1">Proteína</span>
@@ -714,7 +714,7 @@ export const attachDashboardEvents = () => {
                     Confirmar
                 </button>
             </div>
-        </div >
+        </div>
     `;
 
         modal.classList.remove('hidden');

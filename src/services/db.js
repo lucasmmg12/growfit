@@ -43,7 +43,17 @@ export const loadFullState = async () => {
         return {
             profile: profileData?.data || null,
             dailyLog: meals || [],
-            measurements: measurements || [],
+            measurements: (measurements || []).map(m => ({
+                id: m.id,
+                date: m.date,
+                weight: Number(m.weight),
+                neck: Number(m.neck),
+                waist: Number(m.waist),
+                hip: Number(m.hip),
+                bodyFat: Number(m.body_fat),
+                leanMass: Number(m.lean_mass),
+                fatMass: Number(m.fat_mass)
+            })),
             workouts: workouts || []
         };
     } catch (e) {
@@ -70,12 +80,11 @@ export const addMealDB = async (meal) => {
         name: meal.name,
         calories: meal.calories,
         macros: meal.macros,
-        category: meal.category
+        icon: meal.category // Mapping category to icon column from schema
     };
     const { error } = await supabase.from('meals').insert(row);
     if (error) {
         console.error("Error adding meal:", error);
-        alert("Error guardando comida: " + error.message);
     }
 };
 
@@ -101,12 +110,12 @@ export const addMeasurementDB = async (m) => {
         waist: m.waist,
         hip: m.hip,
         body_fat: m.bodyFat,
-        lean_mass: m.leanMass
+        lean_mass: m.leanMass,
+        fat_mass: m.fatMass
     };
     const { error } = await supabase.from('measurements').insert(row);
     if (error) {
         console.error("Error adding measurement:", error);
-        alert("Error guardando medición: " + error.message);
     }
 };
 
@@ -115,13 +124,13 @@ export const addWorkoutDB = async (w) => {
     const row = {
         user_id: USER_ID,
         date: w.date,
-        name: w.name,
+        type: w.name || w.type, // Map name/type to type column
         duration: w.duration,
-        calories: w.calories
+        calories: w.calories,
+        details: w.details || {}
     };
     const { error } = await supabase.from('workouts').insert(row);
     if (error) {
         console.error("Error adding workout:", error);
-        alert("Error guardando entreno: " + error.message);
     }
 };

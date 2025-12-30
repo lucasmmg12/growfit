@@ -52,10 +52,7 @@ export const getState = () => {
     if (state.habits) {
         state.habits = state.habits.filter(h => !h.name.includes('Ayuno'));
     }
-    // Remove Mocks (IDs 1, 2, 3)
-    if (state.measurements) {
-        state.measurements = state.measurements.filter(m => m.id > 10000);
-    }
+    // Removal of migration logic that was filtering out small IDs (valid DB entries)
     return state;
 };
 
