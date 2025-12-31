@@ -498,13 +498,39 @@ const renderMealsList = (state, selectedDate) => {
 
 export const attachDashboardEvents = () => {
     const state = getState();
-    // Quick Log Logic
     const input = document.getElementById('quick-log-input');
     const btn = document.getElementById('quick-log-btn');
     const fileInput = document.getElementById('quick-log-file');
     const micBtn = document.getElementById('quick-log-mic');
     const loader = document.getElementById('loading-indicator');
     const modal = document.getElementById('meal-modal');
+
+    // --- WATER TRACKER LOGIC (Robust) ---
+    const waterBtn = document.getElementById('add-water-btn');
+    if (waterBtn) {
+        waterBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const date = state.selectedDate || new Date().toISOString().split('T')[0];
+            const currentState = getState();
+            const currentWater = (currentState.days?.[date]?.water) || 0;
+            const newWater = currentWater + 250;
+
+            console.log(`Adding water: ${currentWater} -> ${newWater} on ${date}`);
+
+            updateDayStat(date, 'water', newWater);
+
+            // Visual Feedback: immediate direct DOM update
+            const amountEl = document.getElementById('water-amount');
+            const glassesEl = document.getElementById('water-glasses');
+            if (amountEl) amountEl.textContent = `${newWater} ml`;
+            if (glassesEl) glassesEl.textContent = `${Math.round(newWater / 250)} vasos`;
+
+            // Sync rest of UI
+            setTimeout(() => {
+                window.router.navigate('dashboard');
+            }, 100);
+        });
+    }
 
     // Chart Logic
     const ctx = document.getElementById('macro-line-chart');
@@ -929,19 +955,6 @@ export const attachDashboardEvents = () => {
     }
 
 
-    // Water Tracker Logic
-    const waterBtn = document.getElementById('add-water-btn');
-    if (waterBtn) {
-        waterBtn.addEventListener('click', () => {
-            const currentState = getState();
-            const date = currentState.selectedDate || new Date().toISOString().split('T')[0];
-            const currentWater = currentState.days?.[date]?.water || 0;
-            const newWater = currentWater + 250;
-
-            updateDayStat(date, 'water', newWater);
-            window.router.navigate('dashboard'); // Smoother and avoids sync race
-        });
-    }
 };
 
 const toBase64 = (file) => new Promise((resolve, reject) => {
