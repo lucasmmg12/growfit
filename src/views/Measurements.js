@@ -207,7 +207,7 @@ export const attachMeasurementsEvents = () => {
 
         saveBtn.textContent = 'Guardando...';
         await addMeasurement({ date, weight, neck, waist, hip });
-        window.location.reload();
+        window.router.navigate('measurements');
     });
 
     // --- Chart Logic --- //

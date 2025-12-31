@@ -73,6 +73,47 @@ window.showAlert = (title, message, type = 'success') => {
   modal.classList.remove('hidden');
 };
 
+window.showConfirm = (title, message, onConfirm, onCancel) => {
+  const modal = document.getElementById('global-modal');
+  const content = document.getElementById('global-modal-content');
+  if (!modal || !content) return;
+
+  content.innerHTML = `
+        <div class="bg-[#1A261C] border border-red-500/20 p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden">
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-red-500/10 blur-[50px] rounded-full pointer-events-none"></div>
+            <div class="relative z-10 flex flex-col items-center gap-4">
+                <div class="bg-surface-dark p-4 rounded-full border border-white/5 text-red-500">
+                    <span class="material-symbols-outlined text-4xl">delete_forever</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-black text-white mb-2">${title}</h3>
+                    <p class="text-text-secondary text-sm leading-relaxed">${message}</p>
+                </div>
+                <div class="flex gap-3 w-full mt-2">
+                    <button id="confirm-cancel-btn" class="flex-1 bg-[#28392a] text-white font-bold py-3.5 rounded-2xl hover:bg-[#3b543d] transition-all transform active:scale-95">
+                        Cancelar
+                    </button>
+                    <button id="confirm-ok-btn" class="flex-1 bg-red-500 text-white font-bold py-3.5 rounded-2xl hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 transform active:scale-95">
+                        Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+  document.getElementById('confirm-cancel-btn').onclick = () => {
+    window.hideAlert();
+    if (onCancel) onCancel();
+  };
+
+  document.getElementById('confirm-ok-btn').onclick = () => {
+    window.hideAlert();
+    if (onConfirm) onConfirm();
+  };
+
+  modal.classList.remove('hidden');
+};
+
 window.hideAlert = () => {
   const modal = document.getElementById('global-modal');
   if (modal) modal.classList.add('hidden');

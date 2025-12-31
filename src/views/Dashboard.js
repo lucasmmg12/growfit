@@ -862,11 +862,15 @@ export const attachDashboardEvents = () => {
     // Delete Handlers
     document.querySelectorAll('.delete-meal-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            if (confirm('¿Estás seguro de eliminar esta comida?')) {
-                const id = parseInt(e.currentTarget.dataset.id);
-                deleteMeal(id);
-                window.router.navigate('dashboard');
-            }
+            const id = parseInt(e.currentTarget.dataset.id);
+            window.showConfirm(
+                '¿Eliminar comida?',
+                'Esta acción no se puede deshacer y afectará a tus estadísticas diarias.',
+                () => {
+                    deleteMeal(id);
+                    window.router.navigate('dashboard');
+                }
+            );
         });
     });
 

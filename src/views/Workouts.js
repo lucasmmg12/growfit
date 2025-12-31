@@ -463,9 +463,13 @@ export const attachWorkoutsEvents = () => {
     };
 
     document.getElementById('exit-workout')?.addEventListener('click', () => {
-        if (confirm("¿Salir sin guardar?")) {
-            stopWorkout();
-        }
+        window.showConfirm(
+            '¿Salir sin guardar?',
+            'Perderás el progreso de la sesión actual si no la terminas primero.',
+            () => {
+                stopWorkout();
+            }
+        );
     });
 
     document.getElementById('finish-workout')?.addEventListener('click', () => {
@@ -480,7 +484,7 @@ export const attachWorkoutsEvents = () => {
         });
         stopWorkout();
         window.showAlert('¡Buen trabajo!', `Has completado el entrenamiento: +${calories} kcal`, 'success');
-        setTimeout(() => window.location.reload(), 2000);
+        setTimeout(() => window.router.navigate('workouts'), 1500);
     });
 
     const stopWorkout = () => {
@@ -511,7 +515,7 @@ export const attachWorkoutsEvents = () => {
 
             if (added) {
                 window.showAlert('Éxito', "Actividad registrada correctamente.", 'success');
-                setTimeout(() => window.location.reload(), 1500);
+                setTimeout(() => window.router.navigate('workouts'), 1500);
             } else {
                 window.showAlert('Atención', "Ingresa distancia o tiempo para registrar.", 'info');
             }
