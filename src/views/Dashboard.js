@@ -619,7 +619,7 @@ export const attachDashboardEvents = () => {
             } else {
                 // Determine if we should reload (Sleep or Workout was added)
                 if (result.sleep || (result.workouts && result.workouts.length > 0)) {
-                    window.location.reload();
+                    window.router.navigate('dashboard');
                     return;
                 }
             }
@@ -741,7 +741,7 @@ export const attachDashboardEvents = () => {
         document.getElementById('modal-confirm-btn').onclick = () => {
             addMeal(mealData);
             closeModal();
-            window.location.reload();
+            window.router.navigate('dashboard');
         };
     }
 
@@ -802,14 +802,14 @@ export const attachDashboardEvents = () => {
         const current = new Date(state.selectedDate + 'T12:00:00');
         current.setDate(current.getDate() - 1);
         setSelectedDate(current.toISOString().split('T')[0]);
-        window.location.reload();
+        window.router.navigate('dashboard');
     });
 
     nextBtn?.addEventListener('click', () => {
         const current = new Date(state.selectedDate + 'T12:00:00');
         current.setDate(current.getDate() + 1);
         setSelectedDate(current.toISOString().split('T')[0]);
-        window.location.reload();
+        window.router.navigate('dashboard');
     });
 
     calendarBtn?.addEventListener('click', () => {
@@ -821,7 +821,7 @@ export const attachDashboardEvents = () => {
         btn.addEventListener('click', (e) => {
             const id = e.currentTarget.dataset.id;
             toggleHabit(id, state.selectedDate);
-            window.location.reload();
+            window.router.navigate('dashboard');
         });
     });
 
@@ -839,7 +839,7 @@ export const attachDashboardEvents = () => {
             if (confirm('¿Estás seguro de eliminar esta comida?')) {
                 const id = parseInt(e.currentTarget.dataset.id);
                 deleteMeal(id);
-                window.location.reload();
+                window.router.navigate('dashboard');
             }
         });
     });
@@ -867,7 +867,7 @@ export const attachDashboardEvents = () => {
 
         if (name && cals) {
             updateMeal(currentEditId, { name, calories: cals });
-            window.location.reload();
+            window.router.navigate('dashboard');
         } else {
             alert('Por favor completa los campos.');
         }
@@ -939,7 +939,7 @@ export const attachDashboardEvents = () => {
             const newWater = currentWater + 250;
 
             updateDayStat(date, 'water', newWater);
-            window.location.reload(); // Safer way to update all UI dependencies
+            window.router.navigate('dashboard'); // Smoother and avoids sync race
         });
     }
 };

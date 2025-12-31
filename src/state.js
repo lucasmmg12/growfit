@@ -77,22 +77,24 @@ export const initializeState = async () => {
     try {
         const cloudData = await loadFullState();
         if (cloudData) {
-            const local = getState();
-            // The cloudData returned by loadFullState has profile, dailyLog, measurements, workouts
-            // But we now save the entire state into profileData.data
-            // So cloudData.profile might actually be the whole state
+            const localRaw = localStorage.getItem(STORAGE_KEY);
+            const local = localRaw ? JSON.parse(localRaw) : {};
             const cloudState = cloudData.profile || {};
 
             const newState = {
                 ...defaultState,
-                ...local, // Keep local as base
-                ...cloudState, // Overwrite with cloud
-                dailyLog: cloudData.dailyLog || cloudState.dailyLog || local.dailyLog || [],
-                measurements: cloudData.measurements || cloudState.measurements || local.measurements || [],
-                workouts: cloudData.workouts || cloudState.workouts || local.workouts || []
+                ...cloudState,
+                ...local,
+                dailyLog: cloudData.dailyLog || [],
+                measurements: cloudData.measurements || [],
+                workouts: cloudData.workouts || []
             };
 
-            // Persist locally
+            // Ensure dailyLog correctly reflects the specialized tables if they are not empty
+            if (cloudData.dailyLog?.length > 0) newState.dailyLog = cloudData.dailyLog;
+            if (cloudData.measurements?.length > 0) newState.measurements = cloudData.measurements;
+            if (cloudData.workouts?.length > 0) newState.workouts = cloudData.workouts;
+
             localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
             return newState;
         }
