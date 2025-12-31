@@ -1,9 +1,11 @@
-import { getState, getDailyStats, addMeal, checkMeasurementStatus, setDailyTip, updateDayStat, getDailyBurn, addWorkout, deleteMeal, updateMeal, toggleHabit, setDailyHabits } from '../state';
+import { getState, getDailyStats, addMeal, checkMeasurementStatus, setDailyTip, updateDayStat, getDailyBurn, addWorkout, deleteMeal, updateMeal, toggleHabit, setDailyHabits, setSelectedDate } from '../state';
 import { analyzeFood, generateDailyTip, generateSmartHabits } from '../services/openai';
 
 export const renderDashboard = () => {
     const state = getState();
     const today = new Date().toISOString().split('T')[0];
+    const selectedDate = state.selectedDate || today;
+    const isToday = selectedDate === today;
 
     // SMART HABITS AUTO-GENERATION
     if (state.lastHabitGenerationDate !== today && !window.hasTriggeredHabits) {
@@ -17,15 +19,15 @@ export const renderDashboard = () => {
             setDailyHabits(habits);
         });
     }
-    const dayStats = state.days?.[today] || {};
+    const dayStats = state.days?.[selectedDate] || {};
     const sleepHours = dayStats.sleep || '--';
 
-    const stats = getDailyStats();
+    const stats = getDailyStats(selectedDate);
     const measurementStatus = checkMeasurementStatus();
 
     // Tip Logic
     const tipData = state.dailyTip || { date: null, content: null };
-    const displayTip = (tipData.date === today && tipData.content)
+    const displayTip = (tipData.date === selectedDate && tipData.content)
         ? tipData.content
         : "Analizando tu progreso para darte el mejor consejo...";
 
@@ -93,11 +95,24 @@ export const renderDashboard = () => {
                     
                     <!-- Header -->
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-                        <div class="flex flex-col gap-1">
-                            <h2 class="text-white text-3xl md:text-4xl font-black leading-tight tracking-tight">Buenos días, ${state.profile.name}</h2>
-                            <p class="text-text-secondary text-base">${new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                        <div class="flex flex-col gap-1 w-full md:w-auto">
+                            <h2 class="text-white text-3xl md:text-4xl font-black leading-tight tracking-tight">${isToday ? 'Buenos días' : 'Registro del día'}, ${state.profile.name}</h2>
+                            <div class="flex items-center gap-3 mt-1">
+                                <button id="prev-day-btn" class="p-1 px-2 rounded-lg bg-[#28392a] hover:bg-primary/20 text-white transition-colors flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-sm">chevron_left</span>
+                                </button>
+                                <p class="text-text-secondary text-base font-medium min-w-[140px] text-center">
+                                    ${new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                </p>
+                                <button id="next-day-btn" class="p-1 px-2 rounded-lg bg-[#28392a] hover:bg-primary/20 text-white transition-colors flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-sm">chevron_right</span>
+                                </button>
+                                <button id="open-calendar-btn" class="ml-2 p-1 px-2 rounded-lg bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-[#102212] transition-all flex items-center justify-center gap-1 group">
+                                    <span class="material-symbols-outlined text-sm">calendar_month</span>
+                                    <span class="text-xs font-bold uppercase tracking-wider hidden sm:block">Calendario</span>
+                                </button>
+                            </div>
                         </div>
-                        <!-- Ayuno Tracker Removed -->
                     </div>
                     
                     <!-- Measurements Notification -->
@@ -131,7 +146,7 @@ export const renderDashboard = () => {
                         </div>
 
                         <div class="bg-[#1A261C] p-1.5 rounded-2xl border border-[#28392a] shadow-lg flex items-center gap-2">
-                            <input id="quick-log-input" class="flex-1 bg-transparent border-none text-white placeholder-text-secondary focus:ring-0 px-4 py-3 text-lg outline-none" placeholder="¿Qué comiste hoy? (ej. 2 Huevos...)" type="text"/>
+                            <input id="quick-log-input" class="flex-1 bg-transparent border-none text-white placeholder-text-secondary focus:ring-0 px-4 py-3 text-lg outline-none" placeholder="${isToday ? '¿Qué comiste hoy? (ej. 2 Huevos...)' : '¿Qué comiste este día?'}" type="text"/>
                             <div class="flex items-center gap-1 pr-1 border-l border-[#28392a] pl-2 h-full">
                                 <label for="quick-log-file" class="p-2 text-text-secondary hover:text-white hover:bg-[#28392a] rounded-lg transition-colors cursor-pointer" title="Subir Foto">
                                     <span class="material-symbols-outlined">image</span>
@@ -173,11 +188,11 @@ export const renderDashboard = () => {
                     <div class="grid grid-cols-2 gap-4">
                          <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl p-4 flex flex-col gap-1">
                             <p class="text-text-secondary text-xs uppercase font-bold tracking-wider">Metabolismo Basal (BMR)</p>
-                            <p class="text-white text-xl font-bold">${getState().profile.age ? getDailyBurn(today).bmr : '--'} <span class="text-xs font-normal text-text-secondary">kcal</span></p>
+                            <p class="text-white text-xl font-bold">${getState().profile.age ? getDailyBurn(selectedDate).bmr : '--'} <span class="text-xs font-normal text-text-secondary">kcal</span></p>
                          </div>
                          <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl p-4 flex flex-col gap-1">
                             <p class="text-text-secondary text-xs uppercase font-bold tracking-wider">Actividad (+Workouts)</p>
-                            <p class="text-primary text-xl font-bold">+${getDailyBurn(today).activity} <span class="text-xs font-normal text-text-secondary">kcal</span></p>
+                            <p class="text-primary text-xl font-bold">+${getDailyBurn(selectedDate).activity} <span class="text-xs font-normal text-text-secondary">kcal</span></p>
                          </div>
                     </div>
 
@@ -289,9 +304,9 @@ export const renderDashboard = () => {
                             
                               <!-- Recent Meals List -->
                               <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl p-6">
-                                <h3 class="text-white font-bold text-lg mb-4">Comidas de Hoy</h3>
+                                <h3 class="text-white font-bold text-lg mb-4">${isToday ? 'Comidas de Hoy' : 'Comidas del Día'}</h3>
                                 <div class="flex flex-col gap-3">
-                                    ${renderMealsList(state)}
+                                    ${renderMealsList(state, selectedDate)}
                                 </div>
                               </div>
 
@@ -326,7 +341,7 @@ export const renderDashboard = () => {
                                 <div class="flex items-center gap-2 w-full justify-between relative z-10">
                                     <div class="text-right">
                                         <p class="text-3xl font-black text-white">${sleepHours}</p>
-                                        <p class="text-xs text-text-secondary">horas hoy</p>
+                                        <p class="text-xs text-text-secondary">${isToday ? 'horas hoy' : 'horas este día'}</p>
                                     </div>
                                     <button class="text-indigo-400 hover:text-white text-xs font-bold uppercase tracking-wider bg-indigo-500/10 hover:bg-indigo-500 px-3 py-2 rounded-lg transition-colors">
                                         Editar
@@ -370,7 +385,7 @@ export const renderDashboard = () => {
                                 </div>
                                 <div class="flex flex-col gap-3">
                                     ${state.habits.map(h => {
-            const isDone = state.habitLog?.[today]?.includes(h.id);
+            const isDone = state.habitLog?.[selectedDate]?.includes(h.id);
             return `
                                         <button class="habit-btn w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-300 group/btn ${isDone ? 'bg-green-500/20 border-green-500/50' : 'bg-white/5 border-white/10 hover:bg-white/10'}" data-id="${h.id}">
                                             <div class="flex items-center gap-3">
@@ -428,12 +443,12 @@ export const renderDashboard = () => {
     `;
 };
 
-const renderMealsList = (state) => {
-    const today = new Date().toISOString().split('T')[0];
-    const meals = state.dailyLog.filter(m => m.date === today);
+const renderMealsList = (state, selectedDate) => {
+    const activeDate = selectedDate || state.selectedDate || new Date().toISOString().split('T')[0];
+    const meals = state.dailyLog.filter(m => m.date === activeDate);
 
     if (meals.length === 0) {
-        return `<div class="text-text-secondary text-sm">No hay comidas registradas hoy.</div>`;
+        return `<div class="text-text-secondary text-sm">No hay comidas registradas.</div>`;
     }
 
     const categories = ["Desayuno", "Media Mañana", "Almuerzo", "Merienda", "Media Tarde", "Cena"];
@@ -777,12 +792,34 @@ export const attachDashboardEvents = () => {
         };
         recognition.onend = () => micBtn.classList.remove('text-red-500');
     }
+    // --- DATE NAVIGATION LOGIC ---
+    const prevBtn = document.getElementById('prev-day-btn');
+    const nextBtn = document.getElementById('next-day-btn');
+    const calendarBtn = document.getElementById('open-calendar-btn');
+
+    prevBtn?.addEventListener('click', () => {
+        const current = new Date(state.selectedDate + 'T12:00:00');
+        current.setDate(current.getDate() - 1);
+        setSelectedDate(current.toISOString().split('T')[0]);
+        window.location.reload();
+    });
+
+    nextBtn?.addEventListener('click', () => {
+        const current = new Date(state.selectedDate + 'T12:00:00');
+        current.setDate(current.getDate() + 1);
+        setSelectedDate(current.toISOString().split('T')[0]);
+        window.location.reload();
+    });
+
+    calendarBtn?.addEventListener('click', () => {
+        window.router.navigate('calendar');
+    });
+
     // --- HABIT TRACKER LOGIC ---
     document.querySelectorAll('.habit-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const id = e.currentTarget.dataset.id;
-            // Optimistic UI toggle could be done here, but reload is safer for sync
-            toggleHabit(id);
+            toggleHabit(id, state.selectedDate);
             window.location.reload();
         });
     });
@@ -898,11 +935,11 @@ export const attachDashboardEvents = () => {
         waterBtn.addEventListener('click', () => {
             // Re-fetch state to get latest daily stats freshly
             const currentState = getState();
-            const today = new Date().toISOString().split('T')[0];
-            const currentWater = currentState.days?.[today]?.water || 0;
+            const date = currentState.selectedDate || new Date().toISOString().split('T')[0];
+            const currentWater = currentState.days?.[date]?.water || 0;
             const newWater = currentWater + 250;
 
-            updateDayStat(today, 'water', newWater);
+            updateDayStat(date, 'water', newWater);
 
             // Update UI directly
             const amountEl = document.getElementById('water-amount');

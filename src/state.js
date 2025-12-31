@@ -40,7 +40,8 @@ const defaultState = {
     ],
     habitLog: {},
     dailyTip: { date: null, content: null },
-    currentView: 'dashboard'
+    currentView: 'dashboard',
+    selectedDate: new Date().toISOString().split('T')[0]
 };
 
 // --- CORE STATE ---
@@ -64,6 +65,12 @@ export const saveState = (newState) => {
     saveProfileDB(newState.profile);
 
     window.dispatchEvent(new CustomEvent('state-changed', { detail: newState }));
+};
+
+export const setSelectedDate = (date) => {
+    const state = getState();
+    state.selectedDate = date;
+    saveState(state);
 };
 
 export const initializeState = async () => {
@@ -105,8 +112,8 @@ export const addWorkout = (data) => {
     }
 
     const newWorkout = {
-        id: Date.now(), // Temp ID
-        date: data.date || new Date().toISOString().split('T')[0],
+        id: Date.now(),
+        date: data.date || state.selectedDate || new Date().toISOString().split('T')[0],
         ...data,
         calories: caloriesBurned
     };
@@ -124,8 +131,8 @@ export const addWorkout = (data) => {
 
 export const addMeal = (meal) => {
     const state = getState();
-    const today = new Date().toISOString().split('T')[0];
-    const mealDate = meal.date || today;
+    const fallback = state.selectedDate || new Date().toISOString().split('T')[0];
+    const mealDate = meal.date || fallback;
     const finalMeal = { ...meal, date: mealDate, id: Date.now() };
 
     state.dailyLog.push(finalMeal);
@@ -200,16 +207,16 @@ export const addMeasurement = async (data) => {
 };
 
 // ... Read-Only Getters ...
-export const getDailyStats = () => {
+export const getDailyStats = (dateStr) => {
     const state = getState();
-    const today = new Date().toISOString().split('T')[0];
-    const todaysMeals = state.dailyLog.filter(m => m.date === today);
+    const targetDate = dateStr || state.selectedDate || new Date().toISOString().split('T')[0];
+    const todaysMeals = state.dailyLog.filter(m => m.date === targetDate);
 
     return todaysMeals.reduce((acc, meal) => {
         acc.calories += meal.calories || 0;
-        acc.protein += meal.macros.protein || 0;
-        acc.carbs += meal.macros.carbs || 0;
-        acc.fat += meal.macros.fat || 0;
+        acc.protein += (meal.macros?.protein || 0);
+        acc.carbs += (meal.macros?.carbs || 0);
+        acc.fat += (meal.macros?.fat || 0);
         return acc;
     }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
 };
@@ -241,15 +248,15 @@ export const setDailyHabits = (newHabits) => {
     saveState(state); // Saves to Profile JSON in DB
 };
 
-export const toggleHabit = (habitId) => {
+export const toggleHabit = (habitId, dateStr) => {
     const state = getState();
-    const today = new Date().toISOString().split('T')[0];
+    const targetDate = dateStr || state.selectedDate || new Date().toISOString().split('T')[0];
     if (!state.habitLog) state.habitLog = {};
-    if (!state.habitLog[today]) state.habitLog[today] = [];
+    if (!state.habitLog[targetDate]) state.habitLog[targetDate] = [];
 
-    const index = state.habitLog[today].indexOf(habitId);
-    if (index > -1) state.habitLog[today].splice(index, 1);
-    else state.habitLog[today].push(habitId);
+    const index = state.habitLog[targetDate].indexOf(habitId);
+    if (index > -1) state.habitLog[targetDate].splice(index, 1);
+    else state.habitLog[targetDate].push(habitId);
 
     saveState(state);
 };
@@ -267,7 +274,7 @@ export const getBMR = () => {
 export const getDailyBurn = (dateStr) => {
     const state = getState();
     const bmr = getBMR();
-    const date = dateStr || new Date().toISOString().split('T')[0];
+    const date = dateStr || state.selectedDate || new Date().toISOString().split('T')[0];
 
     const workouts = state.workouts || [];
     const dailyWorkouts = workouts.filter(w => w.date === date);

@@ -7,6 +7,7 @@ import { renderProfile, attachProfileEvents } from './views/Profile';
 import { renderInsights } from './views/Insights';
 import { renderMeasurements, attachMeasurementsEvents } from './views/Measurements';
 import { renderChatWidget, attachChatWidgetEvents } from './views/ChatWidget';
+import { renderCalendar, attachCalendarEvents } from './views/CalendarView';
 
 const app = document.querySelector('#app');
 
@@ -28,7 +29,8 @@ const routes = {
   'workouts': { render: renderWorkouts, attach: attachWorkoutsEvents },
   'profile': { render: renderProfile, attach: attachProfileEvents },
   'insights': { render: renderInsights, attach: null },
-  'measurements': { render: renderMeasurements, attach: attachMeasurementsEvents }
+  'measurements': { render: renderMeasurements, attach: attachMeasurementsEvents },
+  'calendar': { render: renderCalendar, attach: attachCalendarEvents }
 };
 
 window.router = {
