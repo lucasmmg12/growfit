@@ -206,38 +206,89 @@ export const chatWithAI = async (message, state) => {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   if (!apiKey) throw new Error("Missing OpenAI API Key");
 
-  const today = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const todayStr = new Date().toISOString().split('T')[0];
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
 
-  // Summarize State for Context
+  const getDaySummary = (date) => {
+    const meals = state.dailyLog?.filter(m => m.date === date) || [];
+    const workouts = state.workouts?.filter(w => w.date === date) || [];
+    const dayData = state.days?.[date] || {};
+
+    const macros = meals.reduce((acc, m) => {
+      acc.cal += (m.calories || 0);
+      acc.p += (m.macros?.protein || 0);
+      acc.c += (m.macros?.carbs || 0);
+      acc.f += (m.macros?.fat || 0);
+      return acc;
+    }, { cal: 0, p: 0, c: 0, f: 0 });
+
+    const workoutSum = workouts.reduce((acc, w) => {
+      acc.cal += (w.calories || 0);
+      acc.count++;
+      return acc;
+    }, { cal: 0, count: 0 });
+
+    return {
+      date,
+      macros,
+      water: dayData.water || 0,
+      sleep: dayData.sleep || 0,
+      workouts: workoutSum,
+      mealNames: meals.map(m => m.name).join(', '),
+      workoutNames: workouts.map(w => w.name).join(', ')
+    };
+  };
+
+  // History (Last 7 days simplified)
+  const history = [];
+  for (let i = 2; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dStr = d.toISOString().split('T')[0];
+    const s = getDaySummary(dStr);
+    if (s.macros.cal > 0 || s.workouts.count > 0) {
+      history.push(`${dStr}: ${Math.round(s.macros.cal)}kcal`);
+    }
+  }
+
+  const todaySummary = getDaySummary(todayStr);
+  const yesterdaySummary = getDaySummary(yesterdayStr);
+
   const profile = state.profile || {};
-  const todayStats = state.days?.[new Date().toISOString().split('T')[0]] || { calorieCount: 0, protein: 0, carbs: 0, fat: 0 };
-  const measurement = state.measurements?.[0] || {};
-  const recentWorkouts = state.workouts?.slice(0, 3) || [];
-
+  const measurement = state.measurements?.[state.measurements.length - 1] || {};
   const healthInfo = profile.health
     ? `Condiciones: ${profile.health.conditions || 'Ninguna'}, Meds: ${profile.health.medications || 'Ninguna'}, Metabolismo: ${profile.health.metabolism || 'Normal'}`
-    : 'Salud: Sin regitros especiales';
+    : 'Salud: Sin registros especiales';
 
   const systemPrompt = `
       Eres GrowFit AI, un asistente de salud y fitness altamente inteligente, empático y experto médico-deportivo.
+      Tu misión es ayudar a ${profile.name || 'el atleta'} a alcanzar su meta de ${profile.targetWeight || 'peso ideal'} kg.
+
+      DATOS DE HOY (${todayStr}):
+      - Nutrición: ${Math.round(todaySummary.macros.cal)} kcal (P:${todaySummary.macros.p}g, C:${todaySummary.macros.c}g, F:${todaySummary.macros.f}g).
+      - Comidas: ${todaySummary.mealNames || 'Nada registrado aún'}.
+      - Actividad: ${todaySummary.workouts.count} entrenos (${todaySummary.workouts.cal} kcal). ${todaySummary.workoutNames ? `Ejercicios: ${todaySummary.workoutNames}` : ''}
+      - Otros: ${todaySummary.water}ml agua, ${todaySummary.sleep}h sueño.
+
+      DATOS DE AYER (${yesterdayStr}):
+      - Nutrición: ${Math.round(yesterdaySummary.macros.cal)} kcal. Comidas: ${yesterdaySummary.mealNames || 'Nada'}.
+      - Actividad: ${yesterdaySummary.workouts.count} entrenos. ${yesterdaySummary.workoutNames ? `Ejercicios: ${yesterdaySummary.workoutNames}` : ''}
+      - Otros: ${yesterdaySummary.water}ml agua, ${yesterdaySummary.sleep}h sueño.
       
-      CONTEXTO ACTUAL (${today}):
-      - Usuario: ${profile.name || 'Atleta'}.
-      - Meta Diaria: ${profile.calorieGoal || 2000} kcal.
-      - Estado Hoy: Ha consumido ${Math.round(todayStats.calorieCount || 0)} kcal.
-      - Peso Actual: ${measurement.weight || 'N/A'} kg.
-      - Entrenamientos Recientes: ${recentWorkouts.map(w => w.name).join(', ') || 'Ninguno reciente'}.
-      - PERFIL CLÍNICO: ${healthInfo}.
-      
-      OBJETIVO:
-      Responde a la pregunta del usuario basándote en este contexto.
-      - Si pregunta qué comer, sugiere algo que encaje en sus macros y sea seguro para sus condiciones (ej. Si tiene SOP o Diabetes, evita azúcares simples).
-      - Si toma medicación (ej. Levotiroxina), recuérdale los tiempos de espera si pregunta por desayunos.
-      
-      PERSONALIDAD:
-      - Motivador, energético, claro y conciso.
-      - Usa emojis ocasionalmente.
-      - Respuestas breves (max 2-3 parrafos cortos).
+      ${history.length > 0 ? `HISTORIAL SEMANAL: ${history.join(' | ')}` : ''}
+
+      PERFIL DEL USUARIO:
+      - Objetivos Diarios: ${profile.calorieGoal} kcal (P:${profile.proteinGoal}g, C:${profile.carbsGoal}g, G:${profile.fatGoal}g).
+      - Peso: ${measurement.weight || 'N/A'} kg (Meta: ${profile.targetWeight || 'N/A'} kg).
+      - Perfil Clínico: ${healthInfo}.
+
+      REGLAS DE ORO:
+      1. Usa los datos anteriores para responder con precisión quirúrgica. Si preguntan "qué comí ayer", lista las comidas de AYER.
+      2. Sé breve y conciso (máximo 2 parrafos cortos). Usa emojis.
+      3. Si tiene condiciones médicas (ej. Hipotiroidismo, Diabetes), adapta tus consejos (ej. recomendar alimentos de bajo índice glucémico).
+      4. Si toma medicación (ej. Levotiroxina), recuérdale los tiempos de absorción si pregunta por comidas.
     `;
 
   try {
