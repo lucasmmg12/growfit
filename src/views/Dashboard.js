@@ -509,7 +509,7 @@ export const attachDashboardEvents = () => {
     // Chart Logic
     const ctx = document.getElementById('macro-line-chart');
     if (ctx && typeof Chart !== 'undefined') {
-        const stats = getDailyStats();
+        const stats = getDailyStats(state.selectedDate);
         new Chart(ctx, {
             type: 'bar',
             data: {
@@ -594,19 +594,20 @@ export const attachDashboardEvents = () => {
 
             // Handle Sleep
             if (result.sleep) {
-                const today = new Date().toISOString().split('T')[0];
-                updateDayStat(today, 'sleep', result.sleep);
+                const date = state.selectedDate || new Date().toISOString().split('T')[0];
+                updateDayStat(date, 'sleep', result.sleep);
             }
 
             // Handle Workouts (AI Detected)
             if (result.workouts && result.workouts.length > 0) {
+                const date = state.selectedDate || new Date().toISOString().split('T')[0];
                 result.workouts.forEach(w => {
                     addWorkout({
                         type: 'mixed',
                         name: w.name,
                         duration: w.duration_minutes,
                         calories: w.calories, // AI estimated calories
-                        date: new Date().toISOString().split('T')[0]
+                        date: date
                     });
                 });
             }
@@ -910,13 +911,12 @@ export const attachDashboardEvents = () => {
     refreshRec?.addEventListener('click', showRecommendation);
 
     // Tip Generation Logic
-    // ... existing tip logic ...
-    const today = new Date().toISOString().split('T')[0];
+    const activeDate = state.selectedDate || new Date().toISOString().split('T')[0];
     const currentTip = state.dailyTip || {};
 
-    if (currentTip.date !== today) {
+    if (currentTip.date !== activeDate) {
         // Trigger generation in background
-        const stats = getDailyStats();
+        const stats = getDailyStats(activeDate);
         generateDailyTip(state.profile, stats, state.measurements).then(tip => {
             setDailyTip(tip);
             const tipEl = document.getElementById('daily-tip-text');
