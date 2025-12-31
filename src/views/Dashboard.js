@@ -933,20 +933,13 @@ export const attachDashboardEvents = () => {
     const waterBtn = document.getElementById('add-water-btn');
     if (waterBtn) {
         waterBtn.addEventListener('click', () => {
-            // Re-fetch state to get latest daily stats freshly
             const currentState = getState();
             const date = currentState.selectedDate || new Date().toISOString().split('T')[0];
             const currentWater = currentState.days?.[date]?.water || 0;
             const newWater = currentWater + 250;
 
             updateDayStat(date, 'water', newWater);
-
-            // Update UI directly
-            const amountEl = document.getElementById('water-amount');
-            const glassesEl = document.getElementById('water-glasses');
-
-            if (amountEl) amountEl.textContent = `${newWater} ml`;
-            if (glassesEl) glassesEl.textContent = `${Math.round(newWater / 250)} vasos`;
+            window.location.reload(); // Safer way to update all UI dependencies
         });
     }
 };

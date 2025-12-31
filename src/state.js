@@ -61,8 +61,8 @@ export const getState = () => {
 export const saveState = (newState) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
 
-    // Sync Profile on every save (Safe/Low Cost)
-    saveProfileDB(newState.profile);
+    // Persist everything to the cloud data JSON
+    saveProfileDB(newState);
 
     window.dispatchEvent(new CustomEvent('state-changed', { detail: newState }));
 };
@@ -77,14 +77,19 @@ export const initializeState = async () => {
     try {
         const cloudData = await loadFullState();
         if (cloudData) {
-            // Merge Clouds Arrays with Local defaults?
-            // Actually replace lists entirely with DB source of truth
+            const local = getState();
+            // The cloudData returned by loadFullState has profile, dailyLog, measurements, workouts
+            // But we now save the entire state into profileData.data
+            // So cloudData.profile might actually be the whole state
+            const cloudState = cloudData.profile || {};
+
             const newState = {
                 ...defaultState,
-                profile: cloudData.profile || defaultState.profile,
-                dailyLog: cloudData.dailyLog || [],
-                measurements: cloudData.measurements || [],
-                workouts: cloudData.workouts || []
+                ...local, // Keep local as base
+                ...cloudState, // Overwrite with cloud
+                dailyLog: cloudData.dailyLog || cloudState.dailyLog || local.dailyLog || [],
+                measurements: cloudData.measurements || cloudState.measurements || local.measurements || [],
+                workouts: cloudData.workouts || cloudState.workouts || local.workouts || []
             };
 
             // Persist locally
