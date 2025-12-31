@@ -73,58 +73,75 @@ export const renderInsights = () => {
                 </div>
 
                 <!-- Stats Overview -->
+                ${(() => {
+            const today = new Date();
+            const last7Days = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date();
+                d.setDate(today.getDate() - i);
+                return d.toISOString().split('T')[0];
+            });
+
+            // BMR Estimate
+            const lastM = state.measurements && state.measurements.length > 0 ? state.measurements[state.measurements.length - 1] : null;
+            const weight = lastM ? lastM.weight : (profile.startingWeight || 70);
+            const height = profile.height || 175;
+            const age = profile.age || 30;
+            const bmr = Math.round((10 * weight) + (6.25 * height) - (5 * age) + (profile.gender === 'male' ? 5 : -161));
+
+            const periodData = last7Days.map(date => {
+                const consumed = state.dailyLog?.filter(m => m.date === date).reduce((s, m) => s + (m.calories || 0), 0) || 0;
+                const activity = state.workouts?.filter(w => w.date === date).reduce((s, w) => s + (w.calories || 0), 0) || 0;
+                return { consumed, burned: bmr + activity };
+            });
+
+            const avgConsumed = Math.round(periodData.reduce((s, d) => s + d.consumed, 0) / 7);
+            const totalBurned = Math.round(periodData.reduce((s, d) => s + d.burned, 0));
+            const avgBurned = Math.round(totalBurned / 7);
+            const netBalance = avgConsumed - avgBurned;
+
+            return `
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <!-- Avg Daily Intake -->
                     <div class="flex flex-col gap-2 rounded-xl p-6 bg-surface-dark/90 backdrop-blur-md border border-[#28392a] shadow-sm">
                         <div class="flex justify-between items-start">
-                            <p class="text-gray-400 text-sm font-medium uppercase tracking-wider">Promedio Diario</p>
+                            <p class="text-gray-400 text-sm font-medium uppercase tracking-wider">Promedio Ingesta</p>
                             <span class="material-symbols-outlined text-primary">local_fire_department</span>
                         </div>
                         <div class="flex items-baseline gap-2 mt-2">
-                            <p class="text-3xl font-bold text-white">2,400</p>
-                            <p class="text-sm font-medium text-slate-500">kcal</p>
+                            <p class="text-3xl font-bold text-white">${avgConsumed.toLocaleString()}</p>
+                            <p class="text-sm font-medium text-slate-500">kcal / día</p>
                         </div>
-                        <div class="flex items-center gap-1 mt-1">
-                            <span class="material-symbols-outlined text-primary text-sm">trending_up</span>
-                            <p class="text-primary text-sm font-bold">+2%</p>
-                            <p class="text-slate-400 text-sm ml-1">vs semana pasada</p>
-                        </div>
+                         <p class="text-slate-400 text-xs mt-1 italic">Basado en los últimos 7 días</p>
                     </div>
 
                     <!-- Total Burned -->
                     <div class="flex flex-col gap-2 rounded-xl p-6 bg-surface-dark/90 backdrop-blur-md border border-[#28392a] shadow-sm">
                         <div class="flex justify-between items-start">
-                            <p class="text-gray-400 text-sm font-medium uppercase tracking-wider">Total Quemado</p>
+                            <p class="text-gray-400 text-sm font-medium uppercase tracking-wider">Gasto Promedio</p>
                             <span class="material-symbols-outlined text-blue-400">fitness_center</span>
                         </div>
                         <div class="flex items-baseline gap-2 mt-2">
-                            <p class="text-3xl font-bold text-white">2,850</p>
-                            <p class="text-sm font-medium text-slate-500">kcal</p>
+                            <p class="text-3xl font-bold text-white">${avgBurned.toLocaleString()}</p>
+                            <p class="text-sm font-medium text-slate-500">kcal / día</p>
                         </div>
-                        <div class="flex items-center gap-1 mt-1">
-                            <span class="material-symbols-outlined text-primary text-sm">trending_up</span>
-                            <p class="text-primary text-sm font-bold">+5%</p>
-                            <p class="text-slate-400 text-sm ml-1">vs semana pasada</p>
-                        </div>
+                        <p class="text-slate-400 text-xs mt-1 italic">BMR: ${bmr} + Ejercicio</p>
                     </div>
 
                     <!-- Net Balance -->
                     <div class="flex flex-col gap-2 rounded-xl p-6 bg-surface-dark/90 backdrop-blur-md border border-[#28392a] shadow-sm">
                         <div class="flex justify-between items-start">
-                            <p class="text-gray-400 text-sm font-medium uppercase tracking-wider">Balance Neto</p>
+                            <p class="text-gray-400 text-sm font-medium uppercase tracking-wider">Balance Diario</p>
                             <span class="material-symbols-outlined text-orange-400">balance</span>
                         </div>
                         <div class="flex items-baseline gap-2 mt-2">
-                            <p class="text-3xl font-bold text-white">-450</p>
+                            <p class="text-3xl font-bold ${netBalance > 0 ? 'text-red-400' : 'text-primary'}">${(netBalance > 0 ? '+' : '') + netBalance.toLocaleString()}</p>
                             <p class="text-sm font-medium text-slate-500">kcal</p>
                         </div>
-                        <div class="flex items-center gap-1 mt-1">
-                            <span class="material-symbols-outlined text-orange-500 text-sm">trending_down</span>
-                            <p class="text-orange-500 text-sm font-bold">-3%</p>
-                            <p class="text-slate-400 text-sm ml-1">objetivo déficit cumplido</p>
-                        </div>
+                        <p class="text-slate-400 text-xs mt-1 italic">${netBalance < 0 ? 'Estás en déficit calórico' : 'Estás en superávit calórico'}</p>
                     </div>
                 </div>
+            `;
+        })()}
 
                 <!-- Main Chart Section -->
                 <!-- Main Chart Section (Premium Tableau Style) -->
@@ -262,25 +279,19 @@ export const renderInsights = () => {
 };
 
 const renderChartBars = (state) => {
-    // Generate Current Week (Mon-Sun)
-    const curr = new Date();
-    const day = curr.getDay(); // 0 (Sun) to 6 (Sat)
-    // Calculate difference to get to Monday. If Sunday (0), subtract 6. If Mon (1), subtract 0.
-    // Logic: diff = date - day + (day === 0 ? -6 : 1)
-    const diff = curr.getDate() - day + (day === 0 ? -6 : 1);
-
-    const monday = new Date(curr);
-    monday.setDate(diff);
-
+    // Generate Last 7 Days (ending today)
     const dates = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
+        const d = new Date();
+        d.setDate(d.getDate() - (6 - i)); // -6 to 0 to get the last 7 days ending today
         return d.toISOString().split('T')[0];
     });
 
-    // BMR Estimate (Simplified)
-    const p = state.profile;
-    const bmr = (10 * (p.startingWeight || 70)) + (6.25 * (p.height || 175)) - (5 * (p.age || 30)) + (p.gender === 'male' ? 5 : -161);
+    // BMR Estimate
+    const lastM = state.measurements && state.measurements.length > 0 ? state.measurements[state.measurements.length - 1] : null;
+    const weight = lastM ? lastM.weight : (state.profile.startingWeight || 70);
+    const height = state.profile.height || 175;
+    const age = state.profile.age || 30;
+    const bmr = Math.round((10 * weight) + (6.25 * height) - (5 * age) + (state.profile.gender === 'male' ? 5 : -161));
 
     const chartData = dates.map(date => {
         // Consumed
