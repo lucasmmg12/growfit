@@ -586,23 +586,32 @@ export const attachDashboardEvents = () => {
                 const currentState = getState();
                 const rawList = await generateShoppingList(currentState.profile, currentState.dailyLog);
 
-                // --- PARSE MARKDOWN TO HTML (Option 3 Style) ---
-                let styledList = rawList
-                    // Remove opening text if any
-                    .replace(/^.*(?=###)/s, '')
-                    // Headers (Categories) -> Cards
-                    .replace(/### (.*)/g, '<div class="mb-4 p-4 bg-white/5 border border-white/5 rounded-2xl"><h4 class="text-primary font-bold uppercase text-xs tracking-wider mb-3 border-b border-white/10 pb-2 flex items-center gap-2"><span class="material-symbols-outlined text-sm">label</span>$1</h4><ul class="space-y-2">')
-                    // List Items
-                    .replace(/- \[ \] (.*)/g, '<li class="flex items-start gap-3 text-sm text-slate-300"><span class="material-symbols-outlined text-white/20 text-lg mt-[-2px]">check_box_outline_blank</span><span>$1</span></li>')
-                    // Close ULs (Simplified approach)
-                    .replace(/<\/ul>\s*<div/g, '</ul></div><div');
+                // --- PARSE MARKDOWN TO HTML (Robust Chunking) ---
+                // Split by headers (###) to separate categories reliably
+                const chunks = rawList.split('### ').filter(c => c.trim().length > 0);
 
-                // Add closing tags for the last group
-                styledList += '</ul></div>';
+                let styledList = chunks.map(chunk => {
+                    const lines = chunk.split('\n').filter(l => l.trim() !== '');
+                    const title = lines[0].trim();
 
-                // Special styling for the "Tip" section
-                styledList = styledList.replace(/<div.*Tip de Ahorro Sanjuanino.*/s, '<div class="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl animate-pulse"><h4 class="text-yellow-500 font-bold uppercase text-xs tracking-wider mb-2 flex items-center gap-2"><span class="material-symbols-outlined">savings</span>Tip Sanjuanino</h4><p class="text-sm text-yellow-100/90 italic">');
-                if (styledList.includes('Tip Sanjuanino')) styledList += '</p></div>';
+                    // Special case for Tip
+                    if (title.includes('Tip') || title.includes('Ahorro')) {
+                        const tipText = lines.slice(1).join(' ').replace(/"/g, '').trim();
+                        // Sometimes the title itself has the text if no newline, handle that if needed, but usually OpenAI puts newline
+                        /* If lines length is 1, maybe content is in title line? usually not with ### header */
+                        return `<div class="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl animate-pulse"><h4 class="text-yellow-500 font-bold uppercase text-xs tracking-wider mb-2 flex items-center gap-2"><span class="material-symbols-outlined">savings</span>Tip Sanjuanino</h4><p class="text-sm text-yellow-100/90 italic">"${tipText || title.replace('Tip de Ahorro Sanjuanino', '')}"</p></div>`;
+                    }
+
+                    // Normal Category
+                    const items = lines.slice(1)
+                        .filter(l => l.trim().startsWith('- [ ]'))
+                        .map(l => `<li class="flex items-start gap-3 text-sm text-slate-300"><span class="material-symbols-outlined text-white/20 text-lg mt-[-2px]">check_box_outline_blank</span><span>${l.replace('- [ ] ', '')}</span></li>`)
+                        .join('');
+
+                    if (!items) return ''; // Skip empty sections
+
+                    return `<div class="mb-4 p-4 bg-white/5 border border-white/5 rounded-2xl"><h4 class="text-primary font-bold uppercase text-xs tracking-wider mb-3 border-b border-white/10 pb-2 flex items-center gap-2"><span class="material-symbols-outlined text-sm">label</span>${title}</h4><ul class="space-y-2">${items}</ul></div>`;
+                }).join('');
 
                 if (modal) {
                     modal.innerHTML = `
