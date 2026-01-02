@@ -681,9 +681,10 @@ export const attachDashboardEvents = () => {
                 // We render it visible but absolute positioned off-screen to ensure charts render
                 const reportDiv = document.createElement('div');
                 reportDiv.id = 'weekly-report-pdf';
-                reportDiv.style.position = 'absolute';
-                reportDiv.style.left = '-9999px';
+                reportDiv.style.position = 'fixed';
+                reportDiv.style.left = '0';
                 reportDiv.style.top = '0';
+                reportDiv.style.zIndex = '-9999';
                 reportDiv.style.width = '794px'; // ~A4 at 96dpi
                 reportDiv.style.minHeight = '1123px';
                 reportDiv.style.backgroundColor = '#0f1711';
@@ -779,12 +780,21 @@ export const attachDashboardEvents = () => {
 
                 document.body.appendChild(reportDiv);
 
+                // Wait for layout to settle
+                await new Promise(resolve => setTimeout(resolve, 500));
+
                 // 4. Generate PDF
                 const opt = {
                     margin: 0,
                     filename: `Reporte_GrowFit_${currentState.profile.name}.pdf`,
                     image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, logging: false },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        logging: false,
+                        scrollY: 0,
+                        windowWidth: 800
+                    },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
 
