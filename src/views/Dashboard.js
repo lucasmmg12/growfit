@@ -334,11 +334,11 @@ export const renderDashboard = () => {
                                 </p>
                                 
                                 <div class="flex gap-2">
-                                    <button onclick="window.generateShoppingList()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group/btn">
+                                    <button id="btn-shopping-list" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group/btn">
                                         <span class="material-symbols-outlined text-white group-hover/btn:text-primary transition-colors">shopping_cart</span>
                                         <span class="text-[10px] uppercase font-bold text-text-secondary">Lista Compra</span>
                                     </button>
-                                     <button onclick="window.generateWeeklyReport()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group/btn">
+                                     <button id="btn-weekly-report" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group/btn">
                                         <span class="material-symbols-outlined text-white group-hover/btn:text-primary transition-colors">assessment</span>
                                         <span class="text-[10px] uppercase font-bold text-text-secondary">Reporte Semanal</span>
                                     </button>
@@ -569,72 +569,80 @@ const renderMealsList = (state, selectedDate) => {
 export const attachDashboardEvents = () => {
     const state = getState();
 
-    // --- AI FEATURES (Hoisted & Robust) ---
-    // Defined immediately to ensure availability even if later DOM queries fail
-    window.generateShoppingList = async () => {
-        console.log("Generating Shopping List...");
-        const loader = document.getElementById('loading-indicator');
-        const modal = document.getElementById('meal-modal');
-        if (loader) loader.classList.remove('hidden');
+    // --- AI BUTTONS (Event Listeners) ---
+    const btnShop = document.getElementById('btn-shopping-list');
+    const btnReport = document.getElementById('btn-weekly-report');
 
-        try {
-            const { generateShoppingList } = await import('../services/openai');
-            const currentState = getState();
+    if (btnShop) {
+        btnShop.addEventListener('click', async () => {
+            console.log("Button Click: Shopping List");
+            const loader = document.getElementById('loading-indicator');
+            const modal = document.getElementById('meal-modal');
+            if (loader) loader.classList.remove('hidden');
 
-            // Generate list
-            const list = await generateShoppingList(currentState.profile, currentState.dailyLog);
+            try {
+                const { generateShoppingList } = await import('../services/openai');
+                const currentState = getState();
+                const list = await generateShoppingList(currentState.profile, currentState.dailyLog);
 
-            if (modal) {
-                modal.innerHTML = `
-                    <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
-                        <button onclick="document.getElementById('meal-modal').classList.add('hidden')" class="absolute top-4 right-4 text-text-secondary hover:text-white"><span class="material-symbols-outlined">close</span></button>
-                        <h3 class="text-white text-xl font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">shopping_cart</span> Lista Inteligente</h3>
-                        <div class="prose prose-invert text-sm text-slate-300">
-                            ${list.replace(/\n/g, '<br>')}
+                if (modal) {
+                    modal.innerHTML = `
+                        <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
+                            <button id="close-ai-modal" class="absolute top-4 right-4 text-text-secondary hover:text-white"><span class="material-symbols-outlined">close</span></button>
+                            <h3 class="text-white text-xl font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">shopping_cart</span> Lista Inteligente</h3>
+                            <div class="prose prose-invert text-sm text-slate-300">
+                                ${list.replace(/\n/g, '<br>')}
+                            </div>
+                            <button onclick="window.copyToClipboard('${list.replace(/\n/g, '\\n').replace(/'/g, "\\'")}')" class="mt-4 w-full bg-primary/10 hover:bg-primary/20 text-primary py-3 rounded-xl font-bold transition-colors">Copiar al Portapapeles</button>
                         </div>
-                        <button onclick="window.copyToClipboard('${list.replace(/\n/g, '\\n').replace(/'/g, "\\'")}')" class="mt-4 w-full bg-primary/10 hover:bg-primary/20 text-primary py-3 rounded-xl font-bold transition-colors">Copiar al Portapapeles</button>
+                    `;
+                    const closeBtn = modal.querySelector('#close-ai-modal');
+                    if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+                    modal.classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error(e);
+                window.showAlert('Error', 'No se pudo generar la lista.', 'error');
+            } finally {
+                if (loader) loader.classList.add('hidden');
+            }
+        });
+    }
+
+    if (btnReport) {
+        btnReport.addEventListener('click', async () => {
+            console.log("Button Click: Weekly Report");
+            const loader = document.getElementById('loading-indicator');
+            const modal = document.getElementById('meal-modal');
+            if (loader) loader.classList.remove('hidden');
+
+            try {
+                const { generateWeeklyReport } = await import('../services/openai');
+                const currentState = getState();
+                const report = await generateWeeklyReport(currentState);
+
+                if (modal) {
+                    modal.innerHTML = `
+                    <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-lg p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
+                        <button id="close-ai-modal" class="absolute top-4 right-4 text-text-secondary hover:text-white"><span class="material-symbols-outlined">close</span></button>
+                        <h3 class="text-white text-xl font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">assessment</span> Reporte Semanal</h3>
+                        <div class="prose prose-invert text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                            ${report}
+                        </div>
                     </div>
                 `;
-                modal.classList.remove('hidden');
+                    const closeBtn = modal.querySelector('#close-ai-modal');
+                    if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+                    modal.classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error(e);
+                window.showAlert('Error', 'No se pudo generar el reporte.', 'error');
+            } finally {
+                if (loader) loader.classList.add('hidden');
             }
-        } catch (e) {
-            console.error(e);
-            window.showAlert('Error', 'No se pudo generar la lista.', 'error');
-        } finally {
-            if (loader) loader.classList.add('hidden');
-        }
-    };
-
-    window.generateWeeklyReport = async () => {
-        console.log("Generating Weekly Report...");
-        const loader = document.getElementById('loading-indicator');
-        const modal = document.getElementById('meal-modal');
-        if (loader) loader.classList.remove('hidden');
-
-        try {
-            const { generateWeeklyReport } = await import('../services/openai');
-            const currentState = getState();
-            const report = await generateWeeklyReport(currentState);
-
-            if (modal) {
-                modal.innerHTML = `
-                   <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-lg p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
-                       <button onclick="document.getElementById('meal-modal').classList.add('hidden')" class="absolute top-4 right-4 text-text-secondary hover:text-white"><span class="material-symbols-outlined">close</span></button>
-                       <h3 class="text-white text-xl font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">assessment</span> Reporte Semanal</h3>
-                       <div class="prose prose-invert text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
-                           ${report}
-                       </div>
-                   </div>
-               `;
-                modal.classList.remove('hidden');
-            }
-        } catch (e) {
-            console.error(e);
-            window.showAlert('Error', 'No se pudo generar el reporte.', 'error');
-        } finally {
-            if (loader) loader.classList.add('hidden');
-        }
-    };
+        });
+    }
 
     window.copyToClipboard = (text) => {
         navigator.clipboard.writeText(text);
