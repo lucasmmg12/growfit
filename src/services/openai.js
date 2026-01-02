@@ -9,11 +9,21 @@ export const analyzeFood = async (input, type = 'text', context = '') => {
   const today = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const todayISO = new Date().toISOString().split('T')[0];
 
-  // ... existing code ...
+  // Calculate dates for the current week to help the AI
+  const weekDates = {};
+  const curr = new Date();
+  const first = curr.getDate() - curr.getDay() + (curr.getDay() === 0 ? -6 : 1); // Monday
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(curr.setDate(first + i));
+    const dayName = d.toLocaleDateString('es-ES', { weekday: 'long' }).toLowerCase();
+    weekDates[dayName] = d.toISOString().split('T')[0];
+  }
+
   const systemPrompt = `
     You are an expert nutritionist and fitness coach AI. 
     Analyze the user input, which may contain FOOD logs, SLEEP logs, WORKOUT logs, or mixed.
     THE CURRENT DATE IS: ${today} (${todayISO}).
+    DATES FOR THE CURRENT WEEK: ${JSON.stringify(weekDates)}.
     
     Return ONLY a JSON object with this EXACT structure:
     {
@@ -44,7 +54,9 @@ export const analyzeFood = async (input, type = 'text', context = '') => {
     2. Sleep: Extract hours.
     3. Workouts: If user mentions exercise (e.g. "played football 1 hour", "ran 5km"), estimate the calories burned. 
        - Approx: Football/Soccer ~8-10 kcal/min. Running ~10-12 kcal/min. Walking ~4 kcal/min.
-    4. Date: Assume TODAY unless specified.
+    4. Date: Assume TODAY unless specified. 
+       - If the user mentions a day of the week (e.g., "el jueves", "el lunes"), use the date from the current week provided above. 
+       - If the day mentioned is in the future relative to today, assume they mean that day from the PREVIOUS week.
     5. Do not include markdown formatting.
   `;
 
@@ -256,6 +268,16 @@ export const chatWithAI = async (message, state) => {
   const todaySummary = getDaySummary(todayStr);
   const yesterdaySummary = getDaySummary(yesterdayStr);
 
+  // Calculate dates for the current week to help the AI
+  const weekDates = {};
+  const curr = new Date();
+  const first = curr.getDate() - curr.getDay() + (curr.getDay() === 0 ? -6 : 1); // Monday
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(curr.setDate(first + i));
+    const dayName = d.toLocaleDateString('es-ES', { weekday: 'long' }).toLowerCase();
+    weekDates[dayName] = d.toISOString().split('T')[0];
+  }
+
   const profile = state.profile || {};
   const measurement = state.measurements?.[state.measurements.length - 1] || {};
   const healthInfo = profile.health
@@ -277,6 +299,8 @@ export const chatWithAI = async (message, state) => {
       - Actividad: ${yesterdaySummary.workouts.count} entrenos. ${yesterdaySummary.workoutNames ? `Ejercicios: ${yesterdaySummary.workoutNames}` : ''}
       - Otros: ${yesterdaySummary.water}ml agua, ${yesterdaySummary.sleep}h sueño.
       
+      FECHAS DE LA SEMANA ACTUAL: ${JSON.stringify(weekDates)}.
+      
       ${history.length > 0 ? `HISTORIAL SEMANAL: ${history.join(' | ')}` : ''}
 
       PERFIL DEL USUARIO:
@@ -286,9 +310,10 @@ export const chatWithAI = async (message, state) => {
 
       REGLAS DE ORO:
       1. Usa los datos anteriores para responder con precisión quirúrgica. Si preguntan "qué comí ayer", lista las comidas de AYER.
-      2. Sé breve y conciso (máximo 2 parrafos cortos). Usa emojis.
-      3. Si tiene condiciones médicas (ej. Hipotiroidismo, Diabetes), adapta tus consejos (ej. recomendar alimentos de bajo índice glucémico).
-      4. Si toma medicación (ej. Levotiroxina), recuérdale los tiempos de absorción si pregunta por comidas.
+      2. Si mencionan un día de la semana (ej. "el martes"), usa la FECHA correspondiente de la SEMANA ACTUAL indicada arriba. Si el día mencionado es futuro, asume que se refieren al de la SEMANA PASADA.
+      3. Sé breve y conciso (máximo 2 parrafos cortos). Usa emojis.
+      4. Si tiene condiciones médicas (ej. Hipotiroidismo, Diabetes), adapta tus consejos (ej. recomendar alimentos de bajo índice glucémico).
+      5. Si toma medicación (ej. Levotiroxina), recuérdale los tiempos de absorción si pregunta por comidas.
     `;
 
   try {
