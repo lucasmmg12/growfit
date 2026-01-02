@@ -726,7 +726,7 @@ export const attachDashboardEvents = () => {
                         <!-- Chart Section (Canvas) -->
                         <div style="margin-bottom: 40px; background: #1A261C; padding: 20px; border-radius: 16px; border: 1px solid #28392a;">
                             <h4 style="margin: 0 0 20px 0; font-size: 14px; text-transform: uppercase; color: #94a3b8;">Progreso Calórico (Últimos 7 Días)</h4>
-                            <div style="height: 200px; display: flex; align-items: flex-end; gap: 10px; padding-bottom: 20px; border-bottom: 1px solid #334155;">
+                            <div style="height: 200px; display: flex; align-items: stretch; gap: 10px; padding-bottom: 20px; border-bottom: 1px solid #334155;">
                                 ${reportData.calories_chart_data.map(val => {
                     const safeVal = Number(val) || 0;
                     const height = Math.min((safeVal / 3500) * 100, 100);
