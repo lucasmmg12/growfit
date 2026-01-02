@@ -691,6 +691,12 @@ export const attachDashboardEvents = () => {
                                 <h1 style="font-size: 32px; font-weight: 900; color: #4ade80; margin: 0; text-transform: uppercase; letter-spacing: -1px;">GrowFit</h1>
                                 <p style="color: #94a3b8; margin: 5px 0 0 0; font-size: 14px;">Reporte de Rendimiento Semanal</p>
                             </div>
+                            
+                            <!-- Profile Photo -->
+                            <div style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #4ade80; overflow: hidden; box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);">
+                                <img src="/lucas.jpeg" alt="Lucas" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'">
+                            </div>
+
                             <div style="text-align: right;">
                                 <p style="margin: 0; font-weight: bold; font-size: 18px;">${currentState.profile.name}</p>
                                 <p style="margin: 0; color: #64748b; font-size: 12px;">${new Date().toLocaleDateString()}</p>
