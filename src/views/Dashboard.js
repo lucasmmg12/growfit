@@ -584,17 +584,51 @@ export const attachDashboardEvents = () => {
             try {
                 const { generateShoppingList } = await import('../services/openai');
                 const currentState = getState();
-                const list = await generateShoppingList(currentState.profile, currentState.dailyLog);
+                const rawList = await generateShoppingList(currentState.profile, currentState.dailyLog);
+
+                // --- PARSE MARKDOWN TO HTML (Option 3 Style) ---
+                let styledList = rawList
+                    // Remove opening text if any
+                    .replace(/^.*(?=###)/s, '')
+                    // Headers (Categories) -> Cards
+                    .replace(/### (.*)/g, '<div class="mb-4 p-4 bg-white/5 border border-white/5 rounded-2xl"><h4 class="text-primary font-bold uppercase text-xs tracking-wider mb-3 border-b border-white/10 pb-2 flex items-center gap-2"><span class="material-symbols-outlined text-sm">label</span>$1</h4><ul class="space-y-2">')
+                    // List Items
+                    .replace(/- \[ \] (.*)/g, '<li class="flex items-start gap-3 text-sm text-slate-300"><span class="material-symbols-outlined text-white/20 text-lg mt-[-2px]">check_box_outline_blank</span><span>$1</span></li>')
+                    // Close ULs (Simplified approach)
+                    .replace(/<\/ul>\s*<div/g, '</ul></div><div');
+
+                // Add closing tags for the last group
+                styledList += '</ul></div>';
+
+                // Special styling for the "Tip" section
+                styledList = styledList.replace(/<div.*Tip de Ahorro Sanjuanino.*/s, '<div class="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl animate-pulse"><h4 class="text-yellow-500 font-bold uppercase text-xs tracking-wider mb-2 flex items-center gap-2"><span class="material-symbols-outlined">savings</span>Tip Sanjuanino</h4><p class="text-sm text-yellow-100/90 italic">');
+                if (styledList.includes('Tip Sanjuanino')) styledList += '</p></div>';
 
                 if (modal) {
                     modal.innerHTML = `
-                        <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
-                            <button id="close-ai-modal" class="absolute top-4 right-4 text-text-secondary hover:text-white"><span class="material-symbols-outlined">close</span></button>
-                            <h3 class="text-white text-xl font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">shopping_cart</span> Lista Inteligente</h3>
-                            <div class="prose prose-invert text-sm text-slate-300">
-                                ${list.replace(/\n/g, '<br>')}
+                        <div class="bg-[#101611] border border-[#28392a] rounded-3xl w-full max-w-md p-0 shadow-2xl relative max-h-[85vh] overflow-hidden flex flex-col">
+                            <!-- Header -->
+                            <div class="p-6 pb-4 border-b border-white/5 bg-[#1A261C]">
+                                <button id="close-ai-modal" class="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"><span class="material-symbols-outlined">close</span></button>
+                                <h3 class="text-white text-xl font-black flex items-center gap-2">
+                                    <span class="bg-primary/20 text-primary p-2 rounded-xl material-symbols-outlined">shopping_cart</span> 
+                                    Lista Inteligente
+                                </h3>
+                                <p class="text-xs text-text-secondary mt-1 ml-12">Optimizada para tu bolsillo y tus macros.</p>
                             </div>
-                            <button onclick="window.copyToClipboard('${list.replace(/\n/g, '\\n').replace(/'/g, "\\'")}')" class="mt-4 w-full bg-primary/10 hover:bg-primary/20 text-primary py-3 rounded-xl font-bold transition-colors">Copiar al Portapapeles</button>
+
+                            <!-- Content -->
+                            <div class="p-6 overflow-y-auto custom-scrollbar">
+                                ${styledList}
+                            </div>
+
+                            <!-- Footer -->
+                            <div class="p-4 border-t border-white/5 bg-[#1A261C]">
+                                <button onclick="window.copyToClipboard('${rawList.replace(/\n/g, '\\n').replace(/'/g, "\\'")}')" class="w-full bg-primary text-[#102212] py-3.5 rounded-xl font-bold transition-transform active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-primary/20">
+                                    <span class="material-symbols-outlined text-lg">content_copy</span>
+                                    Copiar al Portapapeles
+                                </button>
+                            </div>
                         </div>
                     `;
                     const closeBtn = modal.querySelector('#close-ai-modal');
@@ -620,15 +654,33 @@ export const attachDashboardEvents = () => {
             try {
                 const { generateWeeklyReport } = await import('../services/openai');
                 const currentState = getState();
-                const report = await generateWeeklyReport(currentState);
+                const rawReport = await generateWeeklyReport(currentState);
+
+                // --- PARSE MARKDOWN TO HTML (Option 3 Style) ---
+                let styledReport = rawReport
+                    // Headers
+                    .replace(/### (.*)/g, '<h4 class="text-primary font-bold text-lg mt-6 mb-3 flex items-center gap-2 border-b border-white/5 pb-2">$1</h4>')
+                    // Bold
+                    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-bold">$1</strong>')
+                    // Bullet points
+                    .replace(/- (.*)/g, '<li class="ml-4 mb-2 text-slate-300 list-disc marker:text-primary pl-1">$1</li>');
 
                 if (modal) {
                     modal.innerHTML = `
-                    <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-lg p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
-                        <button id="close-ai-modal" class="absolute top-4 right-4 text-text-secondary hover:text-white"><span class="material-symbols-outlined">close</span></button>
-                        <h3 class="text-white text-xl font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">assessment</span> Reporte Semanal</h3>
-                        <div class="prose prose-invert text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
-                            ${report}
+                    <div class="bg-[#101611] border border-[#28392a] rounded-3xl w-full max-w-lg p-0 shadow-2xl relative max-h-[85vh] overflow-hidden flex flex-col">
+                        <!-- Header -->
+                        <div class="p-6 pb-4 border-b border-white/5 bg-[#1A261C]">
+                            <button id="close-ai-modal" class="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"><span class="material-symbols-outlined">close</span></button>
+                            <h3 class="text-white text-xl font-black flex items-center gap-2">
+                                <span class="bg-primary/20 text-primary p-2 rounded-xl material-symbols-outlined">assessment</span> 
+                                Reporte Semanal
+                            </h3>
+                            <p class="text-xs text-text-secondary mt-1 ml-12">Análisis de rendimiento sanjuanino.</p>
+                        </div>
+                        
+                        <!-- Content -->
+                        <div class="p-6 overflow-y-auto custom-scrollbar prose prose-invert max-w-none text-sm leading-relaxed">
+                            ${styledReport}
                         </div>
                     </div>
                 `;
