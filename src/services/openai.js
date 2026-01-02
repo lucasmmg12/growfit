@@ -488,23 +488,29 @@ export const generateWeeklyReport = async (state) => {
   }
 
   const systemPrompt = `
-        Eres un Coach Deportivo experto de San Juan, Argentina, de "Grow Fit".
-        Analiza la ÚLTIMA SEMANA de ${state.profile.name}.
+        Eres un Analista de Rendimiento Deportivo de "Grow Fit" (San Juan, Argentina).
+        Genera un REPORTE SEMANAL VIP en formato JSON para descargar como PDF.
         
-        DATOS DE LA SEMANA (Hoy es ${today.toISOString().split('T')[0]}):
+        DATOS:
         ${JSON.stringify(last7Days)}
+        Meta Calórica: ${state.profile.calorieGoal}
         
-        META: ${state.profile.calorieGoal} kcal/día. 
-        PESO ACTUAL: ${state.measurements.slice(-1)[0]?.weight || 'N/A'} kg.
-
-        Tu tarea:
-        1. Háblale como un entrenador sanjuanino: profesional pero cercano ("Che", "Hacé el esfuerzo", "Vamos que podés").
-        2. Detecta patrones: Si falla el finde, decilo ("Ojo con las juntadas del domingo").
-        3. Si hizo deporte, sugiere lugares locales (Parque de Mayo, Dique Ullum, el Pinar).
-        4. Si le falta proteína, tirale opciones baratas (huevo, lentejas, hígado).
+        Tu análisis debe ser profundo, motivador y con "modismos sanjuaninos" suaves.
         
-        FORMATO: Markdown limpio, usa emojis.
-        Estructura: "📊 Resumen Semanal", "🔥 Lo Mejor (¡Bien ahí!)", "⚠️ A Corregir (¡Media pila!)", "🎯 Misión para la Semana".
+        Devuelve SOLO JSON con esta estructura:
+        {
+          "summary": "Resumen general de 3-4 líneas. Usá lenguaje local pero profesional (ej. 'Che, esta semana estuviste...').",
+          "kpis": {
+            "avg_calories": "Promedio calórico diario (número)",
+            "total_workouts": "Total entrenamientos (número)",
+            "consistency_score": "Puntaje del 1 al 10 basado en adherencia a la meta",
+            "best_day": "Fecha del mejor día (YYYY-MM-DD)"
+          },
+          "strengths": ["Punto fuerte 1", "Punto fuerte 2"],
+          "weaknesses": ["A mejorar 1", "A mejorar 2"],
+          "mission": "Misión clara para la próxima semana (ej. 'Ir al Dique 2 veces').",
+          "calories_chart_data": [array de números con las calorías de los últimos 7 días en orden]
+        }
     `;
 
   try {
@@ -514,15 +520,20 @@ export const generateWeeklyReport = async (state) => {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [{ role: "system", content: systemPrompt }],
-        max_tokens: 500,
+        max_tokens: 1500,
         temperature: 0.7
       })
     });
     const data = await response.json();
-    return data.choices?.[0]?.message?.content || "No se pudo generar el reporte.";
+    if (data.error) throw new Error(data.error.message);
+
+    const content = data.choices[0].message.content.trim();
+    const jsonStr = content.replace(/^```json/, '').replace(/```$/, '');
+    return JSON.parse(jsonStr);
+
   } catch (e) {
     console.error("Weekly Report Error:", e);
-    return "Error al generar reporte.";
+    throw e;
   }
 };
 

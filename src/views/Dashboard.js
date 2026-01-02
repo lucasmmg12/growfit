@@ -655,94 +655,146 @@ export const attachDashboardEvents = () => {
 
     if (btnReport) {
         btnReport.addEventListener('click', async () => {
-            console.log("Button Click: Weekly Report");
+            console.log("Button Click: Weekly Report PDF");
             const loader = document.getElementById('loading-indicator');
-            const modal = document.getElementById('meal-modal');
             if (loader) loader.classList.remove('hidden');
 
             try {
+                // 1. Get Data
                 const { generateWeeklyReport } = await import('../services/openai');
                 const currentState = getState();
-                const rawReport = await generateWeeklyReport(currentState);
+                const reportData = await generateWeeklyReport(currentState);
 
-                // --- PARSE MARKDOWN TO HTML (Themed Cards) ---
-                const chunks = rawReport.split('### ').filter(c => c.trim().length > 0);
+                // 2. Load PDF Library dynamically
+                if (!window.html2pdf) {
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                    });
+                }
 
-                let styledReport = chunks.map(chunk => {
-                    const lines = chunk.split('\n').filter(l => l.trim() !== '');
-                    const title = lines[0].trim();
-                    const contentLines = lines.slice(1);
+                // 3. Create Hidden Report Container (A4 Proportions: 210mm x 297mm)
+                // We render it visible but absolute positioned off-screen to ensure charts render
+                const reportDiv = document.createElement('div');
+                reportDiv.id = 'weekly-report-pdf';
+                reportDiv.style.position = 'absolute';
+                reportDiv.style.left = '-9999px';
+                reportDiv.style.top = '0';
+                reportDiv.style.width = '794px'; // ~A4 at 96dpi
+                reportDiv.style.minHeight = '1123px';
+                reportDiv.style.backgroundColor = '#0f1711';
+                reportDiv.style.color = '#ffffff';
+                reportDiv.style.fontFamily = "'Inter', sans-serif";
 
-                    // Determine Theme based on Title
-                    let theme = {
-                        bg: 'bg-white/5',
-                        border: 'border-white/5',
-                        icon: 'article',
-                        color: 'text-white',
-                        titleColor: 'text-slate-200'
-                    };
-
-                    if (title.toLowerCase().includes('mejor')) {
-                        theme = { bg: 'bg-green-500/10', border: 'border-green-500/20', icon: 'thumb_up', color: 'text-green-400', titleColor: 'text-green-400' };
-                    } else if (title.toLowerCase().includes('corregir') || title.toLowerCase().includes('mejorar')) {
-                        theme = { bg: 'bg-orange-500/10', border: 'border-orange-500/20', icon: 'warning', color: 'text-orange-400', titleColor: 'text-orange-400' };
-                    } else if (title.toLowerCase().includes('misión') || title.toLowerCase().includes('semanal')) {
-                        theme = { bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', icon: 'flag', color: 'text-indigo-400', titleColor: 'text-indigo-400' };
-                    }
-
-                    // Process Content (Handle bullets vs paragraph)
-                    const processedContent = contentLines.map(line => {
-                        if (line.trim().startsWith('- ')) {
-                            // List item
-                            return `<li class="flex items-start gap-2 mb-2"><span class="material-symbols-outlined text-[10px] mt-1.5 ${theme.color}">circle</span><span class="text-slate-300 text-sm leading-relaxed">${line.replace('- ', '').replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')}</span></li>`;
-                        } else {
-                            // Paragraph
-                            return `<p class="text-slate-300 text-sm leading-relaxed mb-2">${line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')}</p>`;
-                        }
-                    }).join('');
-
-                    // Wrap in Card
-                    return `
-                        <div class="mb-4 p-5 ${theme.bg} border ${theme.border} rounded-2xl relative overflow-hidden">
-                            <div class="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                                <span class="material-symbols-outlined text-6xl">${theme.icon}</span>
+                // HTML Template
+                reportDiv.innerHTML = `
+                    <div style="padding: 40px;">
+                        <!-- Header -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #28392a; padding-bottom: 20px; margin-bottom: 30px;">
+                            <div>
+                                <h1 style="font-size: 32px; font-weight: 900; color: #4ade80; margin: 0; text-transform: uppercase; letter-spacing: -1px;">GrowFit</h1>
+                                <p style="color: #94a3b8; margin: 5px 0 0 0; font-size: 14px;">Reporte de Rendimiento Semanal</p>
                             </div>
-                            <h4 class="${theme.titleColor} font-bold text-sm tracking-wide mb-3 flex items-center gap-2 relative z-10 uppercase">
-                                <span class="material-symbols-outlined text-lg">${theme.icon}</span> ${title}
-                            </h4>
-                            <div class="relative z-10 pl-1">
-                                ${processedContent.includes('<li') ? `<ul class="">${processedContent}</ul>` : processedContent}
+                            <div style="text-align: right;">
+                                <p style="margin: 0; font-weight: bold; font-size: 18px;">${currentState.profile.name}</p>
+                                <p style="margin: 0; color: #64748b; font-size: 12px;">${new Date().toLocaleDateString()}</p>
                             </div>
                         </div>
-                    `;
-                }).join('');
 
-                if (modal) {
-                    modal.innerHTML = `
-                    <div class="bg-[#101611] border border-[#28392a] rounded-3xl w-full max-w-lg p-0 shadow-2xl relative max-h-[85vh] overflow-hidden flex flex-col">
-                        <!-- Header -->
-                        <div class="p-6 pb-4 border-b border-white/5 bg-[#1A261C]">
-                            <button id="close-ai-modal" class="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"><span class="material-symbols-outlined">close</span></button>
-                            <h3 class="text-white text-xl font-black flex items-center gap-2">
-                                <span class="bg-primary/20 text-primary p-2 rounded-xl material-symbols-outlined">assessment</span> 
-                                Reporte Semanal
-                            </h3>
-                            <p class="text-xs text-text-secondary mt-1 ml-12">Análisis de rendimiento sanjuanino.</p>
+                        <!-- KPIs Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 40px;">
+                            <div style="background: #1A261C; padding: 20px; border-radius: 12px; border: 1px solid #28392a;">
+                                <p style="margin: 0; color: #4ade80; font-size: 12px; text-transform: uppercase; font-weight: bold;">Promedio Cals</p>
+                                <p style="margin: 5px 0 0 0; font-size: 24px; font-weight: 800;">${reportData.kpis.avg_calories}</p>
+                            </div>
+                            <div style="background: #1A261C; padding: 20px; border-radius: 12px; border: 1px solid #28392a;">
+                                <p style="margin: 0; color: #4ade80; font-size: 12px; text-transform: uppercase; font-weight: bold;">Entrenamientos</p>
+                                <p style="margin: 5px 0 0 0; font-size: 24px; font-weight: 800;">${reportData.kpis.total_workouts}</p>
+                            </div>
+                            <div style="background: #1A261C; padding: 20px; border-radius: 12px; border: 1px solid #28392a;">
+                                <p style="margin: 0; color: #4ade80; font-size: 12px; text-transform: uppercase; font-weight: bold;">Consistencia</p>
+                                <p style="margin: 5px 0 0 0; font-size: 24px; font-weight: 800;">${reportData.kpis.consistency_score}/10</p>
+                            </div>
+                             <div style="background: #1A261C; padding: 20px; border-radius: 12px; border: 1px solid #28392a;">
+                                <p style="margin: 0; color: #4ade80; font-size: 12px; text-transform: uppercase; font-weight: bold;">Mejor Día</p>
+                                <p style="margin: 5px 0 0 0; font-size: 16px; font-weight: 800;">${reportData.kpis.best_day}</p>
+                            </div>
+                        </div>
+
+                        <!-- Summary Section -->
+                        <div style="margin-bottom: 40px;">
+                            <h3 style="color: #4ade80; font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #28392a; padding-bottom: 10px;">📊 Análisis del Coach</h3>
+                            <p style="color: #cbd5e1; line-height: 1.6; font-size: 14px;">${reportData.summary}</p>
+                        </div>
+
+                        <!-- Chart Section (Canvas) -->
+                        <div style="margin-bottom: 40px; background: #1A261C; padding: 20px; border-radius: 16px; border: 1px solid #28392a;">
+                            <h4 style="margin: 0 0 20px 0; font-size: 14px; text-transform: uppercase; color: #94a3b8;">Progreso Calórico (Últimos 7 Días)</h4>
+                            <div style="height: 200px; display: flex; align-items: flex-end; gap: 10px; padding-bottom: 20px; border-bottom: 1px solid #334155;">
+                                ${reportData.calories_chart_data.map(val => {
+                    const height = Math.min((val / 3000) * 100, 100); // Normalize to ~3000kcal max
+                    return `
+                                        <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 5px;">
+                                            <span style="font-size: 10px; color: #64748b;">${val}</span>
+                                            <div style="width: 100%; height: ${height}%; background: linear-gradient(to top, #4ade80, #22c55e); border-radius: 4px; opacity: 0.8;"></div>
+                                        </div>
+                                    `;
+                }).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Strengths & Weaknesses -->
+                        <div style="display: flex; gap: 30px; margin-bottom: 40px;">
+                            <div style="flex: 1;">
+                                <h3 style="color: #4ade80; font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #28392a; padding-bottom: 10px;">🔥 Puntos Fuertes</h3>
+                                <ul style="list-style: none; padding: 0;">
+                                    ${reportData.strengths.map(s => `<li style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #cbd5e1;"><span style="color: #4ade80;">✔</span> ${s}</li>`).join('')}
+                                </ul>
+                            </div>
+                            <div style="flex: 1;">
+                                <h3 style="color: #fbbf24; font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #28392a; padding-bottom: 10px;">⚠️ A Mejorar</h3>
+                                <ul style="list-style: none; padding: 0;">
+                                    ${reportData.weaknesses.map(w => `<li style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #cbd5e1;"><span style="color: #fbbf24;">●</span> ${w}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Mission -->
+                        <div style="background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.2); padding: 25px; border-radius: 16px; text-align: center;">
+                            <h3 style="color: #4ade80; margin: 0 0 10px 0; font-size: 20px;">🎯 Misión Semanal</h3>
+                            <p style="margin: 0; font-size: 16px; font-style: italic; color: #fff;">"${reportData.mission}"</p>
                         </div>
                         
-                        <!-- Content -->
-                        <div class="p-6 overflow-y-auto custom-scrollbar">
-                            ${styledReport}
+                        <!-- Footer -->
+                        <div style="margin-top: 50px; text-align: center; border-top: 1px solid #28392a; padding-top: 20px; color: #475569; font-size: 10px;">
+                            Generado por GrowFit AI • San Juan, Argentina
                         </div>
                     </div>
                 `;
-                    const closeBtn = modal.querySelector('#close-ai-modal');
-                    if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
-                    modal.classList.remove('hidden');
-                }
+
+                document.body.appendChild(reportDiv);
+
+                // 4. Generate PDF
+                const opt = {
+                    margin: 0,
+                    filename: `Reporte_GrowFit_${currentState.profile.name}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                await window.html2pdf().set(opt).from(reportDiv).save();
+
+                // 5. Cleanup
+                document.body.removeChild(reportDiv);
+                window.showAlert('Éxito', 'Reporte descargado correctamente.', 'success');
+
             } catch (e) {
                 console.error(e);
-                window.showAlert('Error', 'No se pudo generar el reporte.', 'error');
+                window.showAlert('Error', 'No se pudo generar el PDF.', 'error');
             } finally {
                 if (loader) loader.classList.add('hidden');
             }
