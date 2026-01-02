@@ -333,12 +333,12 @@ export const renderDashboard = () => {
                                     "${displayTip}"
                                 </p>
                                 
-                                <div class="flex gap-2">
-                                    <button id="btn-shopping-list" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group/btn">
+                                <div class="flex gap-2 relative z-10">
+                                    <button id="btn-shopping-list" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group/btn cursor-pointer">
                                         <span class="material-symbols-outlined text-white group-hover/btn:text-primary transition-colors">shopping_cart</span>
                                         <span class="text-[10px] uppercase font-bold text-text-secondary">Lista Compra</span>
                                     </button>
-                                     <button id="btn-weekly-report" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group/btn">
+                                     <button id="btn-weekly-report" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group/btn cursor-pointer">
                                         <span class="material-symbols-outlined text-white group-hover/btn:text-primary transition-colors">assessment</span>
                                         <span class="text-[10px] uppercase font-bold text-text-secondary">Reporte Semanal</span>
                                     </button>
@@ -567,6 +567,7 @@ const renderMealsList = (state, selectedDate) => {
 };
 
 export const attachDashboardEvents = () => {
+    console.log("Attaching Dashboard Events...");
     const state = getState();
 
     // --- AI BUTTONS (Event Listeners) ---
