@@ -665,14 +665,57 @@ export const attachDashboardEvents = () => {
                 const currentState = getState();
                 const rawReport = await generateWeeklyReport(currentState);
 
-                // --- PARSE MARKDOWN TO HTML (Option 3 Style) ---
-                let styledReport = rawReport
-                    // Headers
-                    .replace(/### (.*)/g, '<h4 class="text-primary font-bold text-lg mt-6 mb-3 flex items-center gap-2 border-b border-white/5 pb-2">$1</h4>')
-                    // Bold
-                    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-bold">$1</strong>')
-                    // Bullet points
-                    .replace(/- (.*)/g, '<li class="ml-4 mb-2 text-slate-300 list-disc marker:text-primary pl-1">$1</li>');
+                // --- PARSE MARKDOWN TO HTML (Themed Cards) ---
+                const chunks = rawReport.split('### ').filter(c => c.trim().length > 0);
+
+                let styledReport = chunks.map(chunk => {
+                    const lines = chunk.split('\n').filter(l => l.trim() !== '');
+                    const title = lines[0].trim();
+                    const contentLines = lines.slice(1);
+
+                    // Determine Theme based on Title
+                    let theme = {
+                        bg: 'bg-white/5',
+                        border: 'border-white/5',
+                        icon: 'article',
+                        color: 'text-white',
+                        titleColor: 'text-slate-200'
+                    };
+
+                    if (title.toLowerCase().includes('mejor')) {
+                        theme = { bg: 'bg-green-500/10', border: 'border-green-500/20', icon: 'thumb_up', color: 'text-green-400', titleColor: 'text-green-400' };
+                    } else if (title.toLowerCase().includes('corregir') || title.toLowerCase().includes('mejorar')) {
+                        theme = { bg: 'bg-orange-500/10', border: 'border-orange-500/20', icon: 'warning', color: 'text-orange-400', titleColor: 'text-orange-400' };
+                    } else if (title.toLowerCase().includes('misión') || title.toLowerCase().includes('semanal')) {
+                        theme = { bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', icon: 'flag', color: 'text-indigo-400', titleColor: 'text-indigo-400' };
+                    }
+
+                    // Process Content (Handle bullets vs paragraph)
+                    const processedContent = contentLines.map(line => {
+                        if (line.trim().startsWith('- ')) {
+                            // List item
+                            return `<li class="flex items-start gap-2 mb-2"><span class="material-symbols-outlined text-[10px] mt-1.5 ${theme.color}">circle</span><span class="text-slate-300 text-sm leading-relaxed">${line.replace('- ', '').replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')}</span></li>`;
+                        } else {
+                            // Paragraph
+                            return `<p class="text-slate-300 text-sm leading-relaxed mb-2">${line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')}</p>`;
+                        }
+                    }).join('');
+
+                    // Wrap in Card
+                    return `
+                        <div class="mb-4 p-5 ${theme.bg} border ${theme.border} rounded-2xl relative overflow-hidden">
+                            <div class="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                                <span class="material-symbols-outlined text-6xl">${theme.icon}</span>
+                            </div>
+                            <h4 class="${theme.titleColor} font-bold text-sm tracking-wide mb-3 flex items-center gap-2 relative z-10 uppercase">
+                                <span class="material-symbols-outlined text-lg">${theme.icon}</span> ${title}
+                            </h4>
+                            <div class="relative z-10 pl-1">
+                                ${processedContent.includes('<li') ? `<ul class="">${processedContent}</ul>` : processedContent}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
 
                 if (modal) {
                     modal.innerHTML = `
@@ -688,7 +731,7 @@ export const attachDashboardEvents = () => {
                         </div>
                         
                         <!-- Content -->
-                        <div class="p-6 overflow-y-auto custom-scrollbar prose prose-invert max-w-none text-sm leading-relaxed">
+                        <div class="p-6 overflow-y-auto custom-scrollbar">
                             ${styledReport}
                         </div>
                     </div>
