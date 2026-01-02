@@ -664,6 +664,7 @@ export const attachDashboardEvents = () => {
                 const { generateWeeklyReport } = await import('../services/openai');
                 const currentState = getState();
                 const reportData = await generateWeeklyReport(currentState);
+                console.log("Report Data:", reportData);
 
                 // 2. Load PDF Library dynamically
                 if (!window.html2pdf) {
@@ -735,11 +736,12 @@ export const attachDashboardEvents = () => {
                             <h4 style="margin: 0 0 20px 0; font-size: 14px; text-transform: uppercase; color: #94a3b8;">Progreso Calórico (Últimos 7 Días)</h4>
                             <div style="height: 200px; display: flex; align-items: flex-end; gap: 10px; padding-bottom: 20px; border-bottom: 1px solid #334155;">
                                 ${reportData.calories_chart_data.map(val => {
-                    const height = Math.min((val / 3000) * 100, 100); // Normalize to ~3000kcal max
+                    const safeVal = Number(val) || 0;
+                    const height = Math.min((safeVal / 3500) * 100, 100);
                     return `
                                         <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 5px;">
-                                            <span style="font-size: 10px; color: #64748b;">${val}</span>
-                                            <div style="width: 100%; height: ${height}%; background: linear-gradient(to top, #4ade80, #22c55e); border-radius: 4px; opacity: 0.8;"></div>
+                                            <span style="font-size: 10px; color: #64748b;">${safeVal}</span>
+                                            <div style="width: 100%; height: ${height}%; background: #4ade80; border-radius: 4px; opacity: 0.9;"></div>
                                         </div>
                                     `;
                 }).join('')}
