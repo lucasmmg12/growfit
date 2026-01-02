@@ -568,6 +568,79 @@ const renderMealsList = (state, selectedDate) => {
 
 export const attachDashboardEvents = () => {
     const state = getState();
+
+    // --- AI FEATURES (Hoisted & Robust) ---
+    // Defined immediately to ensure availability even if later DOM queries fail
+    window.generateShoppingList = async () => {
+        console.log("Generating Shopping List...");
+        const loader = document.getElementById('loading-indicator');
+        const modal = document.getElementById('meal-modal');
+        if (loader) loader.classList.remove('hidden');
+
+        try {
+            const { generateShoppingList } = await import('../services/openai');
+            const currentState = getState();
+
+            // Generate list
+            const list = await generateShoppingList(currentState.profile, currentState.dailyLog);
+
+            if (modal) {
+                modal.innerHTML = `
+                    <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
+                        <button onclick="document.getElementById('meal-modal').classList.add('hidden')" class="absolute top-4 right-4 text-text-secondary hover:text-white"><span class="material-symbols-outlined">close</span></button>
+                        <h3 class="text-white text-xl font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">shopping_cart</span> Lista Inteligente</h3>
+                        <div class="prose prose-invert text-sm text-slate-300">
+                            ${list.replace(/\n/g, '<br>')}
+                        </div>
+                        <button onclick="window.copyToClipboard('${list.replace(/\n/g, '\\n').replace(/'/g, "\\'")}')" class="mt-4 w-full bg-primary/10 hover:bg-primary/20 text-primary py-3 rounded-xl font-bold transition-colors">Copiar al Portapapeles</button>
+                    </div>
+                `;
+                modal.classList.remove('hidden');
+            }
+        } catch (e) {
+            console.error(e);
+            window.showAlert('Error', 'No se pudo generar la lista.', 'error');
+        } finally {
+            if (loader) loader.classList.add('hidden');
+        }
+    };
+
+    window.generateWeeklyReport = async () => {
+        console.log("Generating Weekly Report...");
+        const loader = document.getElementById('loading-indicator');
+        const modal = document.getElementById('meal-modal');
+        if (loader) loader.classList.remove('hidden');
+
+        try {
+            const { generateWeeklyReport } = await import('../services/openai');
+            const currentState = getState();
+            const report = await generateWeeklyReport(currentState);
+
+            if (modal) {
+                modal.innerHTML = `
+                   <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-lg p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
+                       <button onclick="document.getElementById('meal-modal').classList.add('hidden')" class="absolute top-4 right-4 text-text-secondary hover:text-white"><span class="material-symbols-outlined">close</span></button>
+                       <h3 class="text-white text-xl font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">assessment</span> Reporte Semanal</h3>
+                       <div class="prose prose-invert text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                           ${report}
+                       </div>
+                   </div>
+               `;
+                modal.classList.remove('hidden');
+            }
+        } catch (e) {
+            console.error(e);
+            window.showAlert('Error', 'No se pudo generar el reporte.', 'error');
+        } finally {
+            if (loader) loader.classList.add('hidden');
+        }
+    };
+
+    window.copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+        window.showAlert('Copiado', 'Lista copiada al portapapeles', 'success');
+    };
+
     const input = document.getElementById('quick-log-input');
     const btn = document.getElementById('quick-log-btn');
     const fileInput = document.getElementById('quick-log-file');
@@ -576,36 +649,39 @@ export const attachDashboardEvents = () => {
     const modal = document.getElementById('meal-modal');
 
     // --- MOBILE MENU LOGIC ---
-    const mobileMenuBtn = document.querySelector('.md\\:hidden button'); // The burger button
-    const mobileMenu = document.getElementById('mobile-menu');
-    const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
-    const closeMobileMenuBtn = document.getElementById('close-mobile-menu');
-    const mobileLinks = document.querySelectorAll('.mobile-nav-link');
+    try {
+        const mobileMenuBtn = document.querySelector('.md\\:hidden button'); // The burger button. Note double slash for JS string escape
+        const mobileMenu = document.getElementById('mobile-menu');
+        const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+        const closeMobileMenuBtn = document.getElementById('close-mobile-menu');
+        const mobileLinks = document.querySelectorAll('.mobile-nav-link');
 
-    const toggleMenu = (show) => {
-        if (show) {
-            mobileMenuOverlay.classList.remove('hidden');
-            // Small timeout to allow transition
-            setTimeout(() => mobileMenuOverlay.classList.remove('opacity-0'), 10);
-            mobileMenu.classList.remove('-translate-x-full');
-        } else {
-            mobileMenuOverlay.classList.add('opacity-0');
-            mobileMenu.classList.add('-translate-x-full');
-            setTimeout(() => mobileMenuOverlay.classList.add('hidden'), 300);
-        }
-    };
+        const toggleMenu = (show) => {
+            if (show) {
+                mobileMenuOverlay?.classList.remove('hidden');
+                setTimeout(() => mobileMenuOverlay?.classList.remove('opacity-0'), 10);
+                mobileMenu?.classList.remove('-translate-x-full');
+            } else {
+                mobileMenuOverlay?.classList.add('opacity-0');
+                mobileMenu?.classList.add('-translate-x-full');
+                setTimeout(() => mobileMenuOverlay?.classList.add('hidden'), 300);
+            }
+        };
 
-    mobileMenuBtn?.addEventListener('click', () => toggleMenu(true));
-    closeMobileMenuBtn?.addEventListener('click', () => toggleMenu(false));
-    mobileMenuOverlay?.addEventListener('click', () => toggleMenu(false));
+        mobileMenuBtn?.addEventListener('click', () => toggleMenu(true));
+        closeMobileMenuBtn?.addEventListener('click', () => toggleMenu(false));
+        mobileMenuOverlay?.addEventListener('click', () => toggleMenu(false));
 
-    mobileLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            const target = link.dataset.target;
-            toggleMenu(false);
-            window.router.navigate(target);
+        mobileLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                const target = link.dataset.target;
+                toggleMenu(false);
+                window.router.navigate(target);
+            });
         });
-    });
+    } catch (e) {
+        console.warn("Mobile menu init error", e);
+    }
 
     // --- WATER TRACKER LOGIC (Robust) ---
     const waterBtn = document.getElementById('add-water-btn');
