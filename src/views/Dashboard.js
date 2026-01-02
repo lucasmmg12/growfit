@@ -427,6 +427,55 @@ export const renderDashboard = () => {
                     </div>
                 </div>
             </div>
+            <!-- Mobile Menu Overlay -->
+            <div id="mobile-menu-overlay" class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300"></div>
+
+            <!-- Mobile Menu Sidebar -->
+            <div id="mobile-menu" class="fixed inset-y-0 left-0 z-50 w-64 bg-[#1A261C] border-r border-[#28392a] transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col p-4">
+                <div class="flex items-center justify-between mb-8">
+                     <img src="/logogrow.png" alt="GrowFit" class="h-6 object-contain">
+                     <button id="close-mobile-menu" class="text-text-secondary hover:text-white">
+                        <span class="material-symbols-outlined">close</span>
+                     </button>
+                </div>
+
+                <!-- Mobile Profile & Level -->
+                 <div class="flex items-center gap-3 px-2 mb-6">
+                     <img src="/lucas.jpeg" alt="Profile" class="w-10 h-10 rounded-full border-2 border-primary object-cover">
+                    <div class="flex flex-col w-full">
+                        <div class="flex justify-between items-center">
+                             <p class="text-primary text-xs font-medium uppercase tracking-wide">Nivel ${state.profile.level || 1}</p>
+                             <p class="text-[10px] text-text-secondary">${state.profile.xp || 0} XP</p>
+                        </div>
+                        <div class="h-1 bg-[#101611] rounded-full mt-1 overflow-hidden">
+                             <div class="h-full bg-primary" style="width: ${Math.min(100, ((state.profile.xp || 0) % 100))}%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="flex flex-col gap-2">
+                    <button class="mobile-nav-link flex items-center gap-3 px-3 py-3 rounded-xl bg-white/5 border border-white/5 text-white" data-target="dashboard">
+                        <span class="material-symbols-outlined text-primary">dashboard</span>
+                        <p class="text-sm font-medium">Inicio</p>
+                    </button>
+                    <button class="mobile-nav-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 transition-colors text-text-secondary hover:text-white" data-target="measurements">
+                        <span class="material-symbols-outlined">straighten</span>
+                        <p class="text-sm font-medium">Progreso</p>
+                    </button>
+                    <button class="mobile-nav-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 transition-colors text-text-secondary hover:text-white" data-target="insights">
+                        <span class="material-symbols-outlined">insights</span>
+                        <p class="text-sm font-medium">Estadísticas</p>
+                    </button>
+                    <button class="mobile-nav-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 transition-colors text-text-secondary hover:text-white" data-target="workouts">
+                        <span class="material-symbols-outlined">fitness_center</span>
+                        <p class="text-sm font-medium">Entrenamientos</p>
+                    </button>
+                     <button class="mobile-nav-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 transition-colors text-text-secondary hover:text-white" data-target="profile">
+                        <span class="material-symbols-outlined">settings</span>
+                        <p class="text-sm font-medium">Ajustes</p>
+                    </button>
+                </nav>
+            </div>
         </main>
         
         <!-- Modal Container (Hidden by default) -->
@@ -525,6 +574,38 @@ export const attachDashboardEvents = () => {
     const micBtn = document.getElementById('quick-log-mic');
     const loader = document.getElementById('loading-indicator');
     const modal = document.getElementById('meal-modal');
+
+    // --- MOBILE MENU LOGIC ---
+    const mobileMenuBtn = document.querySelector('.md\\:hidden button'); // The burger button
+    const mobileMenu = document.getElementById('mobile-menu');
+    const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+    const closeMobileMenuBtn = document.getElementById('close-mobile-menu');
+    const mobileLinks = document.querySelectorAll('.mobile-nav-link');
+
+    const toggleMenu = (show) => {
+        if (show) {
+            mobileMenuOverlay.classList.remove('hidden');
+            // Small timeout to allow transition
+            setTimeout(() => mobileMenuOverlay.classList.remove('opacity-0'), 10);
+            mobileMenu.classList.remove('-translate-x-full');
+        } else {
+            mobileMenuOverlay.classList.add('opacity-0');
+            mobileMenu.classList.add('-translate-x-full');
+            setTimeout(() => mobileMenuOverlay.classList.add('hidden'), 300);
+        }
+    };
+
+    mobileMenuBtn?.addEventListener('click', () => toggleMenu(true));
+    closeMobileMenuBtn?.addEventListener('click', () => toggleMenu(false));
+    mobileMenuOverlay?.addEventListener('click', () => toggleMenu(false));
+
+    mobileLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            const target = link.dataset.target;
+            toggleMenu(false);
+            window.router.navigate(target);
+        });
+    });
 
     // --- WATER TRACKER LOGIC (Robust) ---
     const waterBtn = document.getElementById('add-water-btn');
