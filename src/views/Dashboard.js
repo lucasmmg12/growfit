@@ -666,33 +666,24 @@ export const attachDashboardEvents = () => {
                 const reportData = await generateWeeklyReport(currentState);
                 console.log("Report Data:", reportData);
 
-                // 2. Load PDF Library dynamically
-                if (!window.html2pdf) {
-                    await new Promise((resolve, reject) => {
-                        const script = document.createElement('script');
-                        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-                        script.onload = resolve;
-                        script.onerror = reject;
-                        document.head.appendChild(script);
-                    });
-                }
+                // 2. UI Setup (Modal)
 
-                // 3. Create Hidden Report Container (A4 Proportions: 210mm x 297mm)
-                // We render it visible but absolute positioned off-screen to ensure charts render
-                const reportDiv = document.createElement('div');
-                reportDiv.id = 'weekly-report-pdf';
-                reportDiv.style.position = 'fixed';
-                reportDiv.style.left = '0';
-                reportDiv.style.top = '0';
-                reportDiv.style.zIndex = '-9999';
-                reportDiv.style.width = '794px'; // ~A4 at 96dpi
-                reportDiv.style.minHeight = '1123px';
-                reportDiv.style.backgroundColor = '#0f1711';
-                reportDiv.style.color = '#ffffff';
-                reportDiv.style.fontFamily = "'Inter', sans-serif";
+                // 2. Create Modal Structure
+                const reportModal = document.createElement('div');
+                reportModal.id = 'weekly-report-modal';
+                reportModal.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 opacity-0 transition-opacity duration-300';
+
+                // Content Container
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'bg-[#0f1711] w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl border border-[#28392a] relative shadow-2xl transform scale-95 transition-transform duration-300 custom-scrollbar';
+
+                // Close Button
+                const closeBtn = document.createElement('button');
+                closeBtn.innerHTML = '<span class="material-symbols-outlined text-3xl">close</span>';
+                closeBtn.className = 'absolute top-4 right-4 text-white hover:text-red-500 z-10 p-2 bg-black/20 rounded-full transition-colors';
 
                 // HTML Template
-                reportDiv.innerHTML = `
+                const reportHtml = `
                     <div style="padding: 40px;">
                         <!-- Header -->
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #28392a; padding-bottom: 20px; margin-bottom: 30px;">
@@ -778,35 +769,38 @@ export const attachDashboardEvents = () => {
                     </div>
                 `;
 
-                document.body.appendChild(reportDiv);
+                contentDiv.innerHTML = reportHtml;
+                contentDiv.appendChild(closeBtn);
+                reportModal.appendChild(contentDiv);
+                document.body.appendChild(reportModal);
 
-                // Wait for layout to settle
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Animation In
+                requestAnimationFrame(() => {
+                    reportModal.classList.remove('opacity-0');
+                    contentDiv.classList.remove('scale-95');
+                    contentDiv.classList.add('scale-100');
+                });
 
-                // 4. Generate PDF
-                const opt = {
-                    margin: 0,
-                    filename: `Reporte_GrowFit_${currentState.profile.name}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: {
-                        scale: 2,
-                        useCORS: true,
-                        logging: false,
-                        scrollY: 0,
-                        windowWidth: 800
-                    },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                // Close Handler
+                const closeModal = () => {
+                    reportModal.classList.add('opacity-0');
+                    contentDiv.classList.remove('scale-100');
+                    contentDiv.classList.add('scale-95');
+                    setTimeout(() => {
+                        if (document.body.contains(reportModal)) {
+                            document.body.removeChild(reportModal);
+                        }
+                    }, 300);
                 };
 
-                await window.html2pdf().set(opt).from(reportDiv).save();
-
-                // 5. Cleanup
-                document.body.removeChild(reportDiv);
-                window.showAlert('Éxito', 'Reporte descargado correctamente.', 'success');
+                closeBtn.onclick = closeModal;
+                reportModal.onclick = (e) => {
+                    if (e.target === reportModal) closeModal();
+                };
 
             } catch (e) {
                 console.error(e);
-                window.showAlert('Error', 'No se pudo generar el PDF.', 'error');
+                window.showAlert('Error', 'No se pudo generar el reporte.', 'error');
             } finally {
                 if (loader) loader.classList.add('hidden');
             }
