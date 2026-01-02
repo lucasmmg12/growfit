@@ -2,7 +2,8 @@ import {
     loadFullState,
     saveProfileDB,
     addMealDB,
-    deleteMealDB,
+    deleteMealByIdDB,
+    deleteMealByAttributesDB,
     addMeasurementDB,
     addWorkoutDB
 } from './services/db';
@@ -27,7 +28,9 @@ const defaultState = {
             medications: '',
             metabolism: 'normal'
         },
-        aiSummary: null
+        aiSummary: null,
+        xp: 0,
+        level: 1
     },
     dailyLog: [],
     days: {},
@@ -44,16 +47,33 @@ const defaultState = {
     selectedDate: new Date().toISOString().split('T')[0]
 };
 
+const calculateLevel = (xp) => {
+    // Level 1: 0-100, Level 2: 101-300, etc. (Simple exponential curve)
+    return Math.floor(Math.sqrt(xp / 100)) + 1;
+};
+
+const addXP = (state, amount) => {
+    if (!state.profile.xp) state.profile.xp = 0;
+    const oldLevel = state.profile.level || 1;
+
+    state.profile.xp += amount;
+    const newLevel = calculateLevel(state.profile.xp);
+
+    state.profile.level = newLevel;
+
+    if (newLevel > oldLevel) {
+        window.showAlert('¡Nivel Subido!', `Ahora eres Nivel ${newLevel}`, 'success');
+    }
+};
+
 // --- CORE STATE ---
 
 export const getState = () => {
     const stored = localStorage.getItem(STORAGE_KEY);
     const state = stored ? { ...defaultState, ...JSON.parse(stored) } : defaultState;
-    // Migration logic
     if (state.habits) {
         state.habits = state.habits.filter(h => !h.name.includes('Ayuno'));
     }
-    // Removal of migration logic that was filtering out small IDs (valid DB entries)
     return state;
 };
 
@@ -106,20 +126,21 @@ export const initializeState = async () => {
 
 // --- ACTIONS (Now Connected to Granular DB) ---
 
-export const addWorkout = (data) => {
+export const addWorkout = async (data) => {
     const state = getState();
     const weight = state.measurements.length > 0 ? state.measurements[state.measurements.length - 1].weight : (state.profile.startingWeight || 70);
 
     let caloriesBurned = data.calories;
     if (!caloriesBurned) {
-        // MET Calc Logic inline or imported
         const durationHours = data.duration / 60;
-        const met = 5; // Simplified default
+        const met = 5;
         caloriesBurned = Math.round(met * weight * durationHours);
     }
 
+    // Temporary ID for immediate UI update
+    const tempId = Date.now();
     const newWorkout = {
-        id: Date.now(),
+        id: tempId,
         date: data.date || state.selectedDate || new Date().toISOString().split('T')[0],
         ...data,
         calories: caloriesBurned
@@ -128,23 +149,52 @@ export const addWorkout = (data) => {
     if (!state.workouts) state.workouts = [];
     state.workouts.push(newWorkout);
 
-    // 1. Save Local
+    addXP(state, 50); // XP for Workout
+
     saveState(state);
-    // 2. Save DB
-    addWorkoutDB(newWorkout);
+
+    // DB Sync
+    const dbData = await addWorkoutDB(newWorkout);
+    if (dbData && dbData.id) {
+        // Update local ID with real DB ID
+        const currentState = getState();
+        const workoutIndex = currentState.workouts.findIndex(w => w.id === tempId);
+        if (workoutIndex !== -1) {
+            currentState.workouts[workoutIndex].id = dbData.id;
+            saveState(currentState);
+        }
+    }
 
     return newWorkout;
 };
 
-export const addMeal = (meal) => {
+export const addMeal = async (meal) => {
     const state = getState();
     const fallback = state.selectedDate || new Date().toISOString().split('T')[0];
     const mealDate = meal.date || fallback;
-    const finalMeal = { ...meal, date: mealDate, id: Date.now() };
+    const tempId = Date.now();
+
+    // Check if it's "healthy" (simple logic: protein > fat) to give bonus XP
+    const isHealthy = (meal.macros?.protein || 0) > (meal.macros?.fat || 0);
+    const xp = isHealthy ? 20 : 10;
+
+    const finalMeal = { ...meal, date: mealDate, id: tempId };
 
     state.dailyLog.push(finalMeal);
+    addXP(state, xp); // XP for Meal
+
     saveState(state);
-    addMealDB(finalMeal); // DB Sync
+
+    const dbData = await addMealDB(finalMeal); // DB Sync
+    if (dbData && dbData.id) {
+        // Update local ID with real DB ID
+        const currentState = getState();
+        const mealIndex = currentState.dailyLog.findIndex(m => m.id === tempId);
+        if (mealIndex !== -1) {
+            currentState.dailyLog[mealIndex].id = dbData.id;
+            saveState(currentState);
+        }
+    }
 };
 
 export const deleteMeal = (id) => {
@@ -154,7 +204,17 @@ export const deleteMeal = (id) => {
     state.dailyLog = state.dailyLog.filter(m => m.id !== id);
     saveState(state);
 
-    if (meal) deleteMealDB(meal.name, meal.date, meal.calories);
+    if (meal) {
+        // If ID is small (likely DB ID), delete by ID. 
+        // If it's huge (Date.now()), it might depend on if sync finished. 
+        // Ideally we assume if user can click delete, it might have synced or not.
+        if (id < 1000000000000n) { // Simple check for likely DB ID (bigint) vs timestamp
+            deleteMealByIdDB(id);
+        } else {
+            // Fallback for unsynced or legacy items
+            deleteMealByAttributesDB(meal.name, meal.date, meal.calories);
+        }
+    }
 };
 
 export const updateMeal = (id, updates) => {

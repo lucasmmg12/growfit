@@ -80,15 +80,30 @@ export const addMealDB = async (meal) => {
         name: meal.name,
         calories: meal.calories,
         macros: meal.macros,
-        icon: meal.category // Mapping category to icon column from schema
+        icon: meal.category
     };
-    const { error } = await supabase.from('meals').insert(row);
+    const { data, error } = await supabase
+        .from('meals')
+        .insert(row)
+        .select()
+        .single();
+
     if (error) {
         console.error("Error adding meal:", error);
+        return null;
     }
+    return data;
 };
 
-export const deleteMealDB = async (name, date, calories) => {
+export const deleteMealByIdDB = async (id) => {
+    const { error } = await supabase
+        .from('meals')
+        .delete()
+        .eq('id', id);
+    if (error) console.error("Error deleting meal by ID:", error);
+};
+
+export const deleteMealByAttributesDB = async (name, date, calories) => {
     const { error } = await supabase
         .from('meals')
         .delete()
@@ -97,7 +112,7 @@ export const deleteMealDB = async (name, date, calories) => {
         .eq('name', name)
         .eq('calories', calories);
 
-    if (error) console.error("Error deleting meal:", error);
+    if (error) console.error("Error deleting meal by attr:", error);
 };
 
 // Mediciones
@@ -113,10 +128,12 @@ export const addMeasurementDB = async (m) => {
         lean_mass: m.leanMass,
         fat_mass: m.fatMass
     };
-    const { error } = await supabase.from('measurements').insert(row);
+    const { data, error } = await supabase.from('measurements').insert(row).select().single();
     if (error) {
         console.error("Error adding measurement:", error);
+        return null;
     }
+    return data;
 };
 
 // Entrenamientos
@@ -124,13 +141,15 @@ export const addWorkoutDB = async (w) => {
     const row = {
         user_id: USER_ID,
         date: w.date,
-        type: w.name || w.type, // Map name/type to type column
+        type: w.name || w.type,
         duration: w.duration,
         calories: w.calories,
         details: w.details || {}
     };
-    const { error } = await supabase.from('workouts').insert(row);
+    const { data, error } = await supabase.from('workouts').insert(row).select().single();
     if (error) {
         console.error("Error adding workout:", error);
+        return null;
     }
+    return data;
 };

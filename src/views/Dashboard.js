@@ -51,9 +51,14 @@ export const renderDashboard = () => {
             <div class="flex flex-col gap-8">
                 <div class="flex items-center gap-3 px-2">
                      <img src="/lucas.jpeg" alt="Profile" class="w-12 h-12 rounded-full border-2 border-primary object-cover">
-                    <div class="flex flex-col">
-                        <img src="/logogrow.png" alt="GrowFit" class="h-6 object-contain self-start">
-                        <p class="text-primary text-xs font-medium uppercase tracking-wide">Plan Personal</p>
+                    <div class="flex flex-col w-full">
+                        <div class="flex justify-between items-center">
+                             <p class="text-primary text-xs font-medium uppercase tracking-wide">Nivel ${state.profile.level || 1}</p>
+                             <p class="text-[10px] text-text-secondary">${state.profile.xp || 0} XP</p>
+                        </div>
+                        <div class="h-1.5 w-full bg-[#1A261C] rounded-full mt-1 overflow-hidden">
+                             <div class="h-full bg-gradient-to-r from-primary to-green-300" style="width: ${Math.min(100, ((state.profile.xp || 0) % 100))}%"></div>
+                        </div>
                     </div>
                 </div>
                 <nav class="flex flex-col gap-2">
@@ -314,14 +319,30 @@ export const renderDashboard = () => {
 
                         <!-- Right Column -->
                         <div class="flex flex-col gap-6">
-                            <div class="bg-gradient-to-br from-[#1A261C] to-[#132015] border border-primary/30 rounded-2xl p-6 relative">
-                                <div class="flex items-center gap-2 mb-4">
-                                    <span class="material-symbols-outlined text-primary text-xl">temp_preferences_custom</span>
-                                    <p class="text-primary font-bold uppercase text-[10px] tracking-widest">Grow Labs Tip</p>
+                            
+                            <!-- AI Action Center -->
+                            <div class="bg-gradient-to-br from-[#1A261C] to-[#132015] border border-primary/30 rounded-2xl p-6 relative group overflow-hidden">
+                                <div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                                <div class="flex items-center justify-between mb-4">
+                                     <div class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-primary text-xl">smart_toy</span>
+                                        <p class="text-primary font-bold uppercase text-[10px] tracking-widest">Grow Assistant</p>
+                                     </div>
                                 </div>
-                                <p id="daily-tip-text" class="text-white text-sm leading-relaxed mb-1 font-medium italic opacity-90">
+                                <p id="daily-tip-text" class="text-white text-sm leading-relaxed mb-6 font-medium italic opacity-90 min-h-[60px]">
                                     "${displayTip}"
                                 </p>
+                                
+                                <div class="flex gap-2">
+                                    <button onclick="window.generateShoppingList()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group/btn">
+                                        <span class="material-symbols-outlined text-white group-hover/btn:text-primary transition-colors">shopping_cart</span>
+                                        <span class="text-[10px] uppercase font-bold text-text-secondary">Lista Compra</span>
+                                    </button>
+                                     <button onclick="window.generateWeeklyReport()" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group/btn">
+                                        <span class="material-symbols-outlined text-white group-hover/btn:text-primary transition-colors">assessment</span>
+                                        <span class="text-[10px] uppercase font-bold text-text-secondary">Reporte Semanal</span>
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Sleep Card -->
@@ -598,6 +619,62 @@ export const attachDashboardEvents = () => {
             modal.innerHTML = '';
         }
     }
+
+    // --- AI FEATURES ---
+    window.generateShoppingList = async () => {
+        const state = getState();
+        loader.classList.remove('hidden');
+        try {
+            // Lazy load the service
+            const { generateShoppingList } = await import('../services/openai');
+            const list = await generateShoppingList(state.profile, state.dailyLog); // Pass history for preference detection
+
+            modal.innerHTML = `
+                <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
+                    <button onclick="document.getElementById('meal-modal').classList.add('hidden')" class="absolute top-4 right-4 text-text-secondary hover:text-white"><span class="material-symbols-outlined">close</span></button>
+                    <h3 class="text-white text-xl font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">shopping_cart</span> Lista Inteligente</h3>
+                    <div class="prose prose-invert text-sm text-slate-300">
+                        ${list.replace(/\n/g, '<br>')}
+                    </div>
+                     <button onclick="window.copyToClipboard('${list.replace(/\n/g, '\\n')}')" class="mt-4 w-full bg-primary/10 hover:bg-primary/20 text-primary py-3 rounded-xl font-bold transition-colors">Copiar al Portapapeles</button>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        } catch (e) {
+            window.showAlert('Error', 'No se pudo generar la lista.', 'error');
+        } finally {
+            loader.classList.add('hidden');
+        }
+    };
+
+    window.generateWeeklyReport = async () => {
+        const state = getState();
+        loader.classList.remove('hidden');
+        try {
+            const { generateWeeklyReport } = await import('../services/openai');
+            const report = await generateWeeklyReport(state);
+
+            modal.innerHTML = `
+                <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-lg p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
+                    <button onclick="document.getElementById('meal-modal').classList.add('hidden')" class="absolute top-4 right-4 text-text-secondary hover:text-white"><span class="material-symbols-outlined">close</span></button>
+                    <h3 class="text-white text-xl font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">assessment</span> Reporte Semanal</h3>
+                    <div class="prose prose-invert text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                        ${report}
+                    </div>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        } catch (e) {
+            window.showAlert('Error', 'No se pudo generar el reporte.', 'error');
+        } finally {
+            loader.classList.add('hidden');
+        }
+    };
+
+    window.copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+        window.showAlert('Copiado', 'Lista copiada al portapapeles', 'success');
+    };
 
     const clearPreview = () => {
         stagedFile = null;

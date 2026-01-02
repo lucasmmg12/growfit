@@ -453,6 +453,7 @@ export const generateSmartHabits = async (profile, contextData) => {
     const jsonStr = content.replace(/^```json/, '').replace(/```$/, '');
     return JSON.parse(jsonStr);
 
+    return JSON.parse(jsonStr);
   } catch (error) {
     console.error("Habits Error:", error);
     return [
@@ -460,5 +461,103 @@ export const generateSmartHabits = async (profile, contextData) => {
       { id: 'fallback_2', name: 'Caminar 15min', icon: 'directions_walk', reason: 'Movimiento esencial' },
       { id: 'fallback_3', name: 'Comer Verduras', icon: 'restaurant', reason: 'Nutrición' }
     ];
+  }
+};
+
+export const generateWeeklyReport = async (state) => {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  if (!apiKey) throw new Error("Missing OpenAI API Key");
+
+  // Gather last 7 days data
+  const today = new Date();
+  const last7Days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(today.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const dayStats = state.dailyLog.filter(m => m.date === dateStr);
+    const dayWorkouts = state.workouts.filter(w => w.date === dateStr);
+
+    last7Days.push({
+      date: dateStr,
+      calories: dayStats.reduce((s, m) => s + m.calories, 0),
+      protein: dayStats.reduce((s, m) => s + (m.macros?.protein || 0), 0),
+      sugar: dayStats.reduce((s, m) => s + (m.macros?.sugar || 0), 0), // Assuming sugar tracking in future or estimate
+      workouts: dayWorkouts.length
+    });
+  }
+
+  const systemPrompt = `
+        Eres un Analista Deportivo de Élite de "Grow Labs".
+        Analiza la ÚLTIMA SEMANA de ${state.profile.name}.
+        
+        DATOS DE LA SEMANA (Hoy es ${today.toISOString().split('T')[0]}):
+        ${JSON.stringify(last7Days)}
+        
+        META: ${state.profile.calorieGoal} kcal/día. 
+        PESO ACTUAL: ${state.measurements.slice(-1)[0]?.weight || 'N/A'} kg.
+
+        Tu tarea:
+        1. Detecta TENDENCIAS (ej. "Tus fines de semana bajas la proteína").
+        2. Felicita los logros (ej. "¡3 días seguidos cumpliendo calorías!").
+        3. Da *1 Acción Concreta* para la próxima semana.
+        
+        FORMATO: Markdown limpio, usa emojis, sé breve pero profundo. 
+        Estructura: "📊 Resumen", "🔥 Lo Mejor", "⚠️ A Mejorar", "🎯 Misión Semanal".
+    `;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "system", content: systemPrompt }],
+        max_tokens: 500,
+        temperature: 0.7
+      })
+    });
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "No se pudo generar el reporte.";
+  } catch (e) {
+    console.error("Weekly Report Error:", e);
+    return "Error al generar reporte.";
+  }
+};
+
+export const generateShoppingList = async (profile, history) => {
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  if (!apiKey) throw new Error("Missing OpenAI API Key");
+
+  const systemPrompt = `
+        Eres un Asistente de Compras Inteligente.
+        Genera una LISTA DE COMPRAS para ${profile.name} basada en su meta de:
+        ${profile.calorieGoal} kcal (Alta Proteína: ${profile.proteinGoal}g).
+        
+        Instrucciones:
+        1. Sugiere alimentos REALES y BÁSICOS que le ayuden a llegar a sus macros, priorizando proteínas baratas y vegetales.
+        2. Organiza por categorías: "Proteínas", "Carbohidratos", "Grasas/Otros".
+        3. Añade cantidades estimadas para 1 semana.
+        4. NO pongas explicaciones largas, solo la lista con checkboxes.
+        
+        Salida: Texto plano formateado con "- [ ] Item".
+    `;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "system", content: systemPrompt }],
+        max_tokens: 400,
+        temperature: 0.7
+      })
+    });
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "No se pudo generar la lista.";
+  } catch (e) {
+    console.error("Shopping List Error:", e);
+    return "Error al generar lista de compras.";
   }
 };
