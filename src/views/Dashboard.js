@@ -45,10 +45,10 @@ export const renderDashboard = () => {
                 <div class="flex items-center gap-5">
                     <div class="relative group">
                         <div class="absolute inset-0 bg-primary/20 blur-xl group-hover:bg-primary/40 transition-all rounded-full"></div>
-                        <img src="/lucas.jpeg" alt="Profile" class="w-16 h-16 rounded-[24px] border border-white/10 object-cover relative z-10 shadow-2xl">
+                        <img src="/lucas.jpeg" alt="Profile" class="w-16 h-16 rounded-[24px] border border-white/10 object-cover relative z-10 shadow-2xl" fetchpriority="high">
                     </div>
                     <div>
-                        <h1 class="text-white font-display text-xl leading-none mb-1 uppercase italic tracking-tighter">Lucas</h1>
+                        <h1 class="text-white font-display text-2xl leading-none mb-1 uppercase italic tracking-tighter">Lucas</h1>
                         <p class="text-primary text-[10px] font-black uppercase tracking-[0.4em]">Alpha Proto</p>
                     </div>
                 </div>
@@ -354,6 +354,11 @@ export const attachDashboardEvents = () => {
     const handleAnalysis = async (text, file) => {
         const loader = document.getElementById('loading-indicator');
         if (loader) loader.classList.remove('hidden');
+
+        // Visual Skeleton Feedback
+        btn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span>`;
+        btn.disabled = true;
+
         try {
             let result;
             if (file) {
@@ -369,9 +374,11 @@ export const attachDashboardEvents = () => {
                 window.router.navigate('dashboard');
             }
         } catch (e) {
-            window.showAlert('Error', e.message, 'error');
+            window.showAlert('Neural Error', e.message, 'error');
         } finally {
             if (loader) loader.classList.add('hidden');
+            btn.innerHTML = `<span class="material-symbols-outlined font-black">add</span>`;
+            btn.disabled = false;
         }
     };
 
