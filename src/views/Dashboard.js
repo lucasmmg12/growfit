@@ -433,11 +433,77 @@ export const attachDashboardEvents = () => {
         if (loader) loader.classList.remove('hidden');
         try {
             const { generateWeeklyReport } = await import('../services/openai');
-            const report = await generateWeeklyReport(state);
-            modal.innerHTML = `<div class="glass-card p-12 w-full max-w-2xl relative"><button id="close-modal" class="absolute top-8 right-8 text-text-dim hover:text-white"><span class="material-symbols-outlined">close</span></button><h3 class="text-white text-3xl font-display font-black italic mb-8 uppercase">Neuralytics report</h3><div class="prose prose-invert text-sm text-text-dim whitespace-pre-wrap leading-relaxed max-h-[60vh] overflow-y-auto">${report}</div></div>`;
+            const r = await generateWeeklyReport(state);
+
+            modal.innerHTML = `
+                <div class="glass-card p-10 w-full max-w-2xl relative overflow-hidden stagger-1">
+                    <div class="absolute -top-20 -right-20 size-60 bg-primary/10 blur-[100px] rounded-full"></div>
+                    
+                    <div class="flex justify-between items-start mb-10">
+                        <div>
+                            <p class="text-primary text-[10px] font-black uppercase tracking-[0.4em] mb-2 flex items-center gap-2">
+                                <span class="size-2 bg-primary rounded-full animate-pulse"></span> Neuralytics Report
+                            </p>
+                            <h3 class="text-white text-4xl font-display font-black italic tracking-tighter uppercase whitespace-pre-line">Operational\nSummary</h3>
+                        </div>
+                        <button id="close-modal" class="size-12 rounded-2xl bg-white/5 flex items-center justify-center text-text-dim hover:text-white transition-all">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                        <div class="space-y-6">
+                            <div class="p-6 bg-white/5 rounded-3xl border border-white/10 relative overflow-hidden group">
+                                <p class="text-[10px] font-black text-text-dim uppercase tracking-widest mb-4">Neural Analysis</p>
+                                <p class="text-sm text-white/90 leading-relaxed italic">"${r.summary}"</p>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="p-4 bg-white/5 rounded-2xl border border-white/5">
+                                    <p class="text-[8px] font-black text-text-dim uppercase tracking-widest mb-1">Efficiency</p>
+                                    <p class="text-2xl font-display font-black text-primary">${r.kpis.consistency_score}/10</p>
+                                </div>
+                                <div class="p-4 bg-white/5 rounded-2xl border border-white/5">
+                                    <p class="text-[8px] font-black text-text-dim uppercase tracking-widest mb-1">Workouts</p>
+                                    <p class="text-2xl font-display font-black text-white">${r.kpis.total_workouts}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <div>
+                                <h4 class="text-[10px] font-black text-primary uppercase tracking-widest mb-4">Core Strengths</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    ${r.strengths.map(s => `<span class="px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-tight">${s}</span>`).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-[10px] font-black text-red-400 uppercase tracking-widest mb-4">Integrity Risks</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    ${r.weaknesses.map(w => `<span class="px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-tight">${w}</span>`).join('')}
+                                </div>
+                            </div>
+                            <div class="p-6 bg-primary/10 rounded-3xl border border-primary/20">
+                                <p class="text-[10px] font-black text-primary uppercase tracking-widest mb-2">Next Mission</p>
+                                <p class="text-white font-bold text-sm leading-tight">${r.mission}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="download-report-btn" class="w-full btn-primary py-5 text-[11px] font-black uppercase tracking-[0.2em] glow-primary">
+                        Acknowledge Protocol
+                    </button>
+                </div>
+            `;
             modal.querySelector('#close-modal').onclick = () => modal.classList.add('hidden');
+            modal.querySelector('#download-report-btn').onclick = () => modal.classList.add('hidden');
             modal.classList.remove('hidden');
-        } catch (e) { window.showAlert('Error', 'Analysis failed.', 'error'); } finally { if (loader) loader.classList.add('hidden'); }
+        } catch (e) {
+            window.showAlert('Datalink Error', 'Failed to synchronize weekly neuralytics.', 'error');
+            console.error(e);
+        } finally {
+            if (loader) loader.classList.add('hidden');
+        }
     });
 
     document.getElementById('add-water-btn')?.addEventListener('click', () => {

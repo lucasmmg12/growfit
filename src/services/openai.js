@@ -468,48 +468,54 @@ export const generateWeeklyReport = async (state) => {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   if (!apiKey) throw new Error("Missing OpenAI API Key");
 
-  // Gather last 7 days data
-  const today = new Date();
+  // Gather last 7 days data relative to the selected date or today
+  const referenceDate = state.selectedDate ? new Date(state.selectedDate + 'T12:00:00') : new Date();
   const last7Days = [];
   for (let i = 0; i < 7; i++) {
-    const d = new Date();
-    d.setDate(today.getDate() - i);
+    const d = new Date(referenceDate);
+    d.setDate(referenceDate.getDate() - i);
     const dateStr = d.toISOString().split('T')[0];
-    const dayStats = state.dailyLog.filter(m => m.date === dateStr);
+    const dayMeals = state.dailyLog.filter(m => m.date === dateStr);
     const dayWorkouts = state.workouts.filter(w => w.date === dateStr);
 
     last7Days.push({
       date: dateStr,
-      calories: dayStats.reduce((s, m) => s + m.calories, 0),
-      protein: dayStats.reduce((s, m) => s + (m.macros?.protein || 0), 0),
-      sugar: dayStats.reduce((s, m) => s + (m.macros?.sugar || 0), 0), // Assuming sugar tracking in future or estimate
-      workouts: dayWorkouts.length
+      calories: dayMeals.reduce((s, m) => s + (m.calories || 0), 0),
+      protein: dayMeals.reduce((s, m) => s + (m.macros?.protein || 0), 0),
+      meals: dayMeals.map(m => m.name).join(', '),
+      workouts: dayWorkouts.map(w => w.name).join(', '),
+      workoutCount: dayWorkouts.length
     });
   }
 
+  console.log("Weekly Report Data Payload:", last7Days);
+
   const systemPrompt = `
-        Eres un Analista de Rendimiento Deportivo de "Grow Fit" (San Juan, Argentina).
-        Genera un REPORTE SEMANAL VIP en formato JSON para descargar como PDF.
+        Eres el "Chief Performance Analyst" de Grow Labs. 
+        Tu misión es generar un REPORTE DE RENDIMIENTO NEURAL (Semanal) para un atleta de élite.
         
-        DATOS:
+        DATOS DE LA ÚLTIMA SEMANA (Telemetry):
         ${JSON.stringify(last7Days)}
-        Meta Calórica: ${state.profile.calorieGoal}
+        Protocolo Calórico Base: ${state.profile.calorieGoal} kcal
         
-        Tu análisis debe ser profundo, motivador y con "modismos sanjuaninos" suaves.
+        INSTRUCCIONES DE ESTILO:
+        1. Tono: "Premium Powerhouse". Debe sentirse como un análisis de una IA avanzada o un equipo de F1.
+        2. Personalidad: Usa modismos sanjuaninos sutiles (ej. "viste", "che", "tremendo") para dar cercanía humana, pero mantén un rigor científico absoluto.
+        3. Análisis: No solo resumas. Identifica patrones (ej. "tus proteínas bajaron los días que entrenaste piernas").
         
-        Devuelve SOLO JSON con esta estructura:
+        ESTRUCTURA DE SALIDA (JSON PURO):
         {
-          "summary": "Resumen general de 3-4 líneas. Usá lenguaje local pero profesional (ej. 'Che, esta semana estuviste...').",
+          "summary": "Análisis estratégico de 4 líneas. Conciso, potente e inteligente.",
           "kpis": {
-            "avg_calories": "Promedio calórico diario (número)",
-            "total_workouts": "Total entrenamientos (número)",
-            "consistency_score": "Puntaje del 1 al 10 basado en adherencia a la meta",
-            "best_day": "Fecha del mejor día (YYYY-MM-DD)"
+            "avg_calories": número (promedio real),
+            "total_workouts": número (conteo total),
+            "consistency_score": número (1-10, basado en qué tanto se acercó a la meta),
+            "best_day": "YYYY-MM-DD"
           },
-          "strengths": ["Punto fuerte 1", "Punto fuerte 2"],
-          "weaknesses": ["A mejorar 1", "A mejorar 2"],
-          "mission": "Misión clara para la próxima semana (ej. 'Ir al Dique 2 veces').",
-          "calories_chart_data": [array de números con las calorías de los últimos 7 días en orden]
+          "strengths": ["Métrica optimizada 1", "Métrica optimizada 2"],
+          "weaknesses": ["Punto de fricción 1", "Punto de fricción 2"],
+          "mission": "Protocolo de mejora para la próxima semana. Sea específico.",
+          "calories_chart_data": [array de números con las calorías de los últimos 7 días, del más antiguo al más reciente]
         }
     `;
 
