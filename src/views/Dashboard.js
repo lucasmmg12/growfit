@@ -45,378 +45,321 @@ export const renderDashboard = () => {
     const fProgress = Math.min((stats.fat / fGoal) * 100, 100);
 
     return `
-    <div class="flex h-screen w-full text-slate-900 dark:text-white font-display overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-black text-white font-display overflow-hidden fade-in">
         <!-- Side Navigation (Desktop) -->
-        <aside class="hidden md:flex w-64 flex-col justify-between border-r border-[#28392a] bg-surface-dark backdrop-blur-md p-4">
-            <div class="flex flex-col gap-8">
-                <div class="flex items-center gap-3 px-2">
-                     <img src="/lucas.jpeg" alt="Profile" class="w-12 h-12 rounded-full border-2 border-primary object-cover">
-                    <div class="flex flex-col w-full">
-                        <div class="flex justify-between items-center">
-                             <p class="text-primary text-xs font-medium uppercase tracking-wide">Nivel ${state.profile.level || 1}</p>
-                             <p class="text-[10px] text-text-secondary">${state.profile.xp || 0} XP</p>
-                        </div>
-                        <div class="h-1.5 w-full bg-[#1A261C] rounded-full mt-1 overflow-hidden">
-                             <div class="h-full bg-gradient-to-r from-primary to-green-300" style="width: ${Math.min(100, ((state.profile.xp || 0) % 100))}%"></div>
-                        </div>
+        <aside class="hidden md:flex w-72 flex-col justify-between border-r border-white/5 bg-black/40 backdrop-blur-2xl p-6">
+            <div class="flex flex-col gap-10">
+                <div class="flex items-center gap-4 px-2">
+                    <div class="relative">
+                        <img src="/lucas.jpeg" alt="Profile" class="w-14 h-14 rounded-full border-2 border-primary object-cover shadow-[0_0_15px_rgba(0,255,136,0.2)]">
+                        <div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-primary rounded-full border-2 border-black animate-pulse"></div>
+                    </div>
+                    <div class="flex flex-col">
+                        <p class="text-white font-black text-lg leading-none mb-1">Lucas</p>
+                        <p class="text-primary text-[10px] font-bold uppercase tracking-[0.2em]">Alpha Member</p>
                     </div>
                 </div>
-                <nav class="flex flex-col gap-2">
-                    <a class="flex items-center gap-3 px-3 py-3 rounded-xl bg-primary/10 border border-primary/20 group transition-colors cursor-pointer" onclick="window.router.navigate('dashboard')">
-                        <span class="material-symbols-outlined text-primary group-hover:text-white">dashboard</span>
-                        <p class="text-white text-sm font-medium">Inicio</p>
+                
+                <nav class="flex flex-col gap-3">
+                    <a class="flex items-center gap-4 px-4 py-3.5 rounded-2xl bg-primary/10 border border-primary/20 text-primary group transition-all cursor-pointer" onclick="window.router.navigate('dashboard')">
+                        <span class="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">dashboard</span>
+                        <p class="text-sm font-bold tracking-tight">Comando Central</p>
                     </a>
-                    <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('measurements')">
-                        <span class="material-symbols-outlined">straighten</span>
-                        <p class="text-sm font-medium">Progreso</p>
+                    <a class="flex items-center gap-4 px-4 py-3.5 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all text-text-dim hover:text-white cursor-pointer group" onclick="window.router.navigate('measurements')">
+                        <span class="material-symbols-outlined text-xl">straighten</span>
+                        <p class="text-sm font-bold tracking-tight">Biometría</p>
                     </a>
-                    <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('insights')">
-                        <span class="material-symbols-outlined">insights</span>
-                        <p class="text-sm font-medium">Estadísticas</p>
+                    <a class="flex items-center gap-4 px-4 py-3.5 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all text-text-dim hover:text-white cursor-pointer group" onclick="window.router.navigate('insights')">
+                        <span class="material-symbols-outlined text-xl">insights</span>
+                        <p class="text-sm font-bold tracking-tight">Análisis IA</p>
                     </a>
-                    <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('workouts')">
-                        <span class="material-symbols-outlined">fitness_center</span>
-                        <p class="text-sm font-medium">Entrenamientos</p>
+                    <a class="flex items-center gap-4 px-4 py-3.5 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all text-text-dim hover:text-white cursor-pointer group" onclick="window.router.navigate('workouts')">
+                        <span class="material-symbols-outlined text-xl">fitness_center</span>
+                        <p class="text-sm font-bold tracking-tight">Entrenamientos</p>
                     </a>
-                     <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('profile')">
-                        <span class="material-symbols-outlined">settings</span>
-                        <p class="text-sm font-medium">Ajustes</p>
+                     <a class="flex items-center gap-4 px-4 py-3.5 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all text-text-dim hover:text-white cursor-pointer group" onclick="window.router.navigate('profile')">
+                        <span class="material-symbols-outlined text-xl">settings</span>
+                        <p class="text-sm font-bold tracking-tight">Protocolos</p>
                     </a>
                 </nav>
+            </div>
+
+            <!-- Level Card Short -->
+            <div class="bg-white/5 border border-white/10 rounded-3xl p-5 mb-4">
+                <div class="flex justify-between items-center mb-3">
+                    <p class="text-xs font-bold uppercase tracking-widest text-text-dim">Nivel ${state.profile.level || 1}</p>
+                    <p class="text-[10px] font-mono text-primary">${state.profile.xp || 0} XP</p>
+                </div>
+                <div class="h-1.5 w-full bg-black rounded-full overflow-hidden border border-white/5">
+                    <div class="h-full bg-gradient-to-r from-primary to-green-300 shadow-[0_0_10px_rgba(0,255,136,0.3)] transition-all duration-1000" style="width: ${Math.min(100, ((state.profile.xp || 0) % 100))}%"></div>
+                </div>
             </div>
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-black">
             <!-- Mobile Header -->
-            <div class="md:hidden flex items-center justify-between p-4 bg-surface-dark backdrop-blur-md border-b border-[#28392a]">
-                <img src="/logogrow.png" alt="GrowFit" class="h-8 object-contain">
-                <button class="text-white"><span class="material-symbols-outlined">menu</span></button>
+            <div class="md:hidden flex items-center justify-between p-5 bg-black/80 backdrop-blur-xl border-b border-white/5">
+                <h1 class="text-primary font-black text-xl tracking-tighter italic">GROWFIT</h1>
+                <button class="text-white bg-white/5 p-2 rounded-xl border border-white/10"><span class="material-symbols-outlined">menu</span></button>
             </div>
 
             <!-- Scrollable Content -->
-            <div class="flex-1 overflow-y-auto">
-                <div class="w-full max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-10 flex flex-col gap-8">
+            <div class="flex-1 overflow-y-auto px-4 md:px-10 py-8 custom-scrollbar">
+                <div class="w-full max-w-7xl mx-auto flex flex-col gap-10">
                     
-                    <!-- Header -->
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-                        <div class="flex flex-col gap-1 w-full md:w-auto">
-                            <h2 class="text-white text-3xl md:text-4xl font-black leading-tight tracking-tight">${isToday ? 'Buenos días' : 'Registro del día'}, ${state.profile.name}</h2>
-                            <div class="flex items-center gap-3 mt-1">
-                                <button id="prev-day-btn" class="p-1 px-2 rounded-lg bg-[#28392a] hover:bg-primary/20 text-white transition-colors flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-sm">chevron_left</span>
+                    <!-- Top Section: Welcome & Quick Log (The Focal Point) -->
+                    <div class="flex flex-col lg:flex-row gap-8 items-start lg:items-center justify-between mt-2">
+                        <div class="flex flex-col gap-1">
+                             <p class="text-primary text-xs font-bold uppercase tracking-[0.3em] mb-1">Status: Operational</p>
+                             <h2 class="text-white text-4xl md:text-5xl font-black leading-none tracking-tighter">
+                                ${isToday ? 'HOLA,' : 'REGISTRO DE'}, <span class="bg-gradient-to-r from-white to-text-dim bg-clip-text text-transparent uppercase">${state.profile.name}</span>
+                             </h2>
+                             <div class="flex items-center gap-4 mt-3">
+                                <button id="prev-day-btn" class="size-8 rounded-full border border-white/10 hover:border-primary hover:text-primary transition-all flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-lg">chevron_left</span>
                                 </button>
-                                <p class="text-text-secondary text-base font-medium min-w-[140px] text-center">
-                                    ${new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                <p class="text-text-dim text-sm font-bold uppercase tracking-widest min-w-[160px] text-center">
+                                    ${new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
                                 </p>
-                                <button id="next-day-btn" class="p-1 px-2 rounded-lg bg-[#28392a] hover:bg-primary/20 text-white transition-colors flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-sm">chevron_right</span>
+                                <button id="next-day-btn" class="size-8 rounded-full border border-white/10 hover:border-primary hover:text-primary transition-all flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-lg">chevron_right</span>
                                 </button>
-                                <button id="open-calendar-btn" class="ml-2 p-1 px-2 rounded-lg bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-[#102212] transition-all flex items-center justify-center gap-1 group">
-                                    <span class="material-symbols-outlined text-sm">calendar_month</span>
-                                    <span class="text-xs font-bold uppercase tracking-wider hidden sm:block">Calendario</span>
+                                <button id="open-calendar-btn" class="ml-2 hover:text-primary transition-colors">
+                                    <span class="material-symbols-outlined">calendar_month</span>
                                 </button>
+                             </div>
+                        </div>
+
+                        <!-- Quick Log (Impact Version) -->
+                        <div class="w-full lg:max-w-xl group">
+                            <div class="relative bg-white/5 rounded-[28px] border border-white/10 p-2 focus-within:border-primary/50 focus-within:shadow-[0_0_30px_rgba(0,255,136,0.1)] transition-all flex items-center gap-2">
+                                <div id="image-preview-container" class="hidden absolute -top-16 left-0 animate-scale-up">
+                                    <div class="relative bg-black border border-primary/30 p-1.5 rounded-2xl shadow-2xl">
+                                        <img id="image-preview" src="" class="h-12 w-12 rounded-xl object-cover" />
+                                        <button id="clear-image-btn" class="absolute -top-2 -right-2 bg-red-500 rounded-full size-5 flex items-center justify-center text-white"><span class="material-symbols-outlined text-xs">close</span></button>
+                                    </div>
+                                </div>
+                                <input id="quick-log-input" class="flex-1 bg-transparent border-none text-white placeholder-text-dim/50 focus:ring-0 px-5 py-4 text-lg font-bold outline-none" placeholder="${isToday ? '¿Qué comiste hoy?' : 'Registrar comida...'}"/>
+                                <div class="flex items-center gap-1 pr-2">
+                                    <label for="quick-log-file" class="p-3 text-text-dim hover:text-white transition-colors cursor-pointer rounded-2xl hover:bg-white/5">
+                                        <span class="material-symbols-outlined">add_a_photo</span>
+                                    </label>
+                                    <input type="file" id="quick-log-file" accept="image/*" class="hidden">
+                                     <button id="quick-log-btn" class="bg-primary text-black size-14 rounded-2xl flex items-center justify-center hover:scale-105 transition-all shadow-lg active:scale-95">
+                                        <span class="material-symbols-outlined font-black">arrow_forward</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="loading-indicator" class="hidden absolute mt-2 text-primary font-mono text-[10px] animate-pulse flex items-center gap-2">
+                                <span class="material-symbols-outlined text-xs">sync</span> PROCESANDO DATOS IA...
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Measurements Notification -->
-                    ${measurementStatus.isDue ? `
-                    <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 flex items-center justify-between gap-4 animate-bounce-soft">
-                        <div class="flex items-center gap-4">
-                            <div class="bg-yellow-500/20 p-2 rounded-full">
-                                <span class="material-symbols-outlined text-yellow-500">notification_important</span>
-                            </div>
-                            <div>
-                                <h3 class="text-white font-bold text-sm">¡Es hora de medirte!</h3>
-                                <p class="text-text-secondary text-xs">Han pasado ${measurementStatus.daysSince || 'varios'} días desde tu último control.</p>
-                            </div>
-                        </div>
-                        <button onclick="window.router.navigate('measurements')" class="bg-yellow-500 hover:bg-yellow-400 text-[#102212] px-4 py-2 rounded-lg text-sm font-bold transition-colors">
-                            Registrar Ahora
-                        </button>
-                    </div>
-                    ` : ''}
 
-                    <!-- Quick Log -->
-                    <div class="w-full flex flex-col gap-2">
-                         <!-- Image Preview Container -->
-                        <div id="image-preview-container" class="hidden w-full flex justify-start px-2">
-                            <div class="relative bg-[#1A261C] border border-[#28392a] p-1 rounded-xl">
-                                <img id="image-preview" src="" class="h-16 w-auto rounded-lg object-cover opacity-80" />
-                                <button id="clear-image-btn" class="absolute -top-2 -right-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full p-0.5 shadow-lg transition-colors">
-                                    <span class="material-symbols-outlined text-sm">close</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="bg-[#1A261C] p-1.5 rounded-2xl border border-[#28392a] shadow-lg flex items-center gap-2">
-                            <input id="quick-log-input" class="flex-1 bg-transparent border-none text-white placeholder-text-secondary focus:ring-0 px-4 py-3 text-lg outline-none" placeholder="${isToday ? '¿Qué comiste hoy? (ej. 2 Huevos...)' : '¿Qué comiste este día?'}" type="text"/>
-                            <div class="flex items-center gap-1 pr-1 border-l border-[#28392a] pl-2 h-full">
-                                <label for="quick-log-file" class="p-2 text-text-secondary hover:text-white hover:bg-[#28392a] rounded-lg transition-colors cursor-pointer" title="Subir Foto">
-                                    <span class="material-symbols-outlined">image</span>
-                                </label>
-                                <input type="file" id="quick-log-file" accept="image/*" class="hidden">
-                                
-                                <button id="quick-log-mic" class="p-2 text-text-secondary hover:text-white hover:bg-[#28392a] rounded-lg transition-colors" title="Voz">
-                                    <span class="material-symbols-outlined">mic</span>
-                                </button>
-                                <button id="quick-log-btn" class="hidden sm:flex bg-primary hover:bg-green-400 text-[#102212] px-6 py-2 rounded-xl font-bold items-center gap-2 transition-colors ml-2">
-                                    <span class="material-symbols-outlined text-[20px]">add</span>
-                                    Registrar
-                                </button>
-                            </div>
-                        </div>
-                        <div id="loading-indicator" class="hidden text-center mt-2 text-primary text-sm font-medium flex items-center justify-center gap-2">
-                            <span class="material-symbols-outlined animate-spin text-lg">sync</span>
-                            Analizando con IA...
-                        </div>
-                    </div>
-
-                    <!-- Recommendations Section -->
-                    <div id="recommendation-card" class="hidden bg-gradient-to-r from-emerald-900/40 to-emerald-800/40 border border-emerald-500/20 rounded-2xl p-4 flex items-center justify-between gap-4 animate-fade-in">
-                        <div class="flex items-center gap-4">
-                            <div class="bg-emerald-500/20 p-2 rounded-full">
-                                <span class="material-symbols-outlined text-emerald-400">savings</span>
-                            </div>
-                            <div>
-                                <h3 class="text-white font-bold text-sm">Sugerencia Económica</h3>
-                                <p id="recommendation-text" class="text-text-secondary text-xs">Analizando historial...</p>
-                            </div>
-                        </div>
-                        <button id="refresh-recommendation" class="text-emerald-400 hover:text-white transition-colors">
-                             <span class="material-symbols-outlined">refresh</span>
-                        </button>
-                    </div>
-
-                    <!-- Energy Expenditure Section -->
-                    <div class="grid grid-cols-2 gap-4">
-                         <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl p-4 flex flex-col gap-1">
-                            <p class="text-text-secondary text-xs uppercase font-bold tracking-wider">Metabolismo Basal (BMR)</p>
-                            <p class="text-white text-xl font-bold">${getState().profile.age ? getDailyBurn(selectedDate).bmr : '--'} <span class="text-xs font-normal text-text-secondary">kcal</span></p>
-                         </div>
-                         <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl p-4 flex flex-col gap-1">
-                            <p class="text-text-secondary text-xs uppercase font-bold tracking-wider">Actividad (+Workouts)</p>
-                            <p class="text-primary text-xl font-bold">+${getDailyBurn(selectedDate).activity} <span class="text-xs font-normal text-text-secondary">kcal</span></p>
-                         </div>
-                    </div>
-
-                    <!-- Dashboard Grid (Focus Feed Layout) -->
-                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                        <!-- Left Column (Wide Main Feed) -->
-                        <div class="lg:col-span-3 flex flex-col gap-6">
+                    <!-- BENTO GRID (Main Stats) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        
+                        <!-- Main Fuel Card (2x2) -->
+                        <div class="lg:col-span-2 lg:row-span-2 glass-card p-10 relative overflow-hidden flex flex-col justify-between min-h-[440px]">
+                            <div class="absolute -top-24 -right-24 size-64 bg-primary/10 blur-[100px] rounded-full"></div>
                             
-                            <!-- Calories -->
-                            <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl p-6 relative overflow-hidden group">
-                                <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                                    <span class="material-symbols-outlined text-[120px] text-white">local_fire_department</span>
+                            <div class="relative z-10 flex flex-col gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary text-xl">bolt</span>
+                                    <p class="text-primary font-black uppercase text-xs tracking-widest">Consumo Total</p>
                                 </div>
-                                <div class="flex flex-col gap-6 relative z-10">
-                                    <div class="flex justify-between items-end">
-                                        <div>
-                                            <p class="text-text-secondary text-sm font-medium uppercase tracking-wider mb-1">Resumen Diario</p>
-                                            <h3 class="text-white text-3xl font-bold">${Math.round(stats.calories)} <span class="text-text-secondary text-xl font-normal">/ ${state.profile.calorieGoal} kcal</span></h3>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-primary font-bold text-lg">${remainingCals} kcal</p>
-                                            <p class="text-text-secondary text-xs">Restantes</p>
-                                        </div>
-                                    </div>
-                                    <div class="flex flex-col gap-2">
-                                        <div class="h-4 w-full bg-[#28392a] rounded-full overflow-hidden">
-                                            <div class="h-full bg-primary rounded-full transition-all duration-1000" style="width: ${calProgress}%;"></div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <h3 class="text-7xl md:text-8xl font-black tracking-tighter font-mono">
+                                    ${Math.round(stats.calories)}
+                                </h3>
+                                <p class="text-text-dim font-bold text-sm">DE ${state.profile.calorieGoal} KCAL <span class="text-primary/50 mx-2">•</span> ${Math.round(calProgress)}%</p>
                             </div>
 
-                            <!-- Weight Journey (The Journey) -->
-                            <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl p-6 relative overflow-visible group mt-4 mb-2">
-                                <button onclick="window.router.navigate('profile')" class="absolute top-4 right-4 z-20 text-text-secondary hover:text-white transition-colors bg-black/40 p-1.5 rounded-lg backdrop-blur-sm border border-white/5 hover:bg-white/10 hover:border-primary/50">
-                                    <span class="material-symbols-outlined text-sm">edit</span>
-                                </button>
-                                
-                                <div class="flex justify-between items-end mb-8 relative z-10">
-                                    <div>
-                                        <h3 class="text-white font-bold text-lg flex items-center gap-2">
-                                            Mi Viaje
-                                            <span class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase tracking-wide">Fase 1</span>
-                                        </h3>
-                                        <p class="text-xs text-text-secondary mt-1">
-                                            ${(() => {
-            const s = state.profile.startingWeight || 80;
-            const c = state.measurements && state.measurements.length > 0 ? state.measurements[state.measurements.length - 1].weight : s;
-            const diff = s - c;
-            return diff >= 0
-                ? `Has perdido <span class="text-white font-bold">${diff.toFixed(1)} kg</span>`
-                : `Ajuste: <span class="text-orange-400 font-bold">${diff.toFixed(1)} kg</span> (Actualiza Inicio)`;
-        })()}
-                                        </p>
+                            <div class="relative z-10 flex flex-col gap-6 w-full">
+                                <div class="flex justify-between items-end">
+                                    <div class="flex flex-col gap-1">
+                                        <p class="text-text-dim font-bold text-[10px] uppercase tracking-wider">Restantes</p>
+                                        <p class="text-3xl font-mono font-bold">${remainingCals}</p>
                                     </div>
-                                    <div class="text-right mr-10 opacity-80">
-                                        <p class="text-xs text-text-secondary uppercase font-bold">Meta</p>
-                                        <p class="text-xl font-black text-white">${state.profile.targetWeight || 70}<span class="text-sm font-normal text-text-secondary">kg</span></p>
+                                    <div class="text-right">
+                                        <p class="text-text-dim font-bold text-[10px] uppercase tracking-wider">Metabolismo</p>
+                                        <p class="text-xl font-mono text-white/80">${getDailyBurn(selectedDate).bmr + getDailyBurn(selectedDate).activity} kcal</p>
                                     </div>
                                 </div>
+                                <div class="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                                    <div class="h-full bg-primary rounded-full shadow-[0_0_15px_rgba(0,255,136,0.5)] transition-all duration-1000" style="width: ${calProgress}%"></div>
+                                </div>
+                            </div>
+                        </div>
 
-                                <!-- Progress Bar Visual -->
-                                <div class="relative h-2 w-full bg-[#111812] rounded-full my-2 border border-white/5">
+                        <!-- Macro Bento Slots -->
+                        <div class="glass-card p-6 flex flex-col justify-between group hover:border-primary/40 transition-all">
+                             <div class="flex justify-between items-start">
+                                <div class="p-2 bg-emerald-500/10 rounded-xl"><span class="material-symbols-outlined text-emerald-400">protein</span></div>
+                                <p class="font-mono text-xl font-black">${Math.round(stats.protein)}<span class="text-[10px] text-text-dim ml-1">g</span></p>
+                             </div>
+                             <div>
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-text-dim mb-2">Proteína</p>
+                                <div class="h-1.5 w-full bg-black rounded-full overflow-hidden border border-white/5">
+                                    <div class="h-full bg-emerald-500 rounded-full transition-all duration-700" style="width: ${pProgress}%"></div>
+                                </div>
+                             </div>
+                        </div>
+
+                        <div class="glass-card p-6 flex flex-col justify-between group hover:border-blue-400/40 transition-all">
+                             <div class="flex justify-between items-start">
+                                <div class="p-2 bg-blue-500/10 rounded-xl"><span class="material-symbols-outlined text-blue-400">grain</span></div>
+                                <p class="font-mono text-xl font-black">${Math.round(stats.carbs)}<span class="text-[10px] text-text-dim ml-1">g</span></p>
+                             </div>
+                             <div>
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-text-dim mb-2">Carbohidratos</p>
+                                <div class="h-1.5 w-full bg-black rounded-full overflow-hidden border border-white/5">
+                                    <div class="h-full bg-blue-400 rounded-full transition-all duration-700" style="width: ${cProgress}%"></div>
+                                </div>
+                             </div>
+                        </div>
+
+                        <div class="glass-card p-6 flex flex-col justify-between group hover:border-orange-400/40 transition-all">
+                             <div class="flex justify-between items-start">
+                                <div class="p-2 bg-orange-500/10 rounded-xl"><span class="material-symbols-outlined text-orange-400">oil_barrel</span></div>
+                                <p class="font-mono text-xl font-black">${Math.round(stats.fat)}<span class="text-[10px] text-text-dim ml-1">g</span></p>
+                             </div>
+                             <div>
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-text-dim mb-2">Grasas</p>
+                                <div class="h-1.5 w-full bg-black rounded-full overflow-hidden border border-white/5">
+                                    <div class="h-full bg-orange-400 rounded-full transition-all duration-700" style="width: ${fProgress}%"></div>
+                                </div>
+                             </div>
+                        </div>
+
+                        <div class="glass-card p-6 flex flex-col justify-between group hover:border-blue-500/40 transition-all">
+                            <div class="flex justify-between items-center mb-4">
+                                <div class="p-2 bg-blue-600/10 rounded-xl"><span class="material-symbols-outlined text-blue-500">water_drop</span></div>
+                                <button id="add-water-btn" class="size-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-blue-500/20 hover:border-blue-500 transition-all">
+                                    <span class="material-symbols-outlined text-sm">add</span>
+                                </button>
+                            </div>
+                            <div>
+                                <p class="text-2xl font-mono font-black mb-1">${dayStats.water || 0}<span class="text-[10px] text-text-dim ml-1">ml</span></p>
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-text-dim">Hidratación</p>
+                            </div>
+                        </div>
+
+                        <!-- Second Row Content: Journey & AI Assistant -->
+                         <div class="lg:col-span-3 glass-card p-8 flex flex-col md:flex-row gap-8 items-center bg-gradient-to-br from-black to-[#050505]">
+                            <div class="flex flex-col gap-4 flex-1">
+                                <h3 class="text-2xl font-black tracking-tight">MI VIAJE <span class="text-primary text-sm font-bold uppercase tracking-widest ml-4">Fase I</span></h3>
+                                <div class="relative h-2.5 w-full bg-white/5 rounded-full overflow-visible">
                                     ${(() => {
             const s = state.profile.startingWeight || 80;
             const c = state.measurements && state.measurements.length > 0 ? state.measurements[state.measurements.length - 1].weight : s;
             const g = state.profile.targetWeight || 70;
-
-            // Calculate percentage assuming Weight Loss focus
-            let pct = 0;
-            if (s !== g) {
-                pct = ((s - c) / (s - g)) * 100;
-            }
-            // Clamp
-            pct = Math.max(0, Math.min(100, pct));
+            let pct = s !== g ? Math.max(0, Math.min(100, ((s - c) / (s - g)) * 100)) : 0;
 
             return `
-                                            <div class="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-600 to-primary rounded-full opacity-30" style="width: ${pct}%"></div>
-                                            
-                                            <!-- LUCAS AVATAR MARKER -->
-                                            <div class="absolute top-1/2 transition-all duration-1000 ease-out z-20 flex flex-col items-center group/marker" style="left: ${pct}%; transform: translate(-50%, -50%);">
-                                                <div class="relative">
-                                                    <div class="size-11 rounded-full border-[3px] border-primary shadow-[0_0_20px_rgba(19,236,37,0.6)] overflow-hidden bg-black relative z-10 transition-transform group-hover/marker:scale-110">
-                                                        <img src="/lucas.jpeg" class="w-full h-full object-cover">
-                                                    </div>
-                                                    <!-- Glow behind -->
-                                                    <div class="absolute inset-0 bg-primary/50 blur-md rounded-full -z-10 animate-pulse"></div>
-                                                </div>
-                                                <!-- Pin/Needle -->
-                                                <div class="w-0.5 h-3 bg-primary mb-[-6px]"></div> 
+                                        <div class="absolute top-0 left-0 h-full bg-gradient-to-r from-primary/20 to-primary rounded-full" style="width: ${pct}%"></div>
+                                        <div class="absolute top-1/2 -translate-y-1/2 transition-all duration-1000 flex flex-col items-center" style="left: ${pct}%">
+                                            <div class="size-10 rounded-full border-2 border-primary overflow-hidden bg-black shadow-[0_0_20px_rgba(0,255,136,0.4)]">
+                                                <img src="/lucas.jpeg" class="w-full h-full object-cover">
                                             </div>
-                                        `;
+                                        </div>
+                                    `;
         })()}
                                 </div>
-
-                                <div class="flex justify-between text-[10px] font-bold text-text-secondary uppercase tracking-wider relative z-10 pt-4">
-                                    <span>Inicio: ${state.profile.startingWeight || 80}</span>
-                                    <span>${state.profile.targetWeight || 70}</span>
+                                <div class="flex justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-text-dim">
+                                    <span>START: ${state.profile.startingWeight || 80} KG</span>
+                                    <span class="text-white">${state.measurements?.slice(-1)[0]?.weight || '--'} KG</span>
+                                    <span>TARGET: ${state.profile.targetWeight || 70} KG</span>
                                 </div>
                             </div>
-                            
-                              <!-- Macro Line Chart -->
-                              <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl p-6">
-                                <h3 class="text-white font-bold text-lg mb-4">Distribución de Macronutrientes (Gramos)</h3>
-                                <div class="w-full h-48">
-                                    <canvas id="macro-line-chart"></canvas>
-                                </div>
-                              </div>
-                            
-                              <!-- Recent Meals List -->
-                              <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl p-6">
-                                <h3 class="text-white font-bold text-lg mb-4">${isToday ? 'Comidas de Hoy' : 'Comidas del Día'}</h3>
-                                <div class="flex flex-col gap-3">
-                                    ${renderMealsList(state, selectedDate)}
-                                </div>
-                              </div>
-
-                        </div>
-
-                        <!-- Right Column -->
-                        <div class="flex flex-col gap-6">
-                            
-                            <!-- AI Action Center -->
-                            <div class="bg-gradient-to-br from-[#1A261C] to-[#132015] border border-primary/30 rounded-2xl p-6 relative group overflow-hidden">
-                                <div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                                <div class="flex items-center justify-between mb-4">
-                                     <div class="flex items-center gap-2">
-                                        <span class="material-symbols-outlined text-primary text-xl">smart_toy</span>
-                                        <p class="text-primary font-bold uppercase text-[10px] tracking-widest">Grow Assistant</p>
-                                     </div>
-                                </div>
-                                <p id="daily-tip-text" class="text-white text-sm leading-relaxed mb-6 font-medium italic opacity-90 min-h-[60px]">
+                            <div class="w-full md:w-px h-px md:h-20 bg-white/5"></div>
+                            <div class="flex flex-col gap-1 items-center md:items-start">
+                                <p class="text-text-dim text-[10px] font-bold uppercase tracking-[0.2em]">Asistente IA</p>
+                                <p id="daily-tip-text" class="text-sm font-medium leading-relaxed italic text-white/90 text-center md:text-left max-w-[280px]">
                                     "${displayTip}"
                                 </p>
-                                
-                                <div class="flex gap-2 relative z-10">
-                                    <button id="btn-shopping-list" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group/btn cursor-pointer">
-                                        <span class="material-symbols-outlined text-white group-hover/btn:text-primary transition-colors">shopping_cart</span>
-                                        <span class="text-[10px] uppercase font-bold text-text-secondary">Lista Compra</span>
-                                    </button>
-                                     <button id="btn-weekly-report" class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-1 transition-all group/btn cursor-pointer">
-                                        <span class="material-symbols-outlined text-white group-hover/btn:text-primary transition-colors">assessment</span>
-                                        <span class="text-[10px] uppercase font-bold text-text-secondary">Reporte Semanal</span>
-                                    </button>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions Bento Column -->
+                        <div class="flex flex-col gap-4">
+                            <button id="btn-shopping-list" class="flex-1 glass-card p-4 flex items-center gap-4 hover:border-primary/50 transition-all group">
+                                <div class="size-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-all">
+                                    <span class="material-symbols-outlined">shopping_cart</span>
+                                </div>
+                                <div class="text-left">
+                                    <p class="text-xs font-black uppercase tracking-widest">Lista Compra</p>
+                                    <p class="text-[10px] text-text-dim">IA Optimized</p>
+                                </div>
+                            </button>
+                             <button id="btn-weekly-report" class="flex-1 glass-card p-4 flex items-center gap-4 hover:border-primary/50 transition-all group">
+                                <div class="size-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-all">
+                                    <span class="material-symbols-outlined">assessment</span>
+                                </div>
+                                <div class="text-left">
+                                    <p class="text-xs font-black uppercase tracking-widest">Reporte Semanal</p>
+                                    <p class="text-[10px] text-text-dim">Biometric Data</p>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- Third Row: Meals Feed & Detailed Sleep/Habits -->
+                        <div class="lg:col-span-3 flex flex-col gap-6">
+                            <div class="glass-card p-8">
+                                <div class="flex justify-between items-center mb-8 border-b border-white/5 pb-4">
+                                     <h3 class="text-2xl font-black italic tracking-tighter">REGISTRO ALIMENTARIO</h3>
+                                     <span class="font-mono text-xs text-primary">${state.dailyLog.filter(m => m.date === selectedDate).length} REGISTROS</span>
+                                </div>
+                                <div class="flex flex-col gap-4">
+                                    ${renderMealsList(state, selectedDate)}
+                                </div>
+                            </div>
+                            
+                            <!-- Detailed Macro Chart Slot -->
+                             <div class="glass-card p-8">
+                                <h3 class="text-lg font-black uppercase tracking-widest mb-6">Progresión por Ingesta</h3>
+                                <div class="w-full h-56">
+                                    <canvas id="macro-line-chart"></canvas>
+                                </div>
+                             </div>
+                        </div>
+
+                        <div class="flex flex-col gap-6">
+                            <!-- Sleep Info -->
+                            <div class="glass-card p-8 bg-gradient-to-b from-indigo-950/20 to-transparent">
+                                <div class="flex items-center gap-4 mb-6">
+                                    <div class="p-3 bg-indigo-500/10 rounded-2xl"><span class="material-symbols-outlined text-indigo-400">bedtime</span></div>
+                                    <div class="flex-1">
+                                        <p class="text-sm font-black uppercase tracking-widest">Descanso</p>
+                                        <p class="text-[10px] text-indigo-200/50">8H OBJETIVO</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-end justify-between">
+                                    <h4 class="text-5xl font-mono font-black">${sleepHours}</h4>
+                                    <button class="text-[10px] font-bold uppercase tracking-wider text-indigo-400 group flex items-center gap-1">EDITAR <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span></button>
                                 </div>
                             </div>
 
-                            <!-- Sleep Card -->
-                            <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl p-6 flex flex-col items-center justify-between gap-6 relative overflow-hidden">
-                                <div class="absolute top-0 right-0 p-4 opacity-5">
-                                    <span class="material-symbols-outlined text-8xl text-indigo-400">bedtime</span>
-                                </div>
-                                <div class="flex items-center gap-4 w-full relative z-10">
-                                    <div class="bg-indigo-500/10 p-3 rounded-full">
-                                        <span class="material-symbols-outlined text-indigo-400 text-3xl">bedtime</span>
-                                    </div>
-                                    <div>
-                                        <p class="text-white font-bold text-lg">Sueño / Descanso</p>
-                                        <p class="text-text-secondary text-sm">Objetivo: 8 horas</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2 w-full justify-between relative z-10">
-                                    <div class="text-right">
-                                        <p class="text-3xl font-black text-white">${sleepHours}</p>
-                                        <p class="text-xs text-text-secondary">${isToday ? 'horas hoy' : 'horas este día'}</p>
-                                    </div>
-                                    <button class="text-indigo-400 hover:text-white text-xs font-bold uppercase tracking-wider bg-indigo-500/10 hover:bg-indigo-500 px-3 py-2 rounded-lg transition-colors">
-                                        Editar
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Water Tracker Row -->
-                            <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl p-6 flex flex-col items-center justify-between gap-6">
-                                <div class="flex items-center gap-4 w-full">
-                                    <div class="bg-blue-500/10 p-3 rounded-full">
-                                        <span class="material-symbols-outlined text-blue-400 text-3xl">water_full</span>
-                                    </div>
-                                    <div>
-                                        <p class="text-white font-bold text-lg">Hidratación</p>
-                                        <p class="text-text-secondary text-sm">Meta: 2,500 ml</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-6 w-full justify-between">
-                                    <div class="text-right">
-                                        <p id="water-amount" class="text-2xl font-bold text-white">${dayStats.water || 0} ml</p>
-                                        <p id="water-glasses" class="text-xs text-text-secondary">${Math.round((dayStats.water || 0) / 250)} vasos</p>
-                                    </div>
-                                    <button id="add-water-btn" class="bg-[#28392a] hover:bg-[#3b543d] text-white size-10 rounded-full flex items-center justify-center transition-colors shadow-lg active:scale-95 transform">
-                                        <span class="material-symbols-outlined">add</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Habits Widget -->
-                            <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl p-6 flex flex-col gap-4 shadow-lg group hover:border-[#3b543d] transition-colors">
-                                <div class="flex justify-between items-center mb-1">
-                                    <div>
-                                        <h3 class="text-white font-bold text-lg">Hábitos Diarios</h3>
-                                        <p class="text-[10px] text-text-secondary uppercase tracking-widest font-bold">Atomic Habits</p>
-                                    </div>
-                                    <div class="flex flex-col items-center">
-                                       <span class="material-symbols-outlined text-orange-500 text-3xl animate-pulse dropshadow-glow">local_fire_department</span>
-                                       <span class="text-[10px] text-orange-400 font-bold">Racha: 3</span>
+                            <!-- Atomic Habits -->
+                            <div class="glass-card p-8 group">
+                                <div class="flex justify-between items-center mb-8">
+                                    <h3 class="text-sm font-black uppercase tracking-[0.2em]">Hábitos</h3>
+                                    <div class="flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-orange-500 text-lg animate-glow rounded-full">local_fire_department</span>
+                                        <span class="text-[10px] font-mono text-orange-400">3d</span>
                                     </div>
                                 </div>
                                 <div class="flex flex-col gap-3">
                                     ${state.habits.map(h => {
             const isDone = state.habitLog?.[selectedDate]?.includes(h.id);
             return `
-                                        <button class="habit-btn w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-300 group/btn ${isDone ? 'bg-green-500/20 border-green-500/50' : 'bg-white/5 border-white/10 hover:bg-white/10'}" data-id="${h.id}">
+                                        <button class="habit-btn w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-300 ${isDone ? 'bg-primary/10 border-primary/40' : 'bg-white/5 border-white/5 hover:border-white/20'}" data-id="${h.id}">
                                             <div class="flex items-center gap-3">
-                                                <div class="p-2 rounded-lg ${isDone ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-slate-400 group-hover/btn:text-white transition-colors'}">
-                                                    <span class="material-symbols-outlined text-lg">${h.icon}</span>
-                                                </div>
-                                                <span class="text-sm font-medium ${isDone ? 'text-white line-through decoration-green-500/50 opacity-60' : 'text-slate-200'}">${h.name}</span>
+                                                <span class="material-symbols-outlined text-lg ${isDone ? 'text-primary' : 'text-text-dim'}">${h.icon}</span>
+                                                <span class="text-xs font-bold uppercase tracking-wide ${isDone ? 'text-white line-through opacity-50' : 'text-text-dim'}">${h.name}</span>
                                             </div>
-                                            <div class="size-6 rounded-full border-2 flex items-center justify-center transition-all ${isDone ? 'bg-green-500 border-green-500 scale-110' : 'border-slate-600 group-hover/btn:border-primary'}">
-                                                ${isDone ? '<span class="material-symbols-outlined text-[#1A261C] text-sm font-bold">check</span>' : ''}
+                                            <div class="size-5 rounded-full border-2 flex items-center justify-center ${isDone ? 'bg-primary border-primary' : 'border-white/10'}">
+                                                ${isDone ? '<span class="material-symbols-outlined text-black text-xs font-black">check</span>' : ''}
                                             </div>
                                         </button>
                                         `;
@@ -427,88 +370,27 @@ export const renderDashboard = () => {
                     </div>
                 </div>
             </div>
-            <!-- Mobile Menu Overlay -->
-            <div id="mobile-menu-overlay" class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300"></div>
 
-            <!-- Mobile Menu Sidebar -->
-            <div id="mobile-menu" class="fixed inset-y-0 left-0 z-50 w-64 bg-[#1A261C] border-r border-[#28392a] transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col p-4">
-                <div class="flex items-center justify-between mb-8">
-                     <img src="/logogrow.png" alt="GrowFit" class="h-6 object-contain">
-                     <button id="close-mobile-menu" class="text-text-secondary hover:text-white">
-                        <span class="material-symbols-outlined">close</span>
-                     </button>
+            <!-- Overlays & Modals -->
+            <div id="mobile-menu-overlay" class="fixed inset-0 z-40 bg-black/90 backdrop-blur-md hidden transition-all duration-300"></div>
+            <div id="mobile-menu" class="fixed inset-y-0 left-0 z-50 w-72 bg-black border-r border-white/10 transform -translate-x-full transition-transform duration-500 ease-out flex flex-col p-8">
+                 <div class="flex items-center justify-between mb-12">
+                     <h1 class="text-primary font-black text-2xl tracking-tighter italic">GROWFIT</h1>
+                     <button id="close-mobile-menu" class="text-text-dim"><span class="material-symbols-outlined">close</span></button>
                 </div>
-
-                <!-- Mobile Profile & Level -->
-                 <div class="flex items-center gap-3 px-2 mb-6">
-                     <img src="/lucas.jpeg" alt="Profile" class="w-10 h-10 rounded-full border-2 border-primary object-cover">
-                    <div class="flex flex-col w-full">
-                        <div class="flex justify-between items-center">
-                             <p class="text-primary text-xs font-medium uppercase tracking-wide">Nivel ${state.profile.level || 1}</p>
-                             <p class="text-[10px] text-text-secondary">${state.profile.xp || 0} XP</p>
-                        </div>
-                        <div class="h-1 bg-[#101611] rounded-full mt-1 overflow-hidden">
-                             <div class="h-full bg-primary" style="width: ${Math.min(100, ((state.profile.xp || 0) % 100))}%"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <nav class="flex flex-col gap-2">
-                    <button class="mobile-nav-link flex items-center gap-3 px-3 py-3 rounded-xl bg-white/5 border border-white/5 text-white" data-target="dashboard">
-                        <span class="material-symbols-outlined text-primary">dashboard</span>
-                        <p class="text-sm font-medium">Inicio</p>
+                <!-- Menu Links -->
+                <nav class="flex flex-col gap-6">
+                    <button class="mobile-nav-link text-left text-2xl font-black uppercase tracking-tighter flex items-center gap-4 text-primary" data-target="dashboard">
+                        <span class="material-symbols-outlined">dashboard</span> INICIO
                     </button>
-                    <button class="mobile-nav-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 transition-colors text-text-secondary hover:text-white" data-target="measurements">
-                        <span class="material-symbols-outlined">straighten</span>
-                        <p class="text-sm font-medium">Progreso</p>
-                    </button>
-                    <button class="mobile-nav-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 transition-colors text-text-secondary hover:text-white" data-target="insights">
-                        <span class="material-symbols-outlined">insights</span>
-                        <p class="text-sm font-medium">Estadísticas</p>
-                    </button>
-                    <button class="mobile-nav-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 transition-colors text-text-secondary hover:text-white" data-target="workouts">
-                        <span class="material-symbols-outlined">fitness_center</span>
-                        <p class="text-sm font-medium">Entrenamientos</p>
-                    </button>
-                     <button class="mobile-nav-link flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 transition-colors text-text-secondary hover:text-white" data-target="profile">
-                        <span class="material-symbols-outlined">settings</span>
-                        <p class="text-sm font-medium">Ajustes</p>
-                    </button>
+                    <!-- ... rest of mobile menu -->
                 </nav>
             </div>
         </main>
         
-        <!-- Modal Container (Hidden by default) -->
-        <div id="meal-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 fade-in">
-            <!-- Content Injected via JS -->
-        </div>
-
-        <!-- Edit Meal Modal -->
-        <div id="edit-meal-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 fade-in">
-            <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-sm p-6 shadow-2xl relative">
-                <h3 class="text-white text-xl font-bold mb-4">Editar Comida</h3>
-
-                <div class="flex flex-col gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs text-text-secondary uppercase font-bold">Nombre</label>
-                        <input type="text" id="edit-meal-name" class="bg-background-dark border border-[#28392a] rounded-xl px-4 py-3 text-white focus:border-primary outline-none" />
-                    </div>
-
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs text-text-secondary uppercase font-bold">Calorías</label>
-                        <input type="number" id="edit-meal-cals" class="bg-background-dark border border-[#28392a] rounded-xl px-4 py-3 text-white focus:border-primary outline-none" />
-                    </div>
-
-                    <p class="text-[10px] text-text-secondary italic">Nota: Editar las calorías no recalcula automáticamente los macros.</p>
-
-                    <div class="flex gap-3 mt-2">
-                        <button id="close-edit-modal" class="flex-1 py-3 rounded-xl border border-[#28392a] text-text-secondary font-bold hover:text-white transition-colors">Cancelar</button>
-                        <button id="save-edit-modal" class="flex-1 py-3 rounded-xl bg-primary text-[#102212] font-bold hover:bg-green-400 transition-colors">Guardar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+        <!-- Modal Containers -->
+        <div id="meal-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 fade-in"></div>
+        <div id="edit-meal-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-2xl p-4"></div>
     </div>
     `;
 };
@@ -518,43 +400,41 @@ const renderMealsList = (state, selectedDate) => {
     const meals = state.dailyLog.filter(m => m.date === activeDate);
 
     if (meals.length === 0) {
-        return `<div class="text-text-secondary text-sm">No hay comidas registradas.</div>`;
+        return `<div class="text-text-dim/50 text-xs italic p-4">En espera de datos nutricionales...</div>`;
     }
 
-    const categories = ["Desayuno", "Media Mañana", "Almuerzo", "Merienda", "Media Tarde", "Cena"];
+    const categories = ["Desayuno", "Media Mañana", "Almuerzo", "Merienda", "Media Tarde", "Cena", "Otros"];
     const grouped = categories.reduce((acc, cat) => {
-        acc[cat] = meals.filter(m => m.category === cat || (!m.category && cat === "Otros")); // Handle legacy/missing category
+        acc[cat] = meals.filter(m => m.category === cat || (!m.category && cat === "Otros" && !categories.includes(m.category)));
         return acc;
     }, {});
-
-    // Catch-all for meals with unknown categories (legacy)
-    const unknown = meals.filter(m => !categories.includes(m.category));
-    if (unknown.length > 0) grouped["Otros"] = unknown;
-    if (grouped["Otros"]) categories.push("Otros");
 
     return categories.map(cat => {
         const catMeals = grouped[cat];
         if (!catMeals || catMeals.length === 0) return '';
 
         return `
-            <div class="flex flex-col gap-2 mb-2">
-                <h4 class="text-xs font-bold text-primary uppercase tracking-wider pl-1 opacity-80">${cat}</h4>
-                <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-3 mb-4">
+                <h4 class="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] pl-1">${cat}</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     ${catMeals.map(meal => `
-                        <div class="flex justify-between items-center p-3 bg-background-dark/50 rounded-xl border border-[#28392a] group">
-                            <div>
-                                <p class="text-white font-medium text-sm">${meal.name}</p>
-                                <p class="text-text-secondary text-xs">${Math.round(meal.macros.protein)}g P • ${Math.round(meal.macros.carbs)}g C • ${Math.round(meal.macros.fat)}g F</p>
+                        <div class="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-white/10 transition-all group relative overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div class="relative z-10">
+                                <p class="text-white font-bold text-sm leading-tight mb-1">${meal.name}</p>
+                                <p class="text-[10px] font-mono text-text-dim uppercase tracking-wider">${Math.round(meal.macros.protein)}P • ${Math.round(meal.macros.carbs)}C • ${Math.round(meal.macros.fat)}F</p>
                             </div>
-                            <div class="flex items-center gap-4">
-                                <p class="text-primary font-bold text-sm">${meal.calories} kcal</p>
-                                
-                                <div class="flex items-center gap-1">
-                                    <button class="edit-meal-btn p-1.5 rounded-lg text-text-secondary hover:text-white hover:bg-white/5 transition-colors" data-id="${meal.id}" data-meal='${JSON.stringify(meal).replace(/'/g, "&#39;")}'>
-                                        <span class="material-symbols-outlined text-base">edit</span>
+                            <div class="flex items-center gap-4 relative z-10">
+                                <div class="text-right">
+                                    <p class="text-primary font-mono font-bold text-sm">${meal.calories}</p>
+                                    <p class="text-[8px] text-text-dim uppercase font-bold tracking-tighter">KCAL</p>
+                                </div>
+                                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button class="edit-meal-btn size-8 rounded-lg text-text-dim hover:text-white hover:bg-white/10 transition-colors flex items-center justify-center" data-meal='${JSON.stringify(meal).replace(/'/g, "&#39;")}'>
+                                        <span class="material-symbols-outlined text-sm">edit</span>
                                     </button>
-                                    <button class="delete-meal-btn p-1.5 rounded-lg text-text-secondary hover:text-red-500 hover:bg-red-500/10 transition-colors" data-id="${meal.id}">
-                                        <span class="material-symbols-outlined text-base">delete</span>
+                                    <button class="delete-meal-btn size-8 rounded-lg text-text-dim hover:text-red-400 hover:bg-red-400/10 transition-colors flex items-center justify-center" data-id="${meal.id}">
+                                        <span class="material-symbols-outlined text-sm">delete</span>
                                     </button>
                                 </div>
                             </div>
@@ -562,7 +442,7 @@ const renderMealsList = (state, selectedDate) => {
                     `).join('')}
                 </div>
             </div>
-    `;
+        `;
     }).join('');
 };
 
@@ -599,24 +479,24 @@ export const attachDashboardEvents = () => {
                         const tipText = lines.slice(1).join(' ').replace(/"/g, '').trim();
                         // Sometimes the title itself has the text if no newline, handle that if needed, but usually OpenAI puts newline
                         /* If lines length is 1, maybe content is in title line? usually not with ### header */
-                        return `<div class="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl animate-pulse"><h4 class="text-yellow-500 font-bold uppercase text-xs tracking-wider mb-2 flex items-center gap-2"><span class="material-symbols-outlined">savings</span>Tip Sanjuanino</h4><p class="text-sm text-yellow-100/90 italic">"${tipText || title.replace('Tip de Ahorro Sanjuanino', '')}"</p></div>`;
+                        return `<div class="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl animate-pulse" ><h4 class="text-yellow-500 font-bold uppercase text-xs tracking-wider mb-2 flex items-center gap-2"><span class="material-symbols-outlined">savings</span>Tip Sanjuanino</h4><p class="text-sm text-yellow-100/90 italic">"${tipText || title.replace('Tip de Ahorro Sanjuanino', '')}"</p></div> `;
                     }
 
                     // Normal Category
                     const items = lines.slice(1)
                         .filter(l => l.trim().startsWith('- [ ]'))
-                        .map(l => `<li class="flex items-start gap-3 text-sm text-slate-300"><span class="material-symbols-outlined text-white/20 text-lg mt-[-2px]">check_box_outline_blank</span><span>${l.replace('- [ ] ', '')}</span></li>`)
+                        .map(l => `<li class="flex items-start gap-3 text-sm text-slate-300" ><span class="material-symbols-outlined text-white/20 text-lg mt-[-2px]">check_box_outline_blank</span><span>${l.replace('- [ ] ', '')}</span></li> `)
                         .join('');
 
                     if (!items) return ''; // Skip empty sections
 
-                    return `<div class="mb-4 p-4 bg-white/5 border border-white/5 rounded-2xl"><h4 class="text-primary font-bold uppercase text-xs tracking-wider mb-3 border-b border-white/10 pb-2 flex items-center gap-2"><span class="material-symbols-outlined text-sm">label</span>${title}</h4><ul class="space-y-2">${items}</ul></div>`;
+                    return `<div class="mb-4 p-4 bg-white/5 border border-white/5 rounded-2xl" ><h4 class="text-primary font-bold uppercase text-xs tracking-wider mb-3 border-b border-white/10 pb-2 flex items-center gap-2"><span class="material-symbols-outlined text-sm">label</span>${title}</h4><ul class="space-y-2">${items}</ul></div> `;
                 }).join('');
 
                 if (modal) {
                     modal.innerHTML = `
-                        <div class="bg-[#101611] border border-[#28392a] rounded-3xl w-full max-w-md p-0 shadow-2xl relative max-h-[85vh] overflow-hidden flex flex-col">
-                            <!-- Header -->
+    <div class="bg-[#101611] border border-[#28392a] rounded-3xl w-full max-w-md p-0 shadow-2xl relative max-h-[85vh] overflow-hidden flex flex-col" >
+                            <!--Header -->
                             <div class="p-6 pb-4 border-b border-white/5 bg-[#1A261C]">
                                 <button id="close-ai-modal" class="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"><span class="material-symbols-outlined">close</span></button>
                                 <h3 class="text-white text-xl font-black flex items-center gap-2">
@@ -626,20 +506,20 @@ export const attachDashboardEvents = () => {
                                 <p class="text-xs text-text-secondary mt-1 ml-12">Optimizada para tu bolsillo y tus macros.</p>
                             </div>
 
-                            <!-- Content -->
+                            <!--Content -->
                             <div class="p-6 overflow-y-auto custom-scrollbar">
                                 ${styledList}
                             </div>
 
-                            <!-- Footer -->
-                            <div class="p-4 border-t border-white/5 bg-[#1A261C]">
-                                <button onclick="window.copyToClipboard('${rawList.replace(/\n/g, '\\n').replace(/'/g, "\\'")}')" class="w-full bg-primary text-[#102212] py-3.5 rounded-xl font-bold transition-transform active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-primary/20">
-                                    <span class="material-symbols-outlined text-lg">content_copy</span>
-                                    Copiar al Portapapeles
-                                </button>
+                            <!--Footer -->
+    <div class="p-4 border-t border-white/5 bg-[#1A261C]">
+        <button onclick="window.copyToClipboard('${rawList.replace(/\n/g, '\\n').replace(/'/g, "\\'")}')" class="w-full bg-primary text-[#102212] py-3.5 rounded-xl font-bold transition-transform active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-primary/20">
+        <span class="material-symbols-outlined text-lg">content_copy</span>
+        Copiar al Portapapeles
+    </button>
                             </div>
                         </div>
-                    `;
+    `;
                     const closeBtn = modal.querySelector('#close-ai-modal');
                     if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
                     modal.classList.remove('hidden');
@@ -684,8 +564,8 @@ export const attachDashboardEvents = () => {
 
                 // HTML Template
                 const reportHtml = `
-                    <div style="padding: 40px;">
-                        <!-- Header -->
+    <div style = "padding: 40px;" >
+                        <!--Header -->
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #28392a; padding-bottom: 20px; margin-bottom: 30px;">
                             <div>
                                 <h1 style="font-size: 32px; font-weight: 900; color: #4ade80; margin: 0; text-transform: uppercase; letter-spacing: -1px;">GrowFit</h1>
@@ -703,7 +583,7 @@ export const attachDashboardEvents = () => {
                             </div>
                         </div>
 
-                        <!-- KPIs Grid -->
+                        <!--KPIs Grid-- >
                         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 40px;">
                             <div style="background: #1A261C; padding: 20px; border-radius: 12px; border: 1px solid #28392a;">
                                 <p style="margin: 0; color: #4ade80; font-size: 12px; text-transform: uppercase; font-weight: bold;">Promedio Cals</p>
@@ -723,13 +603,13 @@ export const attachDashboardEvents = () => {
                             </div>
                         </div>
 
-                        <!-- Summary Section -->
+                        <!--Summary Section-- >
                         <div style="margin-bottom: 40px;">
                             <h3 style="color: #4ade80; font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #28392a; padding-bottom: 10px;">📊 Análisis del Coach</h3>
                             <p style="color: #cbd5e1; line-height: 1.6; font-size: 14px;">${reportData.summary}</p>
                         </div>
 
-                        <!-- Chart Section (Canvas) -->
+                        <!--Chart Section(Canvas)-- >
                         <div style="margin-bottom: 40px; background: #1A261C; padding: 20px; border-radius: 16px; border: 1px solid #28392a;">
                             <h4 style="margin: 0 0 20px 0; font-size: 14px; text-transform: uppercase; color: #94a3b8;">Progreso Calórico (Últimos 7 Días)</h4>
                             <div style="height: 200px; display: flex; align-items: stretch; gap: 10px; padding-bottom: 20px; border-bottom: 1px solid #334155;">
@@ -746,7 +626,7 @@ export const attachDashboardEvents = () => {
                             </div>
                         </div>
 
-                        <!-- Strengths & Weaknesses -->
+                        <!--Strengths & Weaknesses-- >
                         <div style="display: flex; gap: 30px; margin-bottom: 40px;">
                             <div style="flex: 1;">
                                 <h3 style="color: #4ade80; font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #28392a; padding-bottom: 10px;">🔥 Puntos Fuertes</h3>
@@ -762,18 +642,18 @@ export const attachDashboardEvents = () => {
                             </div>
                         </div>
 
-                        <!-- Mission -->
+                        <!--Mission -->
                         <div style="background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.2); padding: 25px; border-radius: 16px; text-align: center;">
                             <h3 style="color: #4ade80; margin: 0 0 10px 0; font-size: 20px;">🎯 Misión Semanal</h3>
                             <p style="margin: 0; font-size: 16px; font-style: italic; color: #fff;">"${reportData.mission}"</p>
                         </div>
                         
-                        <!-- Footer -->
-                        <div style="margin-top: 50px; text-align: center; border-top: 1px solid #28392a; padding-top: 20px; color: #475569; font-size: 10px;">
-                            Generado por GrowFit AI • San Juan, Argentina
-                        </div>
+                        <!--Footer -->
+    <div style="margin-top: 50px; text-align: center; border-top: 1px solid #28392a; padding-top: 20px; color: #475569; font-size: 10px;">
+        Generado por GrowFit AI • San Juan, Argentina
+    </div>
                     </div>
-                `;
+    `;
 
                 contentDiv.innerHTML = reportHtml;
                 contentDiv.appendChild(closeBtn);
@@ -870,7 +750,7 @@ export const attachDashboardEvents = () => {
             const currentWater = (currentState.days?.[date]?.water) || 0;
             const newWater = currentWater + 250;
 
-            console.log(`Adding water: ${currentWater} -> ${newWater} on ${date}`);
+            console.log(`Adding water: ${currentWater} -> ${newWater} on ${date} `);
 
             updateDayStat(date, 'water', newWater);
 
@@ -921,7 +801,7 @@ export const attachDashboardEvents = () => {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => `${ctx.raw.toFixed(1)}g`
+                            label: (ctx) => `${ctx.raw.toFixed(1)} g`
                         }
                     }
                 },
@@ -971,15 +851,15 @@ export const attachDashboardEvents = () => {
 
             if (modal) {
                 modal.innerHTML = `
-                    <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
+    <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto" >
                         <button onclick="document.getElementById('meal-modal').classList.add('hidden')" class="absolute top-4 right-4 text-text-secondary hover:text-white"><span class="material-symbols-outlined">close</span></button>
                         <h3 class="text-white text-xl font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">shopping_cart</span> Lista Inteligente</h3>
                         <div class="prose prose-invert text-sm text-slate-300">
                             ${list.replace(/\n/g, '<br>')}
                         </div>
-                        <button onclick="window.copyToClipboard('${list.replace(/\n/g, '\\n').replace(/'/g, "\\'")}')" class="mt-4 w-full bg-primary/10 hover:bg-primary/20 text-primary py-3 rounded-xl font-bold transition-colors">Copiar al Portapapeles</button>
+                        <button onclick="window.copyToClipboard('${list.replace(/\n/g, '\\n').replace(/'/g, "\\'")}') " class="mt - 4 w - full bg - primary / 10 hover: bg - primary / 20 text - primary py - 3 rounded - xl font - bold transition - colors">Copiar al Portapapeles</button>
                     </div>
-                `;
+    `;
                 modal.classList.remove('hidden');
             }
         } catch (e) {
@@ -1003,14 +883,14 @@ export const attachDashboardEvents = () => {
 
             if (modal) {
                 modal.innerHTML = `
-                   <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-lg p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
+    <div class="bg-[#1A261C] border border-[#28392a] rounded-2xl w-full max-w-lg p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto" >
                        <button onclick="document.getElementById('meal-modal').classList.add('hidden')" class="absolute top-4 right-4 text-text-secondary hover:text-white"><span class="material-symbols-outlined">close</span></button>
                        <h3 class="text-white text-xl font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary">assessment</span> Reporte Semanal</h3>
                        <div class="prose prose-invert text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
                            ${report}
                        </div>
                    </div>
-               `;
+    `;
                 modal.classList.remove('hidden');
             }
         } catch (e) {
@@ -1100,7 +980,7 @@ export const attachDashboardEvents = () => {
             const formattedDate = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
             dateWarning = `
-    <div class="bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-4 py-2 rounded-xl text-center text-sm font-bold mb-4">
+    <div class="bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-4 py-2 rounded-xl text-center text-sm font-bold mb-4" >
         <span class="material-symbols-outlined text-base align-middle mr-1">event</span>
                     Se registrará para: <span class="uppercase">${formattedDate}</span>
                 </div>
@@ -1124,67 +1004,57 @@ export const attachDashboardEvents = () => {
       )`;
 
         modal.innerHTML = `
-    <div class="bg-[#1A261C]/90 backdrop-blur-xl border border-[#28392a] rounded-3xl p-8 w-full max-w-md shadow-2xl flex flex-col gap-6 relative">
-            <button id="modal-close-btn" class="absolute top-4 right-4 text-text-secondary hover:text-white transition-colors">
-                <span class="material-symbols-outlined">close</span>
-            </button>
-            
-            <div class="text-center mt-2">
-                ${dateWarning}
-                <h3 class="text-white text-2xl font-bold mb-1 tracking-tight">${mealData.name}</h3>
-                <div class="inline-flex items-baseline gap-1 bg-[#28392a] px-3 py-1 rounded-full border border-[#3b543d]">
-                    <span class="text-primary text-xl font-black">${mealData.calories}</span>
-                    <span class="text-xs font-medium text-text-secondary uppercase">kcal</span>
-                </div>
-            </div>
-
-            <!--Pie Chart Container-->
-            <div class="flex items-center justify-center py-2">
-                <div class="relative size-48 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(16,185,129,0.1)] transition-transform hover:scale-105 duration-500" style="${conicStyle}">
-                    <div class="size-36 bg-[#1A261C] rounded-full flex items-center justify-center shadow-inner relative z-10">
-                         <div class="flex flex-col items-center">
-                            <span class="material-symbols-outlined text-4xl text-[#9db99f] mb-1">restaurant</span>
-                            <span class="text-[10px] text-text-secondary uppercase tracking-widest">Macro Split</span>
-                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!--Legend with Glass cards-->
-            <div class="grid grid-cols-3 gap-3">
-                <div class="flex flex-col items-center p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                    <span class="text-[10px] text-text-secondary uppercase tracking-wider mb-1">Proteína</span>
-                    <div class="flex items-center gap-1.5 text-emerald-500 font-bold text-lg">
-                        <div class="size-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
-                        ${Math.round(mealData.macros.protein)}g
-                    </div>
-                </div>
-                 <div class="flex flex-col items-center p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                    <span class="text-[10px] text-text-secondary uppercase tracking-wider mb-1">Carbos</span>
-                    <div class="flex items-center gap-1.5 text-emerald-300 font-bold text-lg">
-                         <div class="size-2 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.6)]"></div>
-                        ${Math.round(mealData.macros.carbs)}g
-                    </div>
-                </div>
-                 <div class="flex flex-col items-center p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                    <span class="text-[10px] text-text-secondary uppercase tracking-wider mb-1">Grasas</span>
-                    <div class="flex items-center gap-1.5 text-emerald-800 font-bold text-lg">
-                         <div class="size-2 rounded-full bg-emerald-800 shadow-[0_0_8px_rgba(6,95,70,0.6)]"></div>
-                        ${Math.round(mealData.macros.fat)}g
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex gap-4 mt-2">
-                <button id="modal-cancel-btn" class="flex-1 py-3.5 rounded-xl border border-[#28392a] text-text-secondary font-bold hover:bg-[#28392a] hover:text-white transition-all text-sm uppercase tracking-wide">
-                    Cancelar
+            <div class="glass-card p-10 w-full max-w-md flex flex-col gap-8 relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 size-48 bg-primary/10 blur-[80px] rounded-full"></div>
+                <button id="modal-close-btn" class="absolute top-6 right-6 text-text-dim hover:text-white transition-colors">
+                    <span class="material-symbols-outlined">close</span>
                 </button>
-                <button id="modal-confirm-btn" class="flex-1 py-3.5 rounded-xl bg-primary text-[#102212] font-black hover:bg-[#10d420] transition-all shadow-[0_0_20px_rgba(19,236,37,0.3)] hover:shadow-[0_0_25px_rgba(19,236,37,0.5)] transform hover:-translate-y-0.5 text-sm uppercase tracking-wide">
-                    Confirmar
-                </button>
+                
+                <div class="text-center relative z-10">
+                    ${dateWarning}
+                    <h3 class="text-white text-3xl font-black mb-2 tracking-tighter uppercase italic">${mealData.name}</h3>
+                    <div class="inline-flex items-baseline gap-2 bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20">
+                        <span class="text-primary text-2xl font-black font-mono">${mealData.calories}</span>
+                        <span class="text-[10px] font-black text-primary/60 uppercase tracking-widest">Kcal Detected</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-center py-4 relative z-10">
+                    <div class="relative size-56 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(0,255,136,0.1)] transition-transform hover:scale-105 duration-700" style="${conicStyle}">
+                        <div class="size-44 bg-black rounded-full flex items-center justify-center shadow-inner relative z-10 border border-white/5">
+                             <div class="flex flex-col items-center">
+                                <span class="material-symbols-outlined text-5xl text-primary mb-2">analytics</span>
+                                <p class="text-[8px] text-text-dim uppercase font-black tracking-[0.3em]">Neural Split</p>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4 relative z-10">
+                    <div class="flex flex-col items-center p-4 rounded-2xl bg-white/5 border border-white/5 group hover:border-emerald-500/30 transition-all">
+                        <span class="text-[8px] text-text-dim uppercase font-black tracking-widest mb-2">Protein</span>
+                        <p class="font-mono text-emerald-400 font-bold text-xl">${Math.round(mealData.macros.protein)}<span class="text-[10px] ml-1">g</span></p>
+                    </div>
+                     <div class="flex flex-col items-center p-4 rounded-2xl bg-white/5 border border-white/5 group hover:border-blue-400/30 transition-all">
+                        <span class="text-[8px] text-text-dim uppercase font-black tracking-widest mb-2">Carbs</span>
+                        <p class="font-mono text-blue-400 font-bold text-xl">${Math.round(mealData.macros.carbs)}<span class="text-[10px] ml-1">g</span></p>
+                    </div>
+                     <div class="flex flex-col items-center p-4 rounded-2xl bg-white/5 border border-white/5 group hover:border-orange-500/30 transition-all">
+                        <span class="text-[8px] text-text-dim uppercase font-black tracking-widest mb-2">Fats</span>
+                        <p class="font-mono text-orange-400 font-bold text-xl">${Math.round(mealData.macros.fat)}<span class="text-[10px] ml-1">g</span></p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 mt-2 relative z-10">
+                    <button id="modal-cancel-btn" class="flex-1 py-4 btn-ghost text-xs font-black uppercase tracking-widest">
+                        Discard
+                    </button>
+                    <button id="modal-confirm-btn" class="flex-1 py-4 btn-primary text-xs font-black uppercase tracking-widest glow-primary">
+                        Confirm Protocol
+                    </button>
+                </div>
             </div>
-        </div>
-    `;
+        `;
 
         modal.classList.remove('hidden');
 
@@ -1357,14 +1227,13 @@ export const attachDashboardEvents = () => {
         const diff = Math.ceil(Math.abs(new Date() - mDate) / (1000 * 60 * 60 * 24));
 
         if (recText) {
-            recText.innerHTML = `¿Por qué no repites <b>"${randomMeal.name}"</b>? <br>Lo comiste hace ${diff} días.`;
+            recText.innerHTML = `¿Por qué no repites < b > "${randomMeal.name}"</b >? <br>Lo comiste hace ${diff} días.`;
         }
         recCard?.classList.remove('hidden');
     };
 
     // Show on load
     showRecommendation();
-
     refreshRec?.addEventListener('click', showRecommendation);
 
     // Tip Generation Logic
@@ -1379,13 +1248,11 @@ export const attachDashboardEvents = () => {
             const tipEl = document.getElementById('daily-tip-text');
             if (tipEl) {
                 tipEl.textContent = `"${tip}"`;
-                tipEl.classList.add('animate-pulse'); // Visual feedback
+                tipEl.classList.add('animate-pulse');
                 setTimeout(() => tipEl.classList.remove('animate-pulse'), 1000);
             }
         });
     }
-
-
 };
 
 const toBase64 = (file) => new Promise((resolve, reject) => {

@@ -1,27 +1,57 @@
-/* Reset & Base is handled by Tailwind CDN for now, but we keep this for specific overrides */
+/* GrowLabs Premium Dark Futuristic Foundation */
+:root {
+  --primary: #00FF88;
+  --bg-pure: #000000;
+  --surface: rgba(15, 15, 15, 0.7);
+  --border: rgba(255, 255, 255, 0.1);
+  --text-dim: #9CA3AF;
+}
+
 body {
-  background-color: #050a05;
-  /* Darken background with overlay */
-  background-image: linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.85)), url('/fondogrow.png');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
+  background-color: var(--bg-pure);
   color: white;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Outfit', sans-serif;
+  margin: 0;
+  overflow-x: hidden;
+  /* Aura effect with subtle radial gradients */
+  background-image:
+    radial-gradient(circle at 10% 10%, rgba(0, 255, 136, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 90% 90%, rgba(30, 58, 138, 0.05) 0%, transparent 40%);
+  background-attachment: fixed;
 }
 
 #app {
   width: 100%;
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-  max-width: none;
-  /* Override previous mobile constraint */
+  min-height: 100vh;
   display: flex;
 }
 
-/* Animations */
+/* Glassmorphism Components */
+.glass-card {
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(0, 255, 136, 0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.05);
+  transform: translateY(-2px);
+}
+
+/* Neon Glow Utilities */
+.glow-primary {
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+
+.text-glow {
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+}
+
+/* High-Tech Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -35,49 +65,88 @@ body {
 }
 
 .fade-in {
-  animation: fadeIn 0.4s ease-out;
+  animation: fadeIn 0.5s ease-out forwards;
 }
 
-@keyframes scaleUp {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
   }
 
-  to {
-    opacity: 1;
-    transform: scale(1);
+  100% {
+    transform: translateY(100%);
   }
 }
 
-.animate-scale-up {
-  animation: scaleUp 0.3s ease-out forwards;
+.scanline::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(0, 255, 136, 0.1);
+  animation: scanline 4s linear infinite;
+  pointer-events: none;
 }
 
-/* Scrollbar */
+/* Custom Scrollbar (Stealth Mode) */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #102212;
+  background: #000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #28392a;
-  border-radius: 4px;
+  background: #333;
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3b543d;
+  background: var(--primary);
 }
 
-/* Hide scrollbar for x-scrollable elements */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+/* UI Typography Overrides */
+h1,
+h2,
+h3 {
+  font-weight: 900;
+  letter-spacing: -0.02em;
 }
 
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.font-mono {
+  font-family: 'Space Mono', monospace;
+}
+
+/* Buttons */
+.btn-primary {
+  background: var(--primary);
+  color: #000;
+  font-weight: 700;
+  border-radius: 9999px;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: white;
+  border-radius: 9999px;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--primary);
 }

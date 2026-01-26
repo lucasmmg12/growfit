@@ -8,7 +8,9 @@
   <title>GrowFit</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+    rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
     rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -19,16 +21,29 @@
       theme: {
         extend: {
           colors: {
-            "primary": "#13ec25",
-            "background-light": "#f6f8f6",
-            "background-dark": "rgba(10, 10, 10, 0.75)",
-            "surface-dark": "rgba(26, 38, 28, 0.6)",
-            "surface-light": "#ffffff",
-            "text-secondary": "#9db99f",
-            "border-color": "#28392a"
+            "primary": "#00FF88", // GrowLabs Neon Green
+            "background-dark": "#000000",
+            "surface-dark": "rgba(10, 10, 10, 0.7)",
+            "text-secondary": "#9CA3AF",
+            "border-color": "rgba(255, 255, 255, 0.1)"
           },
           fontFamily: {
-            "display": ["Manrope", "sans-serif"]
+            "display": ["Outfit", "sans-serif"],
+            "mono": ["Space Mono", "monospace"]
+          },
+          animation: {
+            "glow": "glow 2s ease-in-out infinite alternate",
+            "float": "float 6s ease-in-out infinite",
+          },
+          keyframes: {
+            glow: {
+              "from": { "box-shadow": "0 0 5px #00FF88, 0 0 10px #00FF88" },
+              "to": { "box-shadow": "0 0 20px #00FF88, 0 0 30px #00FF88" }
+            },
+            float: {
+              "0%, 100%": { "transform": "translateY(0)" },
+              "50%": { "transform": "translateY(-10px)" }
+            }
           }
         }
       }
