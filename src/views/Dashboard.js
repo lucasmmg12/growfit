@@ -332,11 +332,16 @@ const renderMealsList = (state, selectedDate) => {
                     <span class="material-symbols-outlined text-lg">${m.type === 'workout' ? 'fitness_center' : 'restaurant'}</span>
                  </div>
                  <div>
-                    <h4 class="text-xs font-black uppercase tracking-tight">${m.name}</h4>
+                    <div class="flex items-center gap-2">
+                        <h4 class="text-xs font-black uppercase tracking-tight">${m.name}</h4>
+                        <span class="px-2 py-0.5 rounded-full bg-white/5 text-[8px] font-black uppercase tracking-widest text-primary/60 border border-white/5">
+                            ${m.time || m.category || 'Comida'}
+                        </span>
+                    </div>
                     <p class="text-[10px] font-mono text-text-dim mt-1">${m.calories} KCAL <span class="mx-2 opacity-20">|</span> P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g F:${Math.round(m.macros?.fat || 0)}g</p>
                  </div>
             </div>
-            <button class="delete-meal-btn text-text-dim/30 hover:text-red-500 transition-colors" data-id="${m.id}">
+            <button class="delete-meal-btn text-text-dim/30 hover:text-red-500 transition-colors p-2" data-id="${m.id}">
                 <span class="material-symbols-outlined text-lg">delete</span>
             </button>
         </div>
@@ -369,7 +374,14 @@ export const attachDashboardEvents = () => {
             }
 
             if (result.meals && result.meals.length > 0) {
-                showMealConfirmation(result.meals[0]);
+                const meal = result.meals[0];
+                // If AI returns today but we are viewing another date, default to the viewed date
+                const state = getState();
+                const today = new Date().toISOString().split('T')[0];
+                if (meal.date === today && state.selectedDate !== today) {
+                    meal.date = state.selectedDate;
+                }
+                showMealConfirmation(meal);
             } else {
                 window.router.navigate('dashboard');
             }
@@ -387,31 +399,84 @@ export const attachDashboardEvents = () => {
         const pPct = ((mealData.macros.protein / total) * 100) || 0;
         const cPct = ((mealData.macros.carbs / total) * 100) || 0;
 
+        const categories = ["Desayuno", "Media Mañana", "Almuerzo", "Merienda", "Media Tarde", "Cena"];
+        const today = new Date().toISOString().split('T')[0];
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const beforeYesterday = new Date(Date.now() - 172800000).toISOString().split('T')[0];
+
         modal.innerHTML = `
-            <div class="glass-card p-10 w-full max-w-md relative overflow-hidden">
-                 <div class="text-center mb-8">
-                    <h3 class="text-white text-3xl font-display font-black italic tracking-tighter uppercase mb-2">${mealData.name}</h3>
-                    <p class="text-primary font-mono text-2xl font-black">${mealData.calories} KCAL</p>
+            <div class="glass-card p-8 w-full max-w-lg relative overflow-hidden animate-scale-up">
+                 <div class="text-center mb-6">
+                    <p class="text-primary text-[10px] font-black uppercase tracking-[0.4em] mb-2">Registro Biométrico</p>
+                    <h3 class="text-white text-4xl font-display font-black italic tracking-tighter uppercase mb-2">${mealData.name}</h3>
+                    <p class="text-primary font-mono text-xl font-black">${mealData.calories} KCAL</p>
                  </div>
-                 <div class="flex items-center justify-center p-6 bg-white/5 rounded-[40px] mb-8" style="background: conic-gradient(#10b981 0% ${pPct}%, #60a5fa ${pPct}% ${pPct + cPct}%, #f59e0b ${pPct + cPct}% 100%)">
-                    <div class="size-40 bg-black rounded-full flex items-center justify-center border border-white/10">
-                        <span class="material-symbols-outlined text-4xl text-primary">analytics</span>
+
+                 <div class="grid grid-cols-2 gap-8 mb-8">
+                    <!-- Donut Chart & Macros -->
+                    <div class="flex flex-col items-center justify-center">
+                        <div class="size-32 rounded-full flex items-center justify-center border border-white/10 relative" style="background: conic-gradient(#00FF88 0% ${pPct}%, #60a5fa ${pPct}% ${pPct + cPct}%, #f59e0b ${pPct + cPct}% 100%)">
+                            <div class="size-24 bg-black rounded-full flex items-center justify-center">
+                                <span class="material-symbols-outlined text-3xl text-primary/50">analytics</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 mt-4 w-full text-center">
+                            <div><p class="text-[7px] font-black uppercase text-text-dim">P</p><p class="text-xs font-mono text-emerald-400">${Math.round(mealData.macros.protein)}g</p></div>
+                            <div><p class="text-[7px] font-black uppercase text-text-dim">C</p><p class="text-xs font-mono text-blue-400">${Math.round(mealData.macros.carbs)}g</p></div>
+                            <div><p class="text-[7px] font-black uppercase text-text-dim">F</p><p class="text-xs font-mono text-orange-400">${Math.round(mealData.macros.fat)}g</p></div>
+                        </div>
+                    </div>
+
+                    <!-- Options Selection -->
+                    <div class="flex flex-col gap-4">
+                        <div>
+                            <p class="text-[8px] font-black text-text-dim uppercase tracking-widest mb-2 italic">Selector de Momento</p>
+                            <div class="grid grid-cols-2 gap-2">
+                                ${categories.map(cat => `
+                                    <button class="cat-select-btn px-3 py-2 rounded-xl border border-white/5 bg-white/5 text-[9px] font-black uppercase tracking-tight transition-all ${mealData.category === cat ? 'border-primary text-primary bg-primary/10' : 'text-text-dim hover:bg-white/10'}" data-cat="${cat}">
+                                        ${cat}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-[8px] font-black text-text-dim uppercase tracking-widest mb-2 italic">Fecha de Registro</p>
+                            <select id="meal-date-select" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-primary transition-all appearance-none cursor-pointer">
+                                <option value="${today}" ${mealData.date === today ? 'selected' : ''}>Hoy</option>
+                                <option value="${yesterday}" ${mealData.date === yesterday ? 'selected' : ''}>Ayer</option>
+                                <option value="${beforeYesterday}" ${mealData.date === beforeYesterday ? 'selected' : ''}>Antes de ayer</option>
+                                <option value="${mealData.date}" ${![today, yesterday, beforeYesterday].includes(mealData.date) ? 'selected' : ''}>${mealData.date}</option>
+                            </select>
+                        </div>
                     </div>
                  </div>
-                 <div class="grid grid-cols-3 gap-4 mb-10 text-center">
-                    <div><p class="text-[8px] font-black uppercase text-text-dim opacity-50">Protein</p><p class="text-lg font-mono text-emerald-400">${Math.round(mealData.macros.protein)}g</p></div>
-                    <div><p class="text-[8px] font-black uppercase text-text-dim opacity-50">Carbs</p><p class="text-lg font-mono text-blue-400">${Math.round(mealData.macros.carbs)}g</p></div>
-                    <div><p class="text-[8px] font-black uppercase text-text-dim opacity-50">Fats</p><p class="text-lg font-mono text-orange-400">${Math.round(mealData.macros.fat)}g</p></div>
-                 </div>
+
                  <div class="flex gap-4">
-                    <button id="cancel-confirm" class="flex-1 py-4 btn-ghost text-[10px] font-black uppercase tracking-widest">Abort</button>
-                    <button id="save-confirm" class="flex-1 py-4 btn-primary text-[10px] font-black uppercase tracking-widest glow-primary">Confirm</button>
+                    <button id="cancel-confirm" class="flex-1 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">Abortar</button>
+                    <button id="save-confirm" class="flex-1 py-4 bg-primary text-black rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all glow-primary hover:scale-[1.02] active:scale-95">Confirmar Registro</button>
                  </div>
             </div>
         `;
+
+        let selectedCategory = mealData.category || "Desayuno";
+
+        modal.querySelectorAll('.cat-select-btn').forEach(b => {
+            b.onclick = (e) => {
+                modal.querySelectorAll('.cat-select-btn').forEach(btn => btn.classList.remove('border-primary', 'text-primary', 'bg-primary/10'));
+                e.currentTarget.classList.add('border-primary', 'text-primary', 'bg-primary/10');
+                selectedCategory = e.currentTarget.dataset.cat;
+            };
+        });
+
         modal.querySelector('#cancel-confirm').onclick = () => modal.classList.add('hidden');
         modal.querySelector('#save-confirm').onclick = () => {
-            addMeal(mealData);
+            const finalMeal = {
+                ...mealData,
+                time: selectedCategory,
+                category: selectedCategory,
+                date: modal.querySelector('#meal-date-select').value
+            };
+            addMeal(finalMeal);
             modal.classList.add('hidden');
             window.router.navigate('dashboard');
         };

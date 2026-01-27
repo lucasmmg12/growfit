@@ -172,13 +172,14 @@ export const addMeal = async (meal) => {
     const state = getState();
     const fallback = state.selectedDate || new Date().toISOString().split('T')[0];
     const mealDate = meal.date || fallback;
+    const mealTime = meal.time || meal.category || 'Desayuno';
     const tempId = Date.now();
 
     // Check if it's "healthy" (simple logic: protein > fat) to give bonus XP
     const isHealthy = (meal.macros?.protein || 0) > (meal.macros?.fat || 0);
     const xp = isHealthy ? 20 : 10;
 
-    const finalMeal = { ...meal, date: mealDate, id: tempId };
+    const finalMeal = { ...meal, date: mealDate, time: mealTime, id: tempId };
 
     state.dailyLog.push(finalMeal);
     addXP(state, xp); // XP for Meal
@@ -199,9 +200,9 @@ export const addMeal = async (meal) => {
 
 export const deleteMeal = (id) => {
     const state = getState();
-    const meal = state.dailyLog.find(m => m.id === id);
+    const meal = state.dailyLog.find(m => String(m.id) === String(id));
 
-    state.dailyLog = state.dailyLog.filter(m => m.id !== id);
+    state.dailyLog = state.dailyLog.filter(m => String(m.id) !== String(id));
     saveState(state);
 
     if (meal) {

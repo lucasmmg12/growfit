@@ -80,7 +80,8 @@ export const addMealDB = async (meal) => {
         name: meal.name,
         calories: meal.calories,
         macros: meal.macros,
-        icon: meal.category
+        icon: meal.category,
+        time: meal.time
     };
     const { data, error } = await supabase
         .from('meals')
