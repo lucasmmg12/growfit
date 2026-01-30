@@ -9,6 +9,8 @@ import {
     updateMealDB
 } from './services/db';
 
+const STORAGE_KEY = 'growfit_state_v1';
+
 // Helper to get today's date in Argentina Timezone (Y-m-d)
 export const getArgentinaDate = () => {
     return new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' });
