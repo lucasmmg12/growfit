@@ -5,10 +5,14 @@ import {
     deleteMealByIdDB,
     deleteMealByAttributesDB,
     addMeasurementDB,
-    addWorkoutDB
+    addWorkoutDB,
+    updateMealDB
 } from './services/db';
 
-const STORAGE_KEY = 'growfit_data';
+// Helper to get today's date in Argentina Timezone (Y-m-d)
+export const getArgentinaDate = () => {
+    return new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' });
+};
 
 const defaultState = {
     profile: {
@@ -44,7 +48,7 @@ const defaultState = {
     habitLog: {},
     dailyTip: { date: null, content: null },
     currentView: 'dashboard',
-    selectedDate: new Date().toISOString().split('T')[0]
+    selectedDate: getArgentinaDate()
 };
 
 const calculateLevel = (xp) => {
@@ -105,6 +109,7 @@ export const initializeState = async () => {
                 ...defaultState,
                 ...cloudState,
                 ...local,
+                selectedDate: getArgentinaDate(), // ALWAYS START ON TODAY
                 dailyLog: cloudData.dailyLog || [],
                 measurements: cloudData.measurements || [],
                 workouts: cloudData.workouts || []
@@ -170,7 +175,7 @@ export const addWorkout = async (data) => {
 
 export const addMeal = async (meal) => {
     const state = getState();
-    const fallback = state.selectedDate || new Date().toISOString().split('T')[0];
+    const fallback = state.selectedDate || getArgentinaDate();
     const mealDate = meal.date || fallback;
     const mealTime = meal.time || meal.category || 'Desayuno';
     const tempId = Date.now();
@@ -206,13 +211,11 @@ export const deleteMeal = (id) => {
     saveState(state);
 
     if (meal) {
-        // If ID is small (likely DB ID), delete by ID. 
-        // If it's huge (Date.now()), it might depend on if sync finished. 
-        // Ideally we assume if user can click delete, it might have synced or not.
-        if (id < 1000000000000n) { // Simple check for likely DB ID (bigint) vs timestamp
-            deleteMealByIdDB(id);
+        const mealId = Number(id);
+        if (mealId > 0 && mealId < 1000000000000) { // Safely check if it's a DB ID (usually small numbers)
+            deleteMealByIdDB(mealId);
         } else {
-            // Fallback for unsynced or legacy items
+            // Fallback for unsynced or legacy items (timestamp-based IDs or string IDs)
             deleteMealByAttributesDB(meal.name, meal.date, meal.calories);
         }
     }
@@ -227,7 +230,11 @@ export const updateMeal = (id, updates) => {
     if (index !== -1) {
         state.dailyLog[index] = { ...state.dailyLog[index], ...updates };
         saveState(state);
-        // Note: DB update not implemented for simplicity, recommend Delete+Add
+
+        // Persist to DB if it's a valid ID
+        if (id > 0 && id < 1000000000000) { // IDs from DB are small, Date.now() is >= 13 digits
+            updateMealDB(id, state.dailyLog[index]);
+        }
     }
 };
 

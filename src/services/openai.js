@@ -7,7 +7,15 @@ export const analyzeFood = async (input, type = 'text', context = '') => {
   let messages = [];
 
   const today = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const todayISO = new Date().toISOString().split('T')[0];
+
+  // Dynamic import or passed from caller? Let's use the same logic as state.js manually here to avoid complex imports if possible, or just use the logic directly.
+  const getArgDate = () => {
+    const now = new Date();
+    const argentinaOffset = -3;
+    const argentinaTime = new Date(now.getTime() + (argentinaOffset * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
+    return argentinaTime.toISOString().split('T')[0];
+  };
+  const todayISO = getArgDate();
 
   // Calculate dates for the current week to help the AI
   const weekDates = {};
@@ -218,9 +226,15 @@ export const chatWithAI = async (message, state) => {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   if (!apiKey) throw new Error("Missing OpenAI API Key");
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const yesterdayDate = new Date();
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const getArgDate = () => {
+    const now = new Date();
+    const argentinaOffset = -3;
+    const argentinaTime = new Date(now.getTime() + (argentinaOffset * 60 * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
+    return argentinaTime.toISOString().split('T')[0];
+  };
+
+  const todayStr = getArgDate();
+  const yesterdayDate = new Date(new Date(todayStr + 'T12:00:00').getTime() - 86400000);
   const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
 
   const getDaySummary = (date) => {

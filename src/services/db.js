@@ -96,6 +96,23 @@ export const addMealDB = async (meal) => {
     return data;
 };
 
+export const updateMealDB = async (id, meal) => {
+    const row = {
+        date: meal.date,
+        name: meal.name,
+        calories: meal.calories,
+        macros: meal.macros,
+        icon: meal.category,
+        time: meal.time
+    };
+    const { error } = await supabase
+        .from('meals')
+        .update(row)
+        .eq('id', id);
+
+    if (error) console.error("Error updating meal:", error);
+};
+
 export const deleteMealByIdDB = async (id) => {
     const { error } = await supabase
         .from('meals')

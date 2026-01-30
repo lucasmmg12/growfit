@@ -1,16 +1,16 @@
-import { getState, getDailyStats, addMeal, checkMeasurementStatus, setDailyTip, updateDayStat, getDailyBurn, addWorkout, deleteMeal, updateMeal, toggleHabit, setDailyHabits, setSelectedDate } from '../state';
+import { getState, getDailyStats, addMeal, checkMeasurementStatus, setDailyTip, updateDayStat, getDailyBurn, addWorkout, deleteMeal, updateMeal, toggleHabit, setDailyHabits, setSelectedDate, getArgentinaDate } from '../state';
 import { analyzeFood, generateDailyTip, generateSmartHabits } from '../services/openai';
 
 export const renderDashboard = () => {
     const state = getState();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getArgentinaDate();
     const selectedDate = state.selectedDate || today;
     const isToday = selectedDate === today;
 
     // SMART HABITS AUTO-GENERATION
     if (state.lastHabitGenerationDate !== today && !window.hasTriggeredHabits) {
         window.hasTriggeredHabits = true;
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const yesterday = new Date(new Date(today + 'T12:00:00').getTime() - 86400000).toISOString().split('T')[0];
         const yLog = state.dailyLog?.filter(m => m.date === yesterday) || [];
         const yCals = yLog.reduce((s, m) => s + (m.calories || 0), 0);
         const lastW = state.measurements?.slice(-1)[0]?.weight || 'N/A';
@@ -186,7 +186,7 @@ export const renderDashboard = () => {
                         <div class="md:col-span-12 lg:col-span-5 grid grid-cols-2 gap-6 stagger-3">
                             <!-- Macro Cards -->
                             <div class="glass-card p-6 flex flex-col justify-between hover:border-emerald-500/30 transition-all border-l-4 border-l-emerald-500/20">
-                                <span class="material-symbols-outlined text-emerald-500 mb-4 opacity-50">catching_pokemon</span>
+                                <span class="material-symbols-outlined text-emerald-500 mb-4 opacity-50">egg_alt</span>
                                 <h4 class="text-4xl font-display font-black">${Math.round(stats.protein)}g</h4>
                                 <p class="text-[10px] font-black uppercase tracking-widest text-text-dim">Protein</p>
                             </div>
@@ -321,7 +321,7 @@ export const renderDashboard = () => {
 };
 
 const renderMealsList = (state, selectedDate) => {
-    const activeDate = selectedDate || state.selectedDate || new Date().toISOString().split('T')[0];
+    const activeDate = selectedDate || state.selectedDate || getArgentinaDate();
     const meals = state.dailyLog.filter(m => m.date === activeDate);
     if (!meals.length) return `<p class="text-text-dim text-xs font-bold italic py-10 text-center uppercase tracking-widest opacity-30">No biometric data recorded for this cycle</p>`;
 
@@ -341,9 +341,14 @@ const renderMealsList = (state, selectedDate) => {
                     <p class="text-[10px] font-mono text-text-dim mt-1">${m.calories} KCAL <span class="mx-2 opacity-20">|</span> P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g F:${Math.round(m.macros?.fat || 0)}g</p>
                  </div>
             </div>
-            <button class="delete-meal-btn text-text-dim/30 hover:text-red-500 transition-colors p-2" data-id="${m.id}">
-                <span class="material-symbols-outlined text-lg">delete</span>
-            </button>
+            <div class="flex items-center gap-2">
+                <button class="edit-meal-btn text-text-dim/30 hover:text-primary transition-colors p-2" data-id="${m.id}">
+                    <span class="material-symbols-outlined text-lg">edit</span>
+                </button>
+                <button class="delete-meal-btn text-text-dim/30 hover:text-red-500 transition-colors p-2" data-id="${m.id}">
+                    <span class="material-symbols-outlined text-lg">delete</span>
+                </button>
+            </div>
         </div>
     `).join('');
 };
@@ -361,7 +366,7 @@ export const attachDashboardEvents = () => {
         if (loader) loader.classList.remove('hidden');
 
         // Visual Skeleton Feedback
-        btn.innerHTML = `<span class="material-symbols-outlined animate-spin">refresh</span>`;
+        btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-white">refresh</span>`;
         btn.disabled = true;
 
         try {
@@ -377,7 +382,7 @@ export const attachDashboardEvents = () => {
                 const meal = result.meals[0];
                 // If AI returns today but we are viewing another date, default to the viewed date
                 const state = getState();
-                const today = new Date().toISOString().split('T')[0];
+                const today = getArgentinaDate();
                 if (meal.date === today && state.selectedDate !== today) {
                     meal.date = state.selectedDate;
                 }
@@ -394,21 +399,21 @@ export const attachDashboardEvents = () => {
         }
     };
 
-    const showMealConfirmation = (mealData) => {
-        const total = mealData.macros.protein + mealData.macros.carbs + mealData.macros.fat;
-        const pPct = ((mealData.macros.protein / total) * 100) || 0;
-        const cPct = ((mealData.macros.carbs / total) * 100) || 0;
+    const showMealConfirmation = (mealData, isEdit = false) => {
+        const total = (mealData.macros?.protein || 0) + (mealData.macros?.carbs || 0) + (mealData.macros?.fat || 0);
+        const pPct = (((mealData.macros?.protein || 0) / total) * 100) || 0;
+        const cPct = (((mealData.macros?.carbs || 0) / total) * 100) || 0;
 
         const categories = ["Desayuno", "Media Mañana", "Almuerzo", "Merienda", "Media Tarde", "Cena"];
-        const today = new Date().toISOString().split('T')[0];
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-        const beforeYesterday = new Date(Date.now() - 172800000).toISOString().split('T')[0];
+        const today = getArgentinaDate();
+        const yesterday = new Date(new Date(today + 'T12:00:00').getTime() - 86400000).toISOString().split('T')[0];
+        const beforeYesterday = new Date(new Date(today + 'T12:00:00').getTime() - 172800000).toISOString().split('T')[0];
 
         modal.innerHTML = `
             <div class="glass-card p-8 w-full max-w-lg relative overflow-hidden animate-scale-up">
                  <div class="text-center mb-6">
-                    <p class="text-primary text-[10px] font-black uppercase tracking-[0.4em] mb-2">Registro Biométrico</p>
-                    <h3 class="text-white text-4xl font-display font-black italic tracking-tighter uppercase mb-2">${mealData.name}</h3>
+                    <p class="text-primary text-[10px] font-black uppercase tracking-[0.4em] mb-2">${isEdit ? 'Editar Protocolo' : 'Registro Biométrico'}</p>
+                    <input id="edit-meal-name" value="${mealData.name}" class="w-full bg-transparent text-white text-4xl font-display font-black italic tracking-tighter uppercase mb-2 text-center border-none outline-none focus:text-primary transition-colors" />
                     <p class="text-primary font-mono text-xl font-black">${mealData.calories} KCAL</p>
                  </div>
 
@@ -421,9 +426,9 @@ export const attachDashboardEvents = () => {
                             </div>
                         </div>
                         <div class="grid grid-cols-3 gap-2 mt-4 w-full text-center">
-                            <div><p class="text-[7px] font-black uppercase text-text-dim">P</p><p class="text-xs font-mono text-emerald-400">${Math.round(mealData.macros.protein)}g</p></div>
-                            <div><p class="text-[7px] font-black uppercase text-text-dim">C</p><p class="text-xs font-mono text-blue-400">${Math.round(mealData.macros.carbs)}g</p></div>
-                            <div><p class="text-[7px] font-black uppercase text-text-dim">F</p><p class="text-xs font-mono text-orange-400">${Math.round(mealData.macros.fat)}g</p></div>
+                            <div><p class="text-[7px] font-black uppercase text-text-dim">P</p><p class="text-xs font-mono text-emerald-400">${Math.round(mealData.macros?.protein || 0)}g</p></div>
+                            <div><p class="text-[7px] font-black uppercase text-text-dim">C</p><p class="text-xs font-mono text-blue-400">${Math.round(mealData.macros?.carbs || 0)}g</p></div>
+                            <div><p class="text-[7px] font-black uppercase text-text-dim">F</p><p class="text-xs font-mono text-orange-400">${Math.round(mealData.macros?.fat || 0)}g</p></div>
                         </div>
                     </div>
 
@@ -433,7 +438,7 @@ export const attachDashboardEvents = () => {
                             <p class="text-[8px] font-black text-text-dim uppercase tracking-widest mb-2 italic">Selector de Momento</p>
                             <div class="grid grid-cols-2 gap-2">
                                 ${categories.map(cat => `
-                                    <button class="cat-select-btn px-3 py-2 rounded-xl border border-white/5 bg-white/5 text-[9px] font-black uppercase tracking-tight transition-all ${mealData.category === cat ? 'border-primary text-primary bg-primary/10' : 'text-text-dim hover:bg-white/10'}" data-cat="${cat}">
+                                    <button type="button" class="cat-select-btn px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-tight transition-all ${mealData.category === cat ? 'bg-primary text-black' : 'text-text-dim hover:bg-white/10'}" data-cat="${cat}">
                                         ${cat}
                                     </button>
                                 `).join('')}
@@ -461,22 +466,34 @@ export const attachDashboardEvents = () => {
         let selectedCategory = mealData.category || "Desayuno";
 
         modal.querySelectorAll('.cat-select-btn').forEach(b => {
-            b.onclick = (e) => {
-                modal.querySelectorAll('.cat-select-btn').forEach(btn => btn.classList.remove('border-primary', 'text-primary', 'bg-primary/10'));
-                e.currentTarget.classList.add('border-primary', 'text-primary', 'bg-primary/10');
-                selectedCategory = e.currentTarget.dataset.cat;
-            };
+            b.addEventListener('click', (e) => {
+                e.preventDefault();
+                modal.querySelectorAll('.cat-select-btn').forEach(btn => {
+                    btn.classList.remove('bg-primary', 'text-black');
+                    btn.classList.add('text-text-dim');
+                });
+                b.classList.remove('text-text-dim');
+                b.classList.add('bg-primary', 'text-black');
+                selectedCategory = b.dataset.cat;
+            });
         });
 
         modal.querySelector('#cancel-confirm').onclick = () => modal.classList.add('hidden');
         modal.querySelector('#save-confirm').onclick = () => {
             const finalMeal = {
                 ...mealData,
+                name: modal.querySelector('#edit-meal-name').value,
                 time: selectedCategory,
                 category: selectedCategory,
                 date: modal.querySelector('#meal-date-select').value
             };
-            addMeal(finalMeal);
+
+            if (isEdit) {
+                updateMeal(mealData.id, finalMeal);
+            } else {
+                addMeal(finalMeal);
+            }
+
             modal.classList.add('hidden');
             window.router.navigate('dashboard');
         };
@@ -579,7 +596,7 @@ export const attachDashboardEvents = () => {
     });
 
     document.getElementById('add-water-btn')?.addEventListener('click', () => {
-        const date = state.selectedDate || new Date().toISOString().split('T')[0];
+        const date = state.selectedDate || getArgentinaDate();
         updateDayStat(date, 'water', (state.days?.[date]?.water || 0) + 250);
         window.router.navigate('dashboard');
     });
@@ -611,6 +628,16 @@ export const attachDashboardEvents = () => {
                 deleteMeal(parseInt(e.currentTarget.dataset.id));
                 window.router.navigate('dashboard');
             });
+        });
+    });
+
+    document.querySelectorAll('.edit-meal-btn').forEach(b => {
+        b.addEventListener('click', (e) => {
+            const id = parseInt(e.currentTarget.dataset.id);
+            const meal = state.dailyLog.find(m => m.id === id);
+            if (meal) {
+                showMealConfirmation(meal, true);
+            }
         });
     });
 };
