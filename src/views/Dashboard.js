@@ -613,16 +613,22 @@ export const attachDashboardEvents = () => {
     });
 
     document.getElementById('prev-day-btn')?.addEventListener('click', () => {
-        const d = new Date(state.selectedDate + 'T12:00:00');
+        const d = new Date((state.selectedDate || getArgentinaDate()) + 'T12:00:00');
         d.setDate(d.getDate() - 1);
-        setSelectedDate(d.toISOString().split('T')[0]);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        setSelectedDate(`${y}-${m}-${day}`);
         window.router.navigate('dashboard');
     });
 
     document.getElementById('next-day-btn')?.addEventListener('click', () => {
-        const d = new Date(state.selectedDate + 'T12:00:00');
+        const d = new Date((state.selectedDate || getArgentinaDate()) + 'T12:00:00');
         d.setDate(d.getDate() + 1);
-        setSelectedDate(d.toISOString().split('T')[0]);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        setSelectedDate(`${y}-${m}-${day}`);
         window.router.navigate('dashboard');
     });
 

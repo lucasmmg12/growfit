@@ -110,21 +110,21 @@ export const initializeState = async () => {
         if (cloudData) {
             const localRaw = localStorage.getItem(STORAGE_KEY);
             const local = localRaw ? JSON.parse(localRaw) : {};
-            const cloudState = cloudData.profile || {};
+            const cloudProfile = cloudData.profile || {};
 
             const newState = {
                 ...defaultState,
-                ...cloudState,
                 ...local,
-                selectedDate: getArgentinaDate(),
-                dailyLog: cloudData.dailyLog || [],
-                measurements: cloudData.measurements || [],
-                workouts: cloudData.workouts || []
+                profile: {
+                    ...defaultState.profile,
+                    ...(cloudProfile.profile || cloudProfile),
+                    ...(local.profile || {})
+                },
+                // Cloud DB is the authoritative source of truth
+                dailyLog: (cloudData.dailyLog && cloudData.dailyLog.length > 0) ? cloudData.dailyLog : (local.dailyLog || []),
+                measurements: (cloudData.measurements && cloudData.measurements.length > 0) ? cloudData.measurements : (local.measurements || []),
+                workouts: (cloudData.workouts && cloudData.workouts.length > 0) ? cloudData.workouts : (local.workouts || [])
             };
-
-            if (cloudData.dailyLog?.length > 0) newState.dailyLog = cloudData.dailyLog;
-            if (cloudData.measurements?.length > 0) newState.measurements = cloudData.measurements;
-            if (cloudData.workouts?.length > 0) newState.workouts = cloudData.workouts;
 
             localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
             return newState;
