@@ -1,5 +1,9 @@
+const getOpenAIKey = () => {
+  return import.meta.env.VITE_OPENAI_API_KEY || '';
+};
+
 export const analyzeFood = async (input, type = 'text', context = '') => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = getOpenAIKey();
   if (!apiKey) {
     throw new Error("Missing OpenAI API Key");
   }
@@ -121,7 +125,7 @@ export const analyzeFood = async (input, type = 'text', context = '') => {
 };
 
 export const generateProfileAnalysis = async (profile) => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = getOpenAIKey();
   if (!apiKey) throw new Error("Missing OpenAI API Key");
 
   const systemPrompt = `
@@ -169,7 +173,7 @@ export const generateProfileAnalysis = async (profile) => {
 };
 
 export const generateDailyTip = async (profile, stats, measurements) => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = getOpenAIKey();
   if (!apiKey) throw new Error("Missing OpenAI API Key");
 
   // Context Building
@@ -223,7 +227,7 @@ export const generateDailyTip = async (profile, stats, measurements) => {
 };
 
 export const chatWithAI = async (message, state) => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = getOpenAIKey();
   if (!apiKey) throw new Error("Missing OpenAI API Key");
 
   const getArgDate = () => {
@@ -357,7 +361,7 @@ export const chatWithAI = async (message, state) => {
 };
 
 export const generateMealPlan = async (profile, preferences = '') => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = getOpenAIKey();
   if (!apiKey) throw new Error("Missing OpenAI API Key");
 
   const p = profile;
@@ -419,7 +423,7 @@ export const generateMealPlan = async (profile, preferences = '') => {
 };
 
 export const generateSmartHabits = async (profile, contextData) => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = getOpenAIKey();
   if (!apiKey) throw new Error("Missing OpenAI API Key");
 
   const systemPrompt = `
@@ -479,7 +483,7 @@ export const generateSmartHabits = async (profile, contextData) => {
 };
 
 export const generateWeeklyReport = async (state) => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = getOpenAIKey();
   if (!apiKey) throw new Error("Missing OpenAI API Key");
 
   // Gather last 7 days data relative to the selected date or today
@@ -558,7 +562,7 @@ export const generateWeeklyReport = async (state) => {
 };
 
 export const generateShoppingList = async (profile, history) => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = getOpenAIKey();
   if (!apiKey) throw new Error("Missing OpenAI API Key");
 
   const systemPrompt = `
