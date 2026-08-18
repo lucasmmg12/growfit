@@ -137,14 +137,23 @@ export const initializeState = async () => {
 
 // --- FASTING ENGINE ---
 
-export const startFasting = (protocol = '16:8', targetHours = 16) => {
+export const startFasting = (protocol = '16:8', targetHours = 16, customStartTime = null) => {
     const state = getState();
     state.fasting = {
         isActive: true,
-        startTime: new Date().toISOString(),
-        protocol,
-        targetHours
+        startTime: customStartTime || new Date().toISOString(),
+        protocol: protocol || `${targetHours}:${24 - targetHours}`,
+        targetHours: Number(targetHours) || 16
     };
+    saveState(state);
+};
+
+export const updateActiveFasting = ({ protocol, targetHours, startTime }) => {
+    const state = getState();
+    if (!state.fasting) state.fasting = {};
+    if (protocol) state.fasting.protocol = protocol;
+    if (targetHours) state.fasting.targetHours = Number(targetHours);
+    if (startTime) state.fasting.startTime = startTime;
     saveState(state);
 };
 
@@ -167,10 +176,16 @@ export const getFastingProgress = () => {
             isActive: false,
             elapsedHours: 0,
             elapsedMinutes: 0,
+            elapsedFormatted: '0h 0m',
+            remainingFormatted: `${f.targetHours || 16}h 0m`,
             percent: 0,
             stage: 'Inactivo',
+            stageDesc: 'Configura tus horas y horario de inicio',
             protocol: f.protocol || '16:8',
-            targetHours: f.targetHours || 16
+            targetHours: f.targetHours || 16,
+            startTimeFormatted: '--:--',
+            endTimeFormatted: '--:--',
+            isCompleted: false
         };
     }
 
@@ -181,28 +196,45 @@ export const getFastingProgress = () => {
     const elapsedHours = Math.floor(elapsedMinutesTotal / 60);
     const elapsedMinutes = elapsedMinutesTotal % 60;
     const targetMinutes = (f.targetHours || 16) * 60;
+    const remainingMinutesTotal = Math.max(0, targetMinutes - elapsedMinutesTotal);
+    const remainingHours = Math.floor(remainingMinutesTotal / 60);
+    const remainingMinutes = remainingMinutesTotal % 60;
     const percent = Math.min(100, Math.round((elapsedMinutesTotal / targetMinutes) * 100));
+
+    const targetEndTime = new Date(start.getTime() + (targetMinutes * 60 * 1000));
 
     // Biological Fasting Stage
     let stage = 'Digestión & Nivelación';
+    let stageDesc = 'Los niveles de glucosa en sangre se estabilizan.';
     if (elapsedHours >= 16) {
         stage = 'Autofagia y Renovación';
+        stageDesc = 'Reciclaje celular profundo y máxima sensibilidad insulínica.';
     } else if (elapsedHours >= 12) {
         stage = 'Cetosis y Quema de Grasa';
+        stageDesc = 'El cuerpo utiliza ácidos grasos como combustible principal.';
     } else if (elapsedHours >= 8) {
         stage = 'Caída de Insulina';
+        stageDesc = 'Se agota el glucógeno hepático y comienza la lipólisis.';
     }
+
+    const formatTime = (d) => d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    const formatDate = (d) => d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
 
     return {
         isActive: true,
         startTime: f.startTime,
+        startTimeFormatted: `${formatDate(start)}, ${formatTime(start)}`,
+        endTimeFormatted: `${formatDate(targetEndTime)}, ${formatTime(targetEndTime)}`,
         elapsedHours,
         elapsedMinutes,
         elapsedFormatted: `${elapsedHours}h ${elapsedMinutes}m`,
+        remainingFormatted: `${remainingHours}h ${remainingMinutes}m`,
         percent,
         stage,
-        protocol: f.protocol,
-        targetHours: f.targetHours
+        stageDesc,
+        protocol: f.protocol || `${f.targetHours}:${Math.max(0, 24 - f.targetHours)}`,
+        targetHours: f.targetHours || 16,
+        isCompleted: elapsedMinutesTotal >= targetMinutes
     };
 };
 

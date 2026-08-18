@@ -13,6 +13,7 @@ import {
     getArgentinaDate,
     startFasting,
     stopFasting,
+    updateActiveFasting,
     getFastingProgress 
 } from '../state';
 import { analyzeFood, generateDailyTip, generateSmartHabits } from '../services/openai';
@@ -176,31 +177,67 @@ export const renderDashboard = () => {
                         </div>
 
                         <!-- Intermittent Fasting Card (5 Cols) -->
-                        <div class="md:col-span-5 white-card p-6 flex flex-col justify-between bg-gradient-to-br from-white to-emerald-50/40 border-emerald-200">
+                        <div class="md:col-span-5 white-card p-6 flex flex-col justify-between bg-gradient-to-br from-white via-emerald-50/30 to-white border-emerald-200 shadow-sm">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <div class="flex items-center gap-1.5 mb-1">
                                         <span class="material-symbols-outlined text-primary text-base">timer</span>
                                         <span class="text-[11px] font-bold uppercase tracking-wider text-text-emerald">Ayuno Intermitente</span>
                                     </div>
-                                    <h4 class="text-xl font-display font-black text-text-primary">Protocolo ${fasting.protocol}</h4>
+                                    <h4 class="text-xl font-display font-black text-text-primary">
+                                        ${fasting.targetHours} Horas (${fasting.protocol})
+                                    </h4>
                                 </div>
-                                <span class="badge-emerald">${fasting.isActive ? 'En Curso' : 'En Pausa'}</span>
+                                <span class="badge-emerald ${fasting.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600 border-slate-200'}">
+                                    ${fasting.isActive ? (fasting.isCompleted ? '¡Meta Cumplida!' : 'En Curso') : 'En Pausa'}
+                                </span>
                             </div>
 
                             <div class="my-4 flex items-center justify-between gap-4">
                                 <div>
-                                    <p class="text-3xl font-display font-black text-text-emerald">${fasting.isActive ? fasting.elapsedFormatted : '0h 0m'}</p>
-                                    <p class="text-xs text-text-muted font-medium">${fasting.isActive ? fasting.stage : 'Meta: ' + fasting.targetHours + ' hrs'}</p>
+                                    <div class="flex items-baseline gap-2">
+                                        <p class="text-3xl font-display font-black text-text-emerald">
+                                            ${fasting.isActive ? fasting.elapsedFormatted : `${fasting.targetHours}h 0m`}
+                                        </p>
+                                        ${fasting.isActive ? `
+                                            <span class="text-xs text-text-muted font-bold font-mono">(${fasting.remainingFormatted} rest.)</span>
+                                        ` : ''}
+                                    </div>
+                                    <p class="text-xs font-bold text-text-emerald mt-0.5">${fasting.stage}</p>
+                                    <p class="text-[11px] text-text-muted mt-0.5 leading-tight">${fasting.stageDesc}</p>
+                                    
+                                    ${fasting.isActive ? `
+                                        <div class="flex items-center gap-3 mt-2 text-[10px] font-mono text-slate-500">
+                                            <span><strong>Inicio:</strong> ${fasting.startTimeFormatted}</span>
+                                            <span><strong>Fin:</strong> ${fasting.endTimeFormatted}</span>
+                                        </div>
+                                    ` : ''}
                                 </div>
-                                <div class="size-16 rounded-full border-4 border-slate-100 relative flex items-center justify-center ${fasting.isActive ? 'border-primary' : ''}">
-                                    <span class="material-symbols-outlined text-2xl ${fasting.isActive ? 'text-primary animate-pulse' : 'text-slate-300'}">local_fire_department</span>
+
+                                <div class="size-16 rounded-full border-4 relative flex items-center justify-center ${
+                                    fasting.isActive ? (fasting.isCompleted ? 'border-emerald-500 bg-emerald-50 shadow-emerald-sm' : 'border-primary bg-emerald-50/50') : 'border-slate-200'
+                                }">
+                                    <span class="material-symbols-outlined text-2xl ${fasting.isActive ? 'text-primary animate-pulse' : 'text-slate-300'}">
+                                        ${fasting.isCompleted ? 'check_circle' : 'local_fire_department'}
+                                    </span>
                                 </div>
                             </div>
 
-                            <button id="toggle-fasting-btn" class="w-full ${fasting.isActive ? 'btn-emerald-soft' : 'btn-emerald'} py-2.5 text-xs font-bold">
-                                ${fasting.isActive ? 'Finalizar Ayuno' : 'Iniciar Ayuno (' + fasting.protocol + ')'}
-                            </button>
+                            <!-- Fasting Action Buttons -->
+                            <div class="flex gap-2 pt-2 border-t border-slate-100">
+                                ${fasting.isActive ? `
+                                    <button id="open-fasting-modal-btn" class="flex-1 btn-ghost-light py-2.5 text-xs font-bold" title="Editar hora de inicio o meta de horas">
+                                        <span class="material-symbols-outlined text-sm">edit</span> Editar
+                                    </button>
+                                    <button id="stop-fasting-btn" class="flex-1 btn-emerald-soft py-2.5 text-xs font-bold">
+                                        <span class="material-symbols-outlined text-sm">stop_circle</span> Finalizar
+                                    </button>
+                                ` : `
+                                    <button id="open-fasting-modal-btn" class="w-full btn-emerald py-2.5 text-xs font-bold shadow-emerald-sm">
+                                        <span class="material-symbols-outlined text-sm">play_circle</span> Configurar e Iniciar Ayuno
+                                    </button>
+                                `}
+                            </div>
                         </div>
                     </div>
 
@@ -301,6 +338,7 @@ export const renderDashboard = () => {
         <!-- Global Modals Container -->
         <div id="meal-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"></div>
         <div id="barcode-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"></div>
+        <div id="fasting-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"></div>
     </div>
     `;
 };
@@ -356,9 +394,9 @@ export const attachDashboardEvents = () => {
     const mobileAddBtn = document.getElementById('mobile-central-add-btn');
     const fileInput = document.getElementById('quick-log-file');
     const barcodeBtn = document.getElementById('open-barcode-modal-btn');
-    const fastingBtn = document.getElementById('toggle-fasting-btn');
     const modal = document.getElementById('meal-modal');
     const barcodeModal = document.getElementById('barcode-modal');
+    const fastingModal = document.getElementById('fasting-modal');
 
     // Analysis Logic (OpenAI)
     const handleAnalysis = async (text, file) => {
@@ -392,18 +430,204 @@ export const attachDashboardEvents = () => {
         }
     };
 
-    // Fasting Toggle
-    fastingBtn?.addEventListener('click', () => {
-        const f = getFastingProgress();
-        if (f.isActive) {
-            stopFasting();
-            window.showAlert?.('¡Ayuno Completado!', `Completaste tu ciclo de ayuno con éxito.`, 'success');
-        } else {
-            startFasting('16:8', 16);
-            window.showAlert?.('Ayuno Iniciado', 'Cronómetro de ayuno 16:8 activo.', 'success');
-        }
-        window.router.navigate('dashboard');
+    // Fasting Modal Open & Setup
+    document.getElementById('open-fasting-modal-btn')?.addEventListener('click', () => {
+        showFastingSetupModal();
     });
+
+    document.getElementById('stop-fasting-btn')?.addEventListener('click', () => {
+        window.showConfirm?.('¿Finalizar Ayuno?', 'Se registrará tu ayuno y ganarás +40 XP de progreso.', () => {
+            stopFasting();
+            window.showAlert?.('¡Ayuno Completado!', 'Ciclo de ayuno finalizado exitosamente.', 'success');
+            window.router.navigate('dashboard');
+        });
+    });
+
+    const showFastingSetupModal = () => {
+        const f = getFastingProgress();
+        const currentHours = f.targetHours || 16;
+        
+        // Format initial datetime for datetime-local input
+        const now = new Date();
+        const initialDate = f.isActive && f.startTime ? new Date(f.startTime) : now;
+        
+        // Local ISO string for datetime-local: YYYY-MM-DDTHH:mm
+        const toLocalDatetimeValue = (dateObj) => {
+            const pad = (n) => String(n).padStart(2, '0');
+            const y = dateObj.getFullYear();
+            const m = pad(dateObj.getMonth() + 1);
+            const d = pad(dateObj.getDate());
+            const h = pad(dateObj.getHours());
+            const min = pad(dateObj.getMinutes());
+            return `${y}-${m}-${d}T${h}:${min}`;
+        };
+
+        const presets = [
+            { hours: 12, label: '12h', desc: 'Circadiano' },
+            { hours: 14, label: '14h', desc: 'Suave' },
+            { hours: 16, label: '16h', desc: '16:8 Clásico' },
+            { hours: 18, label: '18h', desc: '18:6 Avanzado' },
+            { hours: 20, label: '20h', desc: '20:4 Warrior' },
+            { hours: 24, label: '24h', desc: 'OMAD' }
+        ];
+
+        fastingModal.innerHTML = `
+            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-emerald-lg">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-soft">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-xl">timer</span>
+                        <h3 class="text-lg font-display font-black text-text-emerald uppercase">
+                            ${f.isActive ? 'Editar Ayuno Activo' : 'Configurar Ayuno Intermitente'}
+                        </h3>
+                    </div>
+                    <button id="close-fasting-modal-btn" class="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                        <span class="material-symbols-outlined text-base">close</span>
+                    </button>
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    
+                    <!-- Fasting Duration Presets -->
+                    <div>
+                        <label class="text-xs font-bold text-text-muted uppercase mb-1.5 block">1. Selecciona las Horas de Ayuno</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            ${presets.map(p => `
+                                <button type="button" class="fasting-preset-btn p-2.5 rounded-xl border text-center transition-all ${
+                                    currentHours === p.hours ? 'bg-primary-light border-primary text-text-emerald font-bold shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-emerald-50'
+                                }" data-hours="${p.hours}">
+                                    <span class="block text-sm font-black">${p.label}</span>
+                                    <span class="block text-[9px] text-text-muted">${p.desc}</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Custom Hours Input -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-bold text-text-muted uppercase">Horas Exactas</label>
+                            <span id="fasting-hours-display" class="text-xs font-mono font-bold text-text-emerald">${currentHours} horas</span>
+                        </div>
+                        <input id="fasting-hours-input" type="range" min="6" max="48" step="1" value="${currentHours}" class="w-full accent-primary cursor-pointer">
+                    </div>
+
+                    <!-- Start Date and Time Picker -->
+                    <div>
+                        <label class="text-xs font-bold text-text-muted uppercase mb-1.5 block">2. ¿A qué hora comenzaste / comienzas?</label>
+                        <input id="fasting-start-input" type="datetime-local" value="${toLocalDatetimeValue(initialDate)}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-primary">
+                        
+                        <!-- Quick Time Shortcuts -->
+                        <div class="flex flex-wrap gap-1.5 mt-2">
+                            <button type="button" id="time-now" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 text-[10px] font-bold text-text-emerald">Ahora</button>
+                            <button type="button" id="time-minus-1h" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 text-[10px] font-bold text-text-muted">Hace 1h</button>
+                            <button type="button" id="time-minus-2h" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 text-[10px] font-bold text-text-muted">Hace 2h</button>
+                            <button type="button" id="time-yesterday-20" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 text-[10px] font-bold text-text-muted">Ayer 20:00</button>
+                            <button type="button" id="time-yesterday-22" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 text-[10px] font-bold text-text-muted">Ayer 22:00</button>
+                        </div>
+                    </div>
+
+                    <!-- Target End Calculation Preview -->
+                    <div class="p-3.5 bg-gradient-to-r from-emerald-50 to-white rounded-2xl border border-emerald-200">
+                        <span class="text-[10px] font-bold uppercase text-emerald-800">Objetivo Estimado</span>
+                        <p id="fasting-end-preview" class="text-xs font-bold text-text-primary mt-0.5">Calculando fin de ayuno...</p>
+                    </div>
+
+                    <!-- Submit Buttons -->
+                    <div class="flex gap-2 mt-2">
+                        <button id="cancel-fasting-btn" class="flex-1 btn-ghost-light py-3 text-xs font-bold">Cancelar</button>
+                        <button id="save-fasting-btn" class="flex-1 btn-emerald py-3 text-xs font-bold shadow-emerald-sm">
+                            ${f.isActive ? 'Actualizar Horario' : 'Comenzar Ayuno'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        fastingModal.classList.remove('hidden');
+
+        const hoursInput = document.getElementById('fasting-hours-input');
+        const hoursDisplay = document.getElementById('fasting-hours-display');
+        const startInput = document.getElementById('fasting-start-input');
+        const endPreview = document.getElementById('fasting-end-preview');
+
+        const updatePreview = () => {
+            const h = Number(hoursInput.value) || 16;
+            hoursDisplay.textContent = `${h} horas`;
+            const startDate = new Date(startInput.value);
+            if (!isNaN(startDate.getTime())) {
+                const endDate = new Date(startDate.getTime() + (h * 60 * 60 * 1000));
+                const formatOpts = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
+                endPreview.innerHTML = `Finalizará el <strong>${endDate.toLocaleDateString('es-ES', formatOpts)}</strong> (${h} hrs de ayuno).`;
+            }
+        };
+
+        updatePreview();
+
+        // Preset button clicks
+        document.querySelectorAll('.fasting-preset-btn').forEach(b => {
+            b.onclick = (e) => {
+                const h = parseInt(e.currentTarget.dataset.hours);
+                hoursInput.value = h;
+                document.querySelectorAll('.fasting-preset-btn').forEach(btn => {
+                    btn.className = 'fasting-preset-btn p-2.5 rounded-xl border text-center transition-all bg-slate-50 border-slate-200 text-slate-600 hover:bg-emerald-50';
+                });
+                e.currentTarget.className = 'fasting-preset-btn p-2.5 rounded-xl border text-center transition-all bg-primary-light border-primary text-text-emerald font-bold shadow-xs';
+                updatePreview();
+            };
+        });
+
+        hoursInput.oninput = updatePreview;
+        startInput.onchange = updatePreview;
+
+        // Shortcut buttons
+        document.getElementById('time-now').onclick = () => {
+            startInput.value = toLocalDatetimeValue(new Date());
+            updatePreview();
+        };
+        document.getElementById('time-minus-1h').onclick = () => {
+            startInput.value = toLocalDatetimeValue(new Date(Date.now() - 3600000));
+            updatePreview();
+        };
+        document.getElementById('time-minus-2h').onclick = () => {
+            startInput.value = toLocalDatetimeValue(new Date(Date.now() - 7200000));
+            updatePreview();
+        };
+        document.getElementById('time-yesterday-20').onclick = () => {
+            const y = new Date();
+            y.setDate(y.getDate() - 1);
+            y.setHours(20, 0, 0, 0);
+            startInput.value = toLocalDatetimeValue(y);
+            updatePreview();
+        };
+        document.getElementById('time-yesterday-22').onclick = () => {
+            const y = new Date();
+            y.setDate(y.getDate() - 1);
+            y.setHours(22, 0, 0, 0);
+            startInput.value = toLocalDatetimeValue(y);
+            updatePreview();
+        };
+
+        // Close & Save
+        document.getElementById('close-fasting-modal-btn').onclick = () => fastingModal.classList.add('hidden');
+        document.getElementById('cancel-fasting-btn').onclick = () => fastingModal.classList.add('hidden');
+
+        document.getElementById('save-fasting-btn').onclick = () => {
+            const targetHours = Number(hoursInput.value) || 16;
+            const startDate = new Date(startInput.value);
+            const startISO = !isNaN(startDate.getTime()) ? startDate.toISOString() : new Date().toISOString();
+            const protocol = `${targetHours}:${Math.max(0, 24 - targetHours)}`;
+
+            if (f.isActive) {
+                updateActiveFasting({ protocol, targetHours, startTime: startISO });
+                window.showAlert?.('Ayuno Actualizado', `Tu meta es de ${targetHours} horas comenzando el ${startDate.toLocaleDateString('es-ES', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}.`, 'success');
+            } else {
+                startFasting(protocol, targetHours, startISO);
+                window.showAlert?.('¡Ayuno Iniciado!', `Protocolo de ${targetHours} horas activo.`, 'success');
+            }
+
+            fastingModal.classList.add('hidden');
+            window.router.navigate('dashboard');
+        };
+    };
 
     // Barcode Scanner Modal Logic
     barcodeBtn?.addEventListener('click', () => {
