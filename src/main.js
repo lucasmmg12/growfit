@@ -4,14 +4,14 @@ import { renderDashboard, attachDashboardEvents } from './views/Dashboard';
 import { renderTracker, attachTrackerEvents } from './views/Tracker';
 import { renderWorkouts, attachWorkoutsEvents } from './views/Workouts';
 import { renderProfile, attachProfileEvents } from './views/Profile';
-import { renderInsights } from './views/Insights';
+import { renderInsights, attachInsightsEvents } from './views/Insights';
 import { renderMeasurements, attachMeasurementsEvents } from './views/Measurements';
 import { renderChatWidget, attachChatWidgetEvents } from './views/ChatWidget';
 import { renderCalendar, attachCalendarEvents } from './views/CalendarView';
 
 const app = document.querySelector('#app');
 
-// --- CHAT ---
+// --- CHAT WIDGET ---
 const initChat = () => {
   if (!document.getElementById('chat-root')) {
     const chatRoot = document.createElement('div');
@@ -28,7 +28,7 @@ const routes = {
   'tracker': { render: renderTracker, attach: attachTrackerEvents },
   'workouts': { render: renderWorkouts, attach: attachWorkoutsEvents },
   'profile': { render: renderProfile, attach: attachProfileEvents },
-  'insights': { render: renderInsights, attach: null },
+  'insights': { render: renderInsights, attach: attachInsightsEvents },
   'measurements': { render: renderMeasurements, attach: attachMeasurementsEvents },
   'calendar': { render: renderCalendar, attach: attachCalendarEvents }
 };
@@ -50,21 +50,20 @@ window.showAlert = (title, message, type = 'success') => {
   if (!modal || !content) return;
 
   const icon = type === 'success' ? 'check_circle' : type === 'error' ? 'cancel' : 'info';
-  const iconColor = type === 'success' ? 'text-primary' : type === 'error' ? 'text-red-500' : 'text-blue-400';
-  const borderColor = type === 'success' ? 'border-primary/30' : type === 'error' ? 'border-red-500/30' : 'border-blue-500/30';
+  const iconColor = type === 'success' ? 'text-primary' : type === 'error' ? 'text-red-500' : 'text-blue-500';
+  const iconBg = type === 'success' ? 'bg-primary-light border-border-emerald' : type === 'error' ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200';
 
   content.innerHTML = `
-        <div class="bg-[#1A261C] border ${borderColor} p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden">
-            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-primary/10 blur-[50px] rounded-full pointer-events-none"></div>
-            <div class="relative z-10 flex flex-col items-center gap-4">
-                <div class="bg-surface-dark p-4 rounded-full border border-white/5 ${iconColor}">
-                    <span class="material-symbols-outlined text-4xl">${icon}</span>
+        <div class="white-card p-6 shadow-emerald-lg w-full text-center relative overflow-hidden animate-scale-up">
+            <div class="relative z-10 flex flex-col items-center gap-3">
+                <div class="${iconBg} p-3.5 rounded-2xl border ${iconColor} flex items-center justify-center">
+                    <span class="material-symbols-outlined text-3xl">${icon}</span>
                 </div>
                 <div>
-                    <h3 class="text-2xl font-black text-white mb-2">${title}</h3>
-                    <p class="text-text-secondary text-sm leading-relaxed">${message}</p>
+                    <h3 class="text-xl font-display font-black text-text-primary uppercase tracking-tight">${title}</h3>
+                    <p class="text-text-muted text-xs leading-relaxed mt-1">${message}</p>
                 </div>
-                <button onclick="window.hideAlert()" class="mt-2 w-full bg-primary text-[#102212] font-bold py-3.5 rounded-2xl hover:bg-[#0fd620] transition-all shadow-lg shadow-primary/20 transform active:scale-95">
+                <button onclick="window.hideAlert()" class="mt-3 w-full btn-emerald py-3 text-xs font-bold shadow-emerald-sm">
                     Aceptar
                 </button>
             </div>
@@ -79,21 +78,20 @@ window.showConfirm = (title, message, onConfirm, onCancel) => {
   if (!modal || !content) return;
 
   content.innerHTML = `
-        <div class="bg-[#1A261C] border border-red-500/20 p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden">
-            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-red-500/10 blur-[50px] rounded-full pointer-events-none"></div>
-            <div class="relative z-10 flex flex-col items-center gap-4">
-                <div class="bg-surface-dark p-4 rounded-full border border-white/5 text-red-500">
-                    <span class="material-symbols-outlined text-4xl">delete_forever</span>
+        <div class="white-card p-6 shadow-emerald-lg w-full text-center relative overflow-hidden animate-scale-up">
+            <div class="relative z-10 flex flex-col items-center gap-3">
+                <div class="bg-red-50 p-3.5 rounded-2xl border border-red-200 text-red-500 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-3xl">delete_forever</span>
                 </div>
                 <div>
-                    <h3 class="text-2xl font-black text-white mb-2">${title}</h3>
-                    <p class="text-text-secondary text-sm leading-relaxed">${message}</p>
+                    <h3 class="text-xl font-display font-black text-text-primary uppercase tracking-tight">${title}</h3>
+                    <p class="text-text-muted text-xs leading-relaxed mt-1">${message}</p>
                 </div>
-                <div class="flex gap-3 w-full mt-2">
-                    <button id="confirm-cancel-btn" class="flex-1 bg-[#28392a] text-white font-bold py-3.5 rounded-2xl hover:bg-[#3b543d] transition-all transform active:scale-95">
+                <div class="flex gap-2.5 w-full mt-3">
+                    <button id="confirm-cancel-btn" class="flex-1 btn-ghost-light py-3 text-xs font-bold">
                         Cancelar
                     </button>
-                    <button id="confirm-ok-btn" class="flex-1 bg-red-500 text-white font-bold py-3.5 rounded-2xl hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 transform active:scale-95">
+                    <button id="confirm-ok-btn" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-2xl text-xs transition-all shadow-sm active:scale-95">
                         Eliminar
                     </button>
                 </div>
@@ -119,7 +117,7 @@ window.hideAlert = () => {
   if (modal) modal.classList.add('hidden');
 };
 
-// --- APP STARTUP (NO AUTH) ---
+// --- APP STARTUP ---
 const startApp = async () => {
   await initializeState();
   window.router.navigate('dashboard');

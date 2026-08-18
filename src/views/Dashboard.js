@@ -1,5 +1,25 @@
-import { getState, getDailyStats, addMeal, checkMeasurementStatus, setDailyTip, updateDayStat, getDailyBurn, addWorkout, deleteMeal, updateMeal, toggleHabit, setDailyHabits, setSelectedDate, getArgentinaDate } from '../state';
+import { 
+    getState, 
+    getDailyStats, 
+    addMeal, 
+    setDailyTip, 
+    updateDayStat, 
+    getDailyBurn, 
+    deleteMeal, 
+    updateMeal, 
+    toggleHabit, 
+    setDailyHabits, 
+    setSelectedDate, 
+    getArgentinaDate,
+    startFasting,
+    stopFasting,
+    getFastingProgress 
+} from '../state';
 import { analyzeFood, generateDailyTip, generateSmartHabits } from '../services/openai';
+import { getProductByBarcode } from '../services/openfoodfacts';
+import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
+
+let barcodeScannerInstance = null;
 
 export const renderDashboard = () => {
     const state = getState();
@@ -7,345 +27,321 @@ export const renderDashboard = () => {
     const selectedDate = state.selectedDate || today;
     const isToday = selectedDate === today;
 
-    // SMART HABITS AUTO-GENERATION
+    // Daily Stats & Burn
+    const stats = getDailyStats(selectedDate);
+    const dailyBurn = getDailyBurn(selectedDate);
+    const dayStats = state.days?.[selectedDate] || {};
+    const fasting = getFastingProgress();
+
+    // Auto habits generation once a day
     if (state.lastHabitGenerationDate !== today && !window.hasTriggeredHabits) {
         window.hasTriggeredHabits = true;
         const yesterday = new Date(new Date(today + 'T12:00:00').getTime() - 86400000).toISOString().split('T')[0];
-        const yLog = state.dailyLog?.filter(m => m.date === yesterday) || [];
+        const yLog = (state.dailyLog || []).filter(m => m.date === yesterday);
         const yCals = yLog.reduce((s, m) => s + (m.calories || 0), 0);
         const lastW = state.measurements?.slice(-1)[0]?.weight || 'N/A';
 
         generateSmartHabits(state.profile, `Ayer: ${yCals}kcal. Peso: ${lastW}`).then(habits => {
             setDailyHabits(habits);
-        });
+        }).catch(() => {});
     }
-    const dayStats = state.days?.[selectedDate] || {};
-    const stats = getDailyStats(selectedDate);
 
-    // Tip Logic
-    const tipData = state.dailyTip || { date: null, content: null };
-    const displayTip = (tipData.date === selectedDate && tipData.content)
-        ? tipData.content
-        : "Analizando tu progreso para darte el mejor consejo...";
-
-    // Calculate Progress
-    const calProgress = Math.min((stats.calories / state.profile.calorieGoal) * 100, 100);
-    const remainingCals = Math.max(0, state.profile.calorieGoal - stats.calories);
-
-    // Goal values
+    const calGoal = state.profile.calorieGoal || 2000;
     const pGoal = state.profile.proteinGoal || 150;
     const cGoal = state.profile.carbsGoal || 200;
-    const fGoal = state.profile.fatGoal || 70;
+    const fGoal = state.profile.fatGoal || 65;
+
+    const calProgress = Math.min(100, Math.round((stats.calories / calGoal) * 100));
+    const remainingCals = Math.max(0, calGoal - stats.calories);
+
+    const pPct = Math.min(100, Math.round((stats.protein / pGoal) * 100));
+    const cPct = Math.min(100, Math.round((stats.carbs / cGoal) * 100));
+    const fPct = Math.min(100, Math.round((stats.fat / fGoal) * 100));
+
+    const displayTip = (state.dailyTip?.date === selectedDate && state.dailyTip?.content)
+        ? state.dailyTip.content
+        : "Prioriza fuentes de proteína limpia e hidratación constante hoy.";
+
+    const waterAmount = dayStats.water || 0;
+    const waterGoal = 2500;
+    const waterPct = Math.min(100, Math.round((waterAmount / waterGoal) * 100));
 
     return `
-    <div class="flex h-screen w-full bg-black text-white font-body overflow-hidden">
-        <!-- Sidebar (Desktop) -->
-        <aside class="hidden lg:flex w-80 flex-col justify-between border-r border-white/5 bg-black/40 backdrop-blur-3xl p-8 relative z-30">
-            <div class="flex flex-col gap-12">
-                <div class="flex items-center gap-5">
-                    <div class="relative group">
-                        <div class="absolute inset-0 bg-primary/20 blur-xl group-hover:bg-primary/40 transition-all rounded-full"></div>
-                        <img src="/lucas.jpeg" alt="Profile" class="w-16 h-16 rounded-[24px] border border-white/10 object-cover relative z-10 shadow-2xl" fetchpriority="high">
-                    </div>
-                    <div>
-                        <h1 class="text-white font-display text-2xl leading-none mb-1 uppercase italic tracking-tighter">Lucas</h1>
-                        <p class="text-primary text-[10px] font-black uppercase tracking-[0.4em]">Alpha Proto</p>
-                    </div>
-                </div>
-                
-                <nav class="flex flex-col gap-2">
-                    <a class="flex items-center gap-4 px-5 py-4 rounded-2xl bg-primary/10 border border-primary/20 text-primary group transition-all cursor-pointer" onclick="window.router.navigate('dashboard')">
-                        <span class="material-symbols-outlined text-xl group-hover:scale-110 transition-transform">dashboard</span>
-                        <p class="text-[11px] font-black uppercase tracking-widest">Central</p>
-                    </a>
-                    <a class="flex items-center gap-4 px-5 py-4 rounded-2xl hover:bg-white/5 text-text-dim hover:text-white transition-all cursor-pointer group" onclick="window.router.navigate('measurements')">
-                        <span class="material-symbols-outlined text-xl">straighten</span>
-                        <p class="text-[11px] font-black uppercase tracking-widest">Biometry</p>
-                    </a>
-                    <a class="flex items-center gap-4 px-5 py-4 rounded-2xl hover:bg-white/5 text-text-dim hover:text-white transition-all cursor-pointer group" onclick="window.router.navigate('insights')">
-                        <span class="material-symbols-outlined text-xl">insights</span>
-                        <p class="text-[11px] font-black uppercase tracking-widest">Neuralytics</p>
-                    </a>
-                    <a class="flex items-center gap-4 px-5 py-4 rounded-2xl hover:bg-white/5 text-text-dim hover:text-white transition-all cursor-pointer group" onclick="window.router.navigate('workouts')">
-                        <span class="material-symbols-outlined text-xl">fitness_center</span>
-                        <p class="text-[11px] font-black uppercase tracking-widest">Protocol</p>
-                    </a>
-                </nav>
-            </div>
-
-            <div class="glass-card p-6 bg-gradient-to-t from-primary/5 to-transparent">
-                <div class="flex justify-between items-center mb-4">
-                    <p class="text-[10px] font-black uppercase tracking-widest text-text-dim">Level ${state.profile.level || 1}</p>
-                    <p class="text-[10px] font-mono text-primary font-bold">${state.profile.xp || 0} XP</p>
-                </div>
-                <div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                    <div class="h-full bg-primary shadow-[0_0_15px_rgba(0,255,136,0.5)]" style="width: ${Math.min(100, ((state.profile.xp || 0) % 100))}%"></div>
-                </div>
-            </div>
-        </aside>
+    <div class="flex h-screen w-full bg-background-light font-body text-text-primary overflow-hidden fade-in">
+        ${renderSidebar('dashboard')}
 
         <!-- Main Workspace -->
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-black">
-            <div class="scanline absolute inset-0 z-0 opacity-20 pointer-events-none"></div>
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-background-light">
+            ${renderMobileHeader('GrowFit')}
 
-            <!-- Mobile Custom Header -->
-            <header class="lg:hidden flex items-center justify-between p-6 bg-black/60 backdrop-blur-2xl border-b border-white/5 relative z-20">
-                <div class="flex items-center gap-3">
-                    <img src="/lucas.jpeg" class="size-10 rounded-xl border border-white/10">
-                    <h1 class="text-white font-display text-lg tracking-tighter italic uppercase">GrowFit</h1>
-                </div>
-            </header>
+            <!-- Scrollable Content Area -->
+            <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-8">
+                <div class="max-w-5xl mx-auto flex flex-col gap-6">
 
-            <!-- Workspace Scrollable -->
-            <div class="flex-1 overflow-y-auto px-6 md:px-12 py-10 custom-scrollbar relative z-10 pb-32 lg:pb-10">
-                <div class="max-w-7xl mx-auto flex flex-col gap-12">
-                    
-                    <!-- Header Section -->
-                    <section class="flex flex-col lg:flex-row gap-8 lg:items-end justify-between stagger-1">
-                        <div class="flex flex-col gap-2">
-                             <div class="flex items-center gap-3 mb-1">
-                                <span class="size-2 bg-primary rounded-full"></span>
-                                <p class="text-primary text-[10px] font-black uppercase tracking-[0.4em]">System Active</p>
-                             </div>
-                             <h2 class="text-white text-5xl md:text-7xl font-display font-black leading-none tracking-tighter uppercase italic">
-                                ${state.profile.name}<span class="text-text-dim text-3xl md:text-4xl block not-italic font-light">OPERATIVE STATUS</span>
-                             </h2>
-                             <div class="flex items-center gap-6 mt-6">
-                                <div class="flex items-center gap-2 bg-white/5 p-1 rounded-full border border-white/10">
-                                    <button id="prev-day-btn" class="size-10 rounded-full bg-black hover:text-primary transition-all flex items-center justify-center">
-                                        <span class="material-symbols-outlined">chevron_left</span>
-                                    </button>
-                                    <p class="text-xs font-black uppercase tracking-widest px-4 text-white">
-                                        ${new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
-                                    </p>
-                                    <button id="next-day-btn" class="size-10 rounded-full bg-black hover:text-primary transition-all flex items-center justify-center">
-                                        <span class="material-symbols-outlined">chevron_right</span>
-                                    </button>
-                                </div>
-                                <button id="open-calendar-btn" class="size-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all">
-                                    <span class="material-symbols-outlined">calendar_month</span>
+                    <!-- Top Welcome & Date Bar -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-white p-5 rounded-3xl border border-border-soft shadow-xs">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="badge-emerald">Tracker Diario</span>
+                                <span class="text-xs text-text-muted font-bold flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-sm text-amber-500">local_fire_department</span> Racha Activa
+                                </span>
+                            </div>
+                            <h2 class="text-2xl md:text-3xl font-display font-black text-text-emerald uppercase tracking-tight">
+                                ¡Hola, ${state.profile.name || 'Atleta'}!
+                            </h2>
+                        </div>
+
+                        <!-- Date Navigation Buttons -->
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center bg-slate-100 p-1 rounded-2xl border border-border-soft">
+                                <button id="prev-day-btn" class="size-8 rounded-xl bg-white hover:bg-emerald-50 text-text-emerald transition-all flex items-center justify-center shadow-xs">
+                                    <span class="material-symbols-outlined text-base">chevron_left</span>
                                 </button>
-                             </div>
-                        </div>
-
-                        <!-- Neural Input -->
-                        <div class="w-full lg:max-w-lg">
-                            <div class="relative group">
-                                <div class="absolute -inset-1 bg-gradient-to-r from-primary/20 to-transparent rounded-[32px] blur-lg opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
-                                <div class="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-[30px] p-2 flex items-center gap-3">
-                                    <input id="quick-log-input" class="flex-1 bg-transparent border-none text-white placeholder-text-dim/40 px-6 py-4 font-bold outline-none" placeholder="LOG NEURAL DATA..."/>
-                                    <input type="file" id="quick-log-file" accept="image/*" class="hidden">
-                                    <label for="quick-log-file" class="size-12 rounded-2xl flex items-center justify-center text-text-dim hover:text-white hover:bg-white/5 cursor-pointer">
-                                        <span class="material-symbols-outlined">camera_alt</span>
-                                    </label>
-                                    <button id="quick-log-btn" class="bg-primary text-black size-14 rounded-[22px] flex items-center justify-center hover:scale-105 active:scale-95 transition-all glow-primary">
-                                        <span class="material-symbols-outlined font-black">add</span>
-                                    </button>
-                                </div>
+                                <span class="px-3 text-xs font-bold text-text-primary font-mono">
+                                    ${isToday ? 'HOY' : new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }).toUpperCase()}
+                                </span>
+                                <button id="next-day-btn" class="size-8 rounded-xl bg-white hover:bg-emerald-50 text-text-emerald transition-all flex items-center justify-center shadow-xs">
+                                    <span class="material-symbols-outlined text-base">chevron_right</span>
+                                </button>
                             </div>
-                        </div>
-                    </section>
-
-                    <!-- Core Bento Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-                        
-                        <!-- Primary Telemetry (Main KCAL) -->
-                        <div class="md:col-span-12 lg:col-span-7 glass-card p-10 min-h-[460px] flex flex-col justify-between stagger-2">
-                             <div class="relative z-10">
-                                <p class="text-primary text-[10px] font-black uppercase tracking-[0.5em] mb-4 flex items-center gap-3">
-                                    <span class="size-2 bg-primary rounded-full"></span> Energy Capacitor
-                                </p>
-                                <h3 class="text-8xl md:text-[10rem] font-display font-black tracking-tighter leading-none italic mb-4">
-                                    ${Math.round(stats.calories)}
-                                </h3>
-                                <div class="flex items-center gap-6">
-                                    <div class="flex flex-col">
-                                        <p class="text-[10px] font-black text-text-dim uppercase tracking-widest">LIMIT</p>
-                                        <p class="text-2xl font-mono font-bold">${state.profile.calorieGoal}</p>
-                                    </div>
-                                    <div class="w-px h-10 bg-white/10"></div>
-                                    <div class="flex flex-col">
-                                        <p class="text-[10px] font-black text-text-dim uppercase tracking-widest">AVAILABLE</p>
-                                        <p class="text-2xl font-mono font-bold ${remainingCals < 200 ? 'text-red-500' : 'text-primary'}">${remainingCals}</p>
-                                    </div>
-                                </div>
-                             </div>
-
-                             <div class="relative z-10 w-full pt-10">
-                                <div class="flex justify-between items-center mb-4 text-[10px] font-black uppercase tracking-widest">
-                                    <span class="text-text-dim">Extraction Efficiency</span>
-                                    <span class="text-primary">${Math.round(calProgress)}%</span>
-                                </div>
-                                <div class="h-4 w-full bg-white/5 rounded-full p-1 border border-white/10">
-                                    <div class="h-full bg-primary rounded-full transition-all duration-1000 shadow-[0_0_20px_rgba(0,255,136,0.3)]" style="width: ${calProgress}%"></div>
-                                </div>
-                             </div>
-                        </div>
-
-                        <!-- Secondary Metrics Column -->
-                        <div class="md:col-span-12 lg:col-span-5 grid grid-cols-2 gap-6 stagger-3">
-                            <!-- Macro Cards -->
-                            <div class="glass-card p-6 flex flex-col justify-between hover:border-emerald-500/30 transition-all border-l-4 border-l-emerald-500/20">
-                                <span class="material-symbols-outlined text-emerald-500 mb-4 opacity-50">egg_alt</span>
-                                <h4 class="text-4xl font-display font-black">${Math.round(stats.protein)}g</h4>
-                                <p class="text-[10px] font-black uppercase tracking-widest text-text-dim">Protein</p>
-                            </div>
-                            <div class="glass-card p-6 flex flex-col justify-between hover:border-blue-400/30 transition-all border-l-4 border-l-blue-400/20">
-                                <span class="material-symbols-outlined text-blue-400 mb-4 opacity-50">grain</span>
-                                <h4 class="text-4xl font-display font-black">${Math.round(stats.carbs)}g</h4>
-                                <p class="text-[10px] font-black uppercase tracking-widest text-text-dim">Carbs</p>
-                            </div>
-                            <div class="glass-card p-6 flex flex-col justify-between hover:border-orange-500/30 transition-all border-l-4 border-l-orange-500/20">
-                                <span class="material-symbols-outlined text-orange-500 mb-4 opacity-50">oil_barrel</span>
-                                <h4 class="text-4xl font-display font-black">${Math.round(stats.fat)}g</h4>
-                                <p class="text-[10px] font-black uppercase tracking-widest text-text-dim">Fats</p>
-                            </div>
-                            <div class="glass-card p-6 flex flex-col justify-between bg-blue-600/5 group">
-                                <div class="flex justify-between items-start">
-                                    <span class="material-symbols-outlined text-blue-500">water_drop</span>
-                                    <button id="add-water-btn" class="size-8 rounded-lg bg-blue-500 text-black flex items-center justify-center hover:scale-110 transition-all">
-                                        <span class="material-symbols-outlined text-sm font-black">add</span>
-                                    </button>
-                                </div>
-                                <h4 class="text-4xl font-display font-black mt-4">${dayStats.water || 0}ml</h4>
-                                <p class="text-[10px] font-black uppercase tracking-widest text-text-dim">Hydration</p>
-                            </div>
-                        </div>
-
-                        <!-- AI Core & Habits -->
-                        <div class="md:col-span-8 glass-card p-10 bg-gradient-to-br from-black to-[#050505] relative overflow-hidden stagger-4">
-                            <div class="absolute -bottom-10 -right-10 size-40 bg-primary/5 blur-3xl rounded-full"></div>
-                            <div class="relative z-10 flex flex-col md:flex-row gap-8 items-center">
-                                <div class="flex-1 w-full">
-                                    <h3 class="text-xl font-display font-black italic mb-6">NEURAL BIOMETRICS</h3>
-                                    <div class="flex flex-col gap-6">
-                                        ${state.habits.slice(0, 3).map(h => {
-        const isDone = state.habitLog?.[selectedDate]?.includes(h.id);
-        return `
-                                                <div class="flex items-center gap-4">
-                                                    <button class="habit-btn size-10 rounded-xl border flex items-center justify-center transition-all ${isDone ? 'bg-primary border-primary text-black shadow-lg shadow-primary/20' : 'bg-white/5 border-white/10 text-white/40'}" data-id="${h.id}">
-                                                        <span class="material-symbols-outlined text-sm font-black">${isDone ? 'check' : h.icon}</span>
-                                                    </button>
-                                                    <div class="flex-1">
-                                                        <p class="text-[10px] font-black uppercase tracking-widest ${isDone ? 'text-primary' : 'text-text-dim'}">${h.name}</p>
-                                                        <div class="h-1 w-full bg-white/5 rounded-full mt-1.5 overflow-hidden">
-                                                            <div class="h-full bg-primary/40 transition-all ${isDone ? 'w-full' : 'w-0'}"></div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            `;
-    }).join('')}
-                                    </div>
-                                </div>
-                                <div class="w-full md:w-px h-px md:h-32 bg-white/5"></div>
-                                <div class="flex-1">
-                                    <div class="p-5 rounded-3xl bg-primary/5 border border-primary/10">
-                                        <p class="text-primary text-[8px] font-black uppercase tracking-[0.4em] mb-3">AI Intelligence</p>
-                                        <p class="text-xs font-medium leading-relaxed italic text-white/80">
-                                            "${displayTip}"
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Action Dock -->
-                        <div class="md:col-span-4 flex flex-col gap-6 stagger-5">
-                            <button id="btn-shopping-list" class="flex-1 glass-card p-6 flex items-center justify-between hover:bg-white/5 transition-all group">
-                                <div class="flex items-center gap-4">
-                                    <div class="size-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-all">
-                                        <span class="material-symbols-outlined">shopping_cart</span>
-                                    </div>
-                                    <p class="text-[11px] font-black uppercase tracking-widest">Sync Store</p>
-                                </div>
-                                <span class="material-symbols-outlined text-text-dim group-hover:text-primary transition-colors">navigate_next</span>
+                            <button id="open-calendar-btn" class="size-10 rounded-2xl bg-white border border-border-soft text-text-emerald flex items-center justify-center hover:bg-emerald-50 transition-all shadow-xs">
+                                <span class="material-symbols-outlined text-lg">calendar_month</span>
                             </button>
-                            <button id="btn-weekly-report" class="flex-1 glass-card p-6 flex items-center justify-between hover:bg-white/5 transition-all group">
-                                <div class="flex items-center gap-4">
-                                    <div class="size-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary group-hover:text-black transition-all">
-                                        <span class="material-symbols-outlined">receipt_long</span>
-                                    </div>
-                                    <p class="text-[11px] font-black uppercase tracking-widest">Datalink Report</p>
-                                </div>
-                                <span class="material-symbols-outlined text-text-dim group-hover:text-primary transition-colors">navigate_next</span>
-                            </button>
-                        </div>
-
-                        <!-- Meal Logs (Full Width) -->
-                        <div class="md:col-span-12 glass-card p-10 stagger-5">
-                            <div class="flex justify-between items-center mb-10">
-                                <h3 class="text-3xl font-display font-black italic tracking-tighter">DIETARY LOG</h3>
-                                <div class="bg-primary/20 text-primary px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-primary/20">
-                                    Protocol Active
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 gap-4">
-                                ${renderMealsList(state, selectedDate)}
-                            </div>
                         </div>
                     </div>
+
+                    <!-- Quick Input Bar (Food, Voice, Photo & Barcode) -->
+                    <div class="white-card p-3 md:p-4 bg-gradient-to-r from-white via-emerald-50/30 to-white border-2 border-emerald-200 shadow-sm">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 flex items-center bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2 focus-within:border-primary focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
+                                <span class="material-symbols-outlined text-slate-400 text-xl mr-2">search</span>
+                                <input id="quick-log-input" type="text" placeholder="¿Qué comiste? ej. 2 huevos con tostada y café..." class="w-full bg-transparent border-none outline-none text-sm font-medium text-text-primary placeholder:text-slate-400" />
+                            </div>
+
+                            <!-- Camera AI Button -->
+                            <input type="file" id="quick-log-file" accept="image/*" class="hidden">
+                            <label for="quick-log-file" title="Subir foto de comida (IA)" class="size-11 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-text-emerald border border-emerald-200 flex items-center justify-center cursor-pointer transition-all active:scale-95">
+                                <span class="material-symbols-outlined text-xl">photo_camera</span>
+                            </label>
+
+                            <!-- Barcode Scanner Button -->
+                            <button id="open-barcode-modal-btn" title="Escanear código de barras" class="size-11 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-text-emerald border border-emerald-200 flex items-center justify-center transition-all active:scale-95">
+                                <span class="material-symbols-outlined text-xl">barcode_scanner</span>
+                            </button>
+
+                            <!-- Submit / Add Button -->
+                            <button id="quick-log-btn" class="btn-emerald px-4 py-2.5 h-11 text-sm font-bold shadow-emerald-sm">
+                                <span class="material-symbols-outlined text-xl">add</span>
+                                <span class="hidden sm:inline">Registrar</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Main Metric Bento Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+                        
+                        <!-- Calorie Summary Card (7 Cols) -->
+                        <div class="md:col-span-7 white-card p-6 flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <span class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Balance Calórico Diario</span>
+                                    <h3 class="text-3xl font-display font-black text-text-emerald mt-0.5">
+                                        ${Math.round(stats.calories)} <span class="text-base font-normal text-text-muted">/ ${calGoal} kcal</span>
+                                    </h3>
+                                </div>
+                                <span class="badge-emerald">${calProgress}% Meta</span>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            <div class="h-3 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200 p-0.5 mb-4">
+                                <div class="h-full bg-gradient-to-r from-emerald-400 to-primary rounded-full transition-all duration-500 shadow-emerald-sm" style="width: ${calProgress}%"></div>
+                            </div>
+
+                            <!-- Metrics Row -->
+                            <div class="grid grid-cols-3 gap-3 pt-3 border-t border-slate-100 text-center">
+                                <div class="p-2.5 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+                                    <span class="text-[10px] font-bold uppercase text-text-muted">Consumidas</span>
+                                    <p class="text-lg font-display font-black text-text-emerald">${Math.round(stats.calories)}</p>
+                                </div>
+                                <div class="p-2.5 rounded-2xl bg-orange-50/60 border border-orange-100">
+                                    <span class="text-[10px] font-bold uppercase text-text-muted">Quemadas</span>
+                                    <p class="text-lg font-display font-black text-orange-600">${Math.round(dailyBurn.activity)}</p>
+                                </div>
+                                <div class="p-2.5 rounded-2xl bg-slate-50 border border-slate-200">
+                                    <span class="text-[10px] font-bold uppercase text-text-muted">Restantes</span>
+                                    <p class="text-lg font-display font-black text-slate-800">${remainingCals}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Intermittent Fasting Card (5 Cols) -->
+                        <div class="md:col-span-5 white-card p-6 flex flex-col justify-between bg-gradient-to-br from-white to-emerald-50/40 border-emerald-200">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="flex items-center gap-1.5 mb-1">
+                                        <span class="material-symbols-outlined text-primary text-base">timer</span>
+                                        <span class="text-[11px] font-bold uppercase tracking-wider text-text-emerald">Ayuno Intermitente</span>
+                                    </div>
+                                    <h4 class="text-xl font-display font-black text-text-primary">Protocolo ${fasting.protocol}</h4>
+                                </div>
+                                <span class="badge-emerald">${fasting.isActive ? 'En Curso' : 'En Pausa'}</span>
+                            </div>
+
+                            <div class="my-4 flex items-center justify-between gap-4">
+                                <div>
+                                    <p class="text-3xl font-display font-black text-text-emerald">${fasting.isActive ? fasting.elapsedFormatted : '0h 0m'}</p>
+                                    <p class="text-xs text-text-muted font-medium">${fasting.isActive ? fasting.stage : 'Meta: ' + fasting.targetHours + ' hrs'}</p>
+                                </div>
+                                <div class="size-16 rounded-full border-4 border-slate-100 relative flex items-center justify-center ${fasting.isActive ? 'border-primary' : ''}">
+                                    <span class="material-symbols-outlined text-2xl ${fasting.isActive ? 'text-primary animate-pulse' : 'text-slate-300'}">local_fire_department</span>
+                                </div>
+                            </div>
+
+                            <button id="toggle-fasting-btn" class="w-full ${fasting.isActive ? 'btn-emerald-soft' : 'btn-emerald'} py-2.5 text-xs font-bold">
+                                ${fasting.isActive ? 'Finalizar Ayuno' : 'Iniciar Ayuno (' + fasting.protocol + ')'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Macronutrient Split Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <!-- Protein -->
+                        <div class="white-card p-5 border-l-4 border-l-emerald-500">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-bold text-text-muted uppercase">Proteína</span>
+                                <span class="text-xs font-mono font-bold text-emerald-600">${Math.round(stats.protein)} / ${pGoal}g</span>
+                            </div>
+                            <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden mb-1">
+                                <div class="h-full bg-emerald-500 rounded-full" style="width: ${pPct}%"></div>
+                            </div>
+                            <span class="text-[10px] text-text-muted font-medium">${pPct}% completado</span>
+                        </div>
+
+                        <!-- Carbs -->
+                        <div class="white-card p-5 border-l-4 border-l-blue-500">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-bold text-text-muted uppercase">Carbohidratos</span>
+                                <span class="text-xs font-mono font-bold text-blue-600">${Math.round(stats.carbs)} / ${cGoal}g</span>
+                            </div>
+                            <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden mb-1">
+                                <div class="h-full bg-blue-500 rounded-full" style="width: ${cPct}%"></div>
+                            </div>
+                            <span class="text-[10px] text-text-muted font-medium">${cPct}% completado</span>
+                        </div>
+
+                        <!-- Fats -->
+                        <div class="white-card p-5 border-l-4 border-l-amber-500">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-bold text-text-muted uppercase">Grasas</span>
+                                <span class="text-xs font-mono font-bold text-amber-600">${Math.round(stats.fat)} / ${fGoal}g</span>
+                            </div>
+                            <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden mb-1">
+                                <div class="h-full bg-amber-500 rounded-full" style="width: ${fPct}%"></div>
+                            </div>
+                            <span class="text-[10px] text-text-muted font-medium">${fPct}% completado</span>
+                        </div>
+                    </div>
+
+                    <!-- Hydration & AI Coach Row -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        
+                        <!-- Hydration Card -->
+                        <div class="white-card p-5 flex items-center justify-between">
+                            <div class="flex items-center gap-3.5">
+                                <div class="size-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                                    <span class="material-symbols-outlined text-2xl">water_drop</span>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-bold uppercase text-text-muted">Hidratación</span>
+                                    <h4 class="text-xl font-display font-black text-text-primary">${waterAmount} <span class="text-xs font-normal text-text-muted">/ ${waterGoal} ml</span></h4>
+                                    <div class="h-1.5 w-32 bg-slate-100 rounded-full overflow-hidden mt-1">
+                                        <div class="h-full bg-blue-500 rounded-full" style="width: ${waterPct}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button id="add-water-btn" class="btn-emerald-soft px-3.5 py-2 text-xs font-bold">
+                                <span class="material-symbols-outlined text-base">add</span> +250 ml
+                            </button>
+                        </div>
+
+                        <!-- AI Coach Tip Card -->
+                        <div class="white-card p-5 bg-gradient-to-br from-emerald-50/50 to-white border-emerald-200 flex flex-col justify-between">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="material-symbols-outlined text-primary text-base">auto_awesome</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-text-emerald">AI Coach Insight</span>
+                            </div>
+                            <p class="text-xs text-text-primary/90 font-medium italic leading-relaxed">"${displayTip}"</p>
+                        </div>
+                    </div>
+
+                    <!-- Daily Meal Timeline -->
+                    <div class="white-card p-6">
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-soft">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary text-xl">restaurant_menu</span>
+                                <h3 class="text-lg font-display font-black text-text-emerald uppercase tracking-tight">Comidas Registradas</h3>
+                            </div>
+                            <button onclick="window.router.navigate('tracker')" class="btn-emerald-soft text-xs px-3 py-1.5 font-bold">
+                                Ver Diario Completo →
+                            </button>
+                        </div>
+
+                        <div class="flex flex-col gap-3">
+                            ${renderMealsList(state, selectedDate)}
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
-            <!-- Mobile Bottom Navigation -->
-            <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-6 pb-6 pt-4 bg-gradient-to-t from-black via-black/90 to-transparent">
-                <div class="glass-card bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[30px] p-2 flex justify-between items-center relative shadow-2xl">
-                    <button class="flex-1 flex flex-col items-center gap-1 py-3 text-primary" onclick="window.router.navigate('dashboard')">
-                        <span class="material-symbols-outlined">dashboard</span>
-                        <span class="text-[8px] font-black uppercase tracking-widest">Base</span>
-                    </button>
-                    <button class="flex-1 flex flex-col items-center gap-1 py-3 text-text-dim hover:text-white transition-all" onclick="window.router.navigate('measurements')">
-                        <span class="material-symbols-outlined">speed</span>
-                        <span class="text-[8px] font-black uppercase tracking-widest">Vitals</span>
-                    </button>
-                    <div class="flex-none -mt-12">
-                         <button id="quick-log-btn-mobile" class="size-16 rounded-full bg-primary text-black flex items-center justify-center shadow-[0_0_30px_rgba(0,255,136,0.3)] border-4 border-black active:scale-90 transition-all">
-                            <span class="material-symbols-outlined font-black text-3xl">add</span>
-                         </button>
-                    </div>
-                    <button class="flex-1 flex flex-col items-center gap-1 py-3 text-text-dim hover:text-white transition-all" onclick="window.router.navigate('workouts')">
-                        <span class="material-symbols-outlined">fitness_center</span>
-                        <span class="text-[8px] font-black uppercase tracking-widest">Force</span>
-                    </button>
-                    <button class="flex-1 flex flex-col items-center gap-1 py-3 text-text-dim hover:text-white transition-all" onclick="window.router.navigate('insights')">
-                        <span class="material-symbols-outlined">bolt</span>
-                        <span class="text-[8px] font-black uppercase tracking-widest">Neural</span>
-                    </button>
-                </div>
-            </nav>
+            ${renderBottomNav('dashboard')}
         </main>
-        
-        <div id="meal-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-xl p-4"></div>
+
+        <!-- Global Modals Container -->
+        <div id="meal-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"></div>
+        <div id="barcode-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"></div>
     </div>
     `;
 };
 
 const renderMealsList = (state, selectedDate) => {
     const activeDate = selectedDate || state.selectedDate || getArgentinaDate();
-    const meals = state.dailyLog.filter(m => m.date === activeDate);
-    if (!meals.length) return `<p class="text-text-dim text-xs font-bold italic py-10 text-center uppercase tracking-widest opacity-30">No biometric data recorded for this cycle</p>`;
+    const meals = (state.dailyLog || []).filter(m => m.date === activeDate);
 
-    return meals.map((m, i) => `
-        <div class="flex items-center justify-between p-6 bg-white/5 rounded-2xl border border-white/5 group hover:border-primary/20 transition-all stagger-${(i % 5) + 1}">
-            <div class="flex items-center gap-6">
-                 <div class="size-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+    if (!meals.length) {
+        return `
+            <div class="py-10 text-center flex flex-col items-center gap-2">
+                <div class="size-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                    <span class="material-symbols-outlined text-2xl">restaurant</span>
+                </div>
+                <p class="text-sm font-semibold text-text-muted">No has registrado comidas para este día</p>
+                <p class="text-xs text-slate-400">Escribe lo que comiste o escanea un código de barras arriba.</p>
+            </div>
+        `;
+    }
+
+    return meals.map(m => `
+        <div class="flex items-center justify-between p-4 bg-slate-50/80 hover:bg-emerald-50/50 rounded-2xl border border-slate-200/80 hover:border-emerald-200 transition-all">
+            <div class="flex items-center gap-3.5">
+                <div class="size-10 rounded-xl bg-primary-light flex items-center justify-center text-primary border border-border-emerald">
                     <span class="material-symbols-outlined text-lg">${m.type === 'workout' ? 'fitness_center' : 'restaurant'}</span>
-                 </div>
-                 <div>
+                </div>
+                <div>
                     <div class="flex items-center gap-2">
-                        <h4 class="text-xs font-black uppercase tracking-tight">${m.name}</h4>
-                        <span class="px-2 py-0.5 rounded-full bg-white/5 text-[8px] font-black uppercase tracking-widest text-primary/60 border border-white/5">
+                        <h4 class="text-sm font-bold text-text-primary capitalize">${m.name}</h4>
+                        <span class="px-2 py-0.5 rounded-full bg-white text-[9px] font-bold text-text-emerald border border-slate-200">
                             ${m.time || m.category || 'Comida'}
                         </span>
                     </div>
-                    <p class="text-[10px] font-mono text-text-dim mt-1">${m.calories} KCAL <span class="mx-2 opacity-20">|</span> P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g F:${Math.round(m.macros?.fat || 0)}g</p>
-                 </div>
+                    <p class="text-xs font-mono text-text-muted mt-0.5">
+                        <strong class="text-text-emerald">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g
+                    </p>
+                </div>
             </div>
-            <div class="flex items-center gap-2">
-                <button class="edit-meal-btn text-text-dim/30 hover:text-primary transition-colors p-2" data-id="${m.id}">
-                    <span class="material-symbols-outlined text-lg">edit</span>
-                </button>
-                <button class="delete-meal-btn text-text-dim/30 hover:text-red-500 transition-colors p-2" data-id="${m.id}">
+
+            <div class="flex items-center gap-1">
+                <button class="delete-meal-btn size-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center" data-id="${m.id}">
                     <span class="material-symbols-outlined text-lg">delete</span>
                 </button>
             </div>
@@ -357,15 +353,17 @@ export const attachDashboardEvents = () => {
     const state = getState();
     const input = document.getElementById('quick-log-input');
     const btn = document.getElementById('quick-log-btn');
-    const btnMobile = document.getElementById('quick-log-btn-mobile');
+    const mobileAddBtn = document.getElementById('mobile-central-add-btn');
     const fileInput = document.getElementById('quick-log-file');
+    const barcodeBtn = document.getElementById('open-barcode-modal-btn');
+    const fastingBtn = document.getElementById('toggle-fasting-btn');
     const modal = document.getElementById('meal-modal');
+    const barcodeModal = document.getElementById('barcode-modal');
 
+    // Analysis Logic (OpenAI)
     const handleAnalysis = async (text, file) => {
-        const loader = document.getElementById('loading-indicator');
-        if (loader) loader.classList.remove('hidden');
+        if (!text && !file) return;
 
-        // Visual Skeleton Feedback
         btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-white">refresh</span>`;
         btn.disabled = true;
 
@@ -380,232 +378,238 @@ export const attachDashboardEvents = () => {
 
             if (result.meals && result.meals.length > 0) {
                 const meal = result.meals[0];
-                // If AI returns today but we are viewing another date, default to the viewed date
-                const state = getState();
-                const today = getArgentinaDate();
-                if (meal.date === today && state.selectedDate !== today) {
-                    meal.date = state.selectedDate;
-                }
+                const fallbackDate = state.selectedDate || getArgentinaDate();
+                meal.date = fallbackDate;
                 showMealConfirmation(meal);
             } else {
                 window.router.navigate('dashboard');
             }
         } catch (e) {
-            window.showAlert('Neural Error', e.message, 'error');
+            window.showAlert?.('Error en Análisis', e.message || 'No se pudo analizar el alimento', 'error');
         } finally {
-            if (loader) loader.classList.add('hidden');
-            btn.innerHTML = `<span class="material-symbols-outlined font-black">add</span>`;
+            btn.innerHTML = `<span class="material-symbols-outlined text-xl">add</span><span class="hidden sm:inline">Registrar</span>`;
             btn.disabled = false;
         }
     };
 
-    const showMealConfirmation = (mealData, isEdit = false) => {
-        const total = (mealData.macros?.protein || 0) + (mealData.macros?.carbs || 0) + (mealData.macros?.fat || 0);
-        const pPct = (((mealData.macros?.protein || 0) / total) * 100) || 0;
-        const cPct = (((mealData.macros?.carbs || 0) / total) * 100) || 0;
+    // Fasting Toggle
+    fastingBtn?.addEventListener('click', () => {
+        const f = getFastingProgress();
+        if (f.isActive) {
+            stopFasting();
+            window.showAlert?.('¡Ayuno Completado!', `Completaste tu ciclo de ayuno con éxito.`, 'success');
+        } else {
+            startFasting('16:8', 16);
+            window.showAlert?.('Ayuno Iniciado', 'Cronómetro de ayuno 16:8 activo.', 'success');
+        }
+        window.router.navigate('dashboard');
+    });
 
+    // Barcode Scanner Modal Logic
+    barcodeBtn?.addEventListener('click', () => {
+        showBarcodeScannerModal();
+    });
+
+    const showBarcodeScannerModal = () => {
+        barcodeModal.innerHTML = `
+            <div class="white-card p-6 w-full max-w-md relative animate-scale-up">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-soft">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-xl">barcode_scanner</span>
+                        <h3 class="text-lg font-display font-black text-text-emerald uppercase">Escanear Código de Barras</h3>
+                    </div>
+                    <button id="close-barcode-btn" class="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                        <span class="material-symbols-outlined text-base">close</span>
+                    </button>
+                </div>
+
+                <!-- Camera viewport for HTML5 QRCode -->
+                <div id="qr-reader-container" class="w-full h-64 bg-slate-950 rounded-2xl overflow-hidden mb-4 relative flex items-center justify-center">
+                    <div id="qr-reader" class="w-full h-full"></div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <p class="text-xs text-text-muted text-center">O ingresa el número de código de barras:</p>
+                    <div class="flex gap-2">
+                        <input id="manual-barcode-input" type="number" placeholder="ej. 7790070412059" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono outline-none focus:border-primary">
+                        <button id="manual-barcode-search-btn" class="btn-emerald px-4 py-2 text-xs font-bold">Buscar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        barcodeModal.classList.remove('hidden');
+
+        document.getElementById('close-barcode-btn').onclick = () => {
+            stopBarcodeScanner();
+            barcodeModal.classList.add('hidden');
+        };
+
+        const handleBarcodeFound = async (barcode) => {
+            stopBarcodeScanner();
+            barcodeModal.classList.add('hidden');
+
+            try {
+                const product = await getProductByBarcode(barcode);
+                if (!product) {
+                    window.showAlert?.('No encontrado', `El código ${barcode} no está en la base de datos de Open Food Facts.`, 'info');
+                    return;
+                }
+
+                showMealConfirmation({
+                    name: `${product.brand ? product.brand + ' - ' : ''}${product.name}`,
+                    calories: product.per100g.calories,
+                    category: 'Almuerzo',
+                    macros: {
+                        protein: product.per100g.protein,
+                        carbs: product.per100g.carbs,
+                        fat: product.per100g.fat
+                    }
+                });
+            } catch (err) {
+                window.showAlert?.('Error', 'No se pudo consultar el código de barras.', 'error');
+            }
+        };
+
+        // Manual search
+        document.getElementById('manual-barcode-search-btn').onclick = () => {
+            const val = document.getElementById('manual-barcode-input').value;
+            if (val) handleBarcodeFound(val);
+        };
+
+        // Start Camera Scanner if Html5Qrcode is available
+        if (window.Html5Qrcode) {
+            try {
+                barcodeScannerInstance = new window.Html5Qrcode("qr-reader");
+                barcodeScannerInstance.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 180 } },
+                    (decodedText) => {
+                        handleBarcodeFound(decodedText);
+                    },
+                    () => {}
+                ).catch(e => {
+                    console.warn("Camera start error (permission or device):", e);
+                });
+            } catch (e) {
+                console.warn("Scanner init failed:", e);
+            }
+        }
+    };
+
+    const stopBarcodeScanner = () => {
+        if (barcodeScannerInstance) {
+            barcodeScannerInstance.stop().then(() => {
+                barcodeScannerInstance.clear();
+                barcodeScannerInstance = null;
+            }).catch(() => {
+                barcodeScannerInstance = null;
+            });
+        }
+    };
+
+    // Meal Confirmation / Add Modal
+    const showMealConfirmation = (mealData) => {
         const categories = ["Desayuno", "Media Mañana", "Almuerzo", "Merienda", "Media Tarde", "Cena"];
-        const today = getArgentinaDate();
-        const yesterday = new Date(new Date(today + 'T12:00:00').getTime() - 86400000).toISOString().split('T')[0];
-        const beforeYesterday = new Date(new Date(today + 'T12:00:00').getTime() - 172800000).toISOString().split('T')[0];
+        const todayDate = getArgentinaDate();
 
         modal.innerHTML = `
-            <div class="glass-card p-8 w-full max-w-lg relative overflow-hidden animate-scale-up">
-                 <div class="text-center mb-6">
-                    <p class="text-primary text-[10px] font-black uppercase tracking-[0.4em] mb-2">${isEdit ? 'Editar Protocolo' : 'Registro Biométrico'}</p>
-                    <input id="edit-meal-name" value="${mealData.name}" class="w-full bg-transparent text-white text-4xl font-display font-black italic tracking-tighter uppercase mb-2 text-center border-none outline-none focus:text-primary transition-colors" />
-                    <p class="text-primary font-mono text-xl font-black">${mealData.calories} KCAL</p>
-                 </div>
+            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-emerald-md">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-soft">
+                    <span class="badge-emerald text-xs">Confirmar Registro</span>
+                    <button id="close-meal-modal-btn" class="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                        <span class="material-symbols-outlined text-base">close</span>
+                    </button>
+                </div>
 
-                 <div class="grid grid-cols-2 gap-8 mb-8">
-                    <!-- Donut Chart & Macros -->
-                    <div class="flex flex-col items-center justify-center">
-                        <div class="size-32 rounded-full flex items-center justify-center border border-white/10 relative" style="background: conic-gradient(#00FF88 0% ${pPct}%, #60a5fa ${pPct}% ${pPct + cPct}%, #f59e0b ${pPct + cPct}% 100%)">
-                            <div class="size-24 bg-black rounded-full flex items-center justify-center">
-                                <span class="material-symbols-outlined text-3xl text-primary/50">analytics</span>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-3 gap-2 mt-4 w-full text-center">
-                            <div><p class="text-[7px] font-black uppercase text-text-dim">P</p><p class="text-xs font-mono text-emerald-400">${Math.round(mealData.macros?.protein || 0)}g</p></div>
-                            <div><p class="text-[7px] font-black uppercase text-text-dim">C</p><p class="text-xs font-mono text-blue-400">${Math.round(mealData.macros?.carbs || 0)}g</p></div>
-                            <div><p class="text-[7px] font-black uppercase text-text-dim">F</p><p class="text-xs font-mono text-orange-400">${Math.round(mealData.macros?.fat || 0)}g</p></div>
-                        </div>
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-text-muted uppercase">Nombre del Alimento</label>
+                        <input id="confirm-meal-name" value="${mealData.name || ''}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-base font-bold text-text-primary outline-none focus:border-primary mt-1" />
                     </div>
 
-                    <!-- Options Selection -->
-                    <div class="flex flex-col gap-4">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <p class="text-[8px] font-black text-text-dim uppercase tracking-widest mb-2 italic">Selector de Momento</p>
-                            <div class="grid grid-cols-2 gap-2">
-                                ${categories.map(cat => `
-                                    <button type="button" class="cat-select-btn px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-tight transition-all ${mealData.category === cat ? 'bg-primary text-black' : 'text-text-dim hover:bg-white/10'}" data-cat="${cat}">
-                                        ${cat}
-                                    </button>
-                                `).join('')}
-                            </div>
+                            <label class="text-xs font-bold text-text-muted uppercase">Calorías (kcal)</label>
+                            <input id="confirm-meal-cals" type="number" value="${mealData.calories || 0}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-lg font-mono font-bold text-text-emerald outline-none focus:border-primary mt-1" />
                         </div>
                         <div>
-                            <p class="text-[8px] font-black text-text-dim uppercase tracking-widest mb-2 italic">Fecha de Registro</p>
-                            <select id="meal-date-select" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-primary transition-all appearance-none cursor-pointer">
-                                <option value="${today}" ${mealData.date === today ? 'selected' : ''}>Hoy</option>
-                                <option value="${yesterday}" ${mealData.date === yesterday ? 'selected' : ''}>Ayer</option>
-                                <option value="${beforeYesterday}" ${mealData.date === beforeYesterday ? 'selected' : ''}>Antes de ayer</option>
-                                <option value="${mealData.date}" ${![today, yesterday, beforeYesterday].includes(mealData.date) ? 'selected' : ''}>${mealData.date}</option>
+                            <label class="text-xs font-bold text-text-muted uppercase">Momento</label>
+                            <select id="confirm-meal-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-text-primary outline-none focus:border-primary mt-1">
+                                ${categories.map(c => `<option value="${c}" ${mealData.category === c ? 'selected' : ''}>${c}</option>`).join('')}
                             </select>
                         </div>
                     </div>
-                 </div>
 
-                 <div class="flex gap-4">
-                    <button id="cancel-confirm" class="flex-1 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">Abortar</button>
-                    <button id="save-confirm" class="flex-1 py-4 bg-primary text-black rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all glow-primary hover:scale-[1.02] active:scale-95">Confirmar Registro</button>
-                 </div>
+                    <div class="grid grid-cols-3 gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase text-emerald-600">Proteína</span>
+                            <input id="confirm-meal-p" type="number" value="${Math.round(mealData.macros?.protein || 0)}" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold uppercase text-blue-600">Carbos</span>
+                            <input id="confirm-meal-c" type="number" value="${Math.round(mealData.macros?.carbs || 0)}" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold uppercase text-amber-600">Grasas</span>
+                            <input id="confirm-meal-f" type="number" value="${Math.round(mealData.macros?.fat || 0)}" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 mt-2">
+                        <button id="cancel-meal-btn" class="flex-1 btn-ghost-light py-3 text-xs font-bold">Cancelar</button>
+                        <button id="save-meal-btn" class="flex-1 btn-emerald py-3 text-xs font-bold">Guardar en Diario</button>
+                    </div>
+                </div>
             </div>
         `;
+        modal.classList.remove('hidden');
 
-        let selectedCategory = mealData.category || "Desayuno";
+        document.getElementById('close-meal-modal-btn').onclick = () => modal.classList.add('hidden');
+        document.getElementById('cancel-meal-btn').onclick = () => modal.classList.add('hidden');
 
-        modal.querySelectorAll('.cat-select-btn').forEach(b => {
-            b.addEventListener('click', (e) => {
-                e.preventDefault();
-                modal.querySelectorAll('.cat-select-btn').forEach(btn => {
-                    btn.classList.remove('bg-primary', 'text-black');
-                    btn.classList.add('text-text-dim');
-                });
-                b.classList.remove('text-text-dim');
-                b.classList.add('bg-primary', 'text-black');
-                selectedCategory = b.dataset.cat;
+        document.getElementById('save-meal-btn').onclick = () => {
+            const name = document.getElementById('confirm-meal-name').value;
+            const calories = parseInt(document.getElementById('confirm-meal-cals').value) || 0;
+            const category = document.getElementById('confirm-meal-category').value;
+            const protein = parseInt(document.getElementById('confirm-meal-p').value) || 0;
+            const carbs = parseInt(document.getElementById('confirm-meal-c').value) || 0;
+            const fat = parseInt(document.getElementById('confirm-meal-f').value) || 0;
+
+            addMeal({
+                name,
+                calories,
+                category,
+                time: category,
+                date: state.selectedDate || todayDate,
+                macros: { protein, carbs, fat }
             });
-        });
-
-        modal.querySelector('#cancel-confirm').onclick = () => modal.classList.add('hidden');
-        modal.querySelector('#save-confirm').onclick = () => {
-            const finalMeal = {
-                ...mealData,
-                name: modal.querySelector('#edit-meal-name').value,
-                time: selectedCategory,
-                category: selectedCategory,
-                date: modal.querySelector('#meal-date-select').value
-            };
-
-            if (isEdit) {
-                updateMeal(mealData.id, finalMeal);
-            } else {
-                addMeal(finalMeal);
-            }
 
             modal.classList.add('hidden');
             window.router.navigate('dashboard');
         };
-        modal.classList.remove('hidden');
     };
 
-    // Events
+    // Events attachment
     btn?.addEventListener('click', () => handleAnalysis(input.value, fileInput.files[0]));
-    btnMobile?.addEventListener('click', () => input?.focus());
-    input?.addEventListener('keypress', (e) => { e.key === 'Enter' && handleAnalysis(input.value, fileInput.files[0]); });
-
-    document.getElementById('btn-shopping-list')?.addEventListener('click', async () => {
-        const loader = document.getElementById('loading-indicator');
-        if (loader) loader.classList.remove('hidden');
-        try {
-            const { generateShoppingList } = await import('../services/openai');
-            const list = await generateShoppingList(state.profile, state.dailyLog);
-            modal.innerHTML = `<div class="glass-card p-10 w-full max-w-md relative"><button id="close-modal" class="absolute top-6 right-6 text-text-dim hover:text-white"><span class="material-symbols-outlined">close</span></button><h3 class="text-white text-2xl font-display font-black italic mb-6 uppercase">Shopping protocol</h3><div class="prose prose-invert text-[10px] text-text-dim leading-relaxed max-h-[50vh] overflow-y-auto">${list.replace(/\n/g, '<br>')}</div></div>`;
-            modal.querySelector('#close-modal').onclick = () => modal.classList.add('hidden');
-            modal.classList.remove('hidden');
-        } catch (e) { window.showAlert('Error', 'Sync failed.', 'error'); } finally { if (loader) loader.classList.add('hidden'); }
+    mobileAddBtn?.addEventListener('click', () => {
+        showMealConfirmation({ name: '', calories: 300, category: 'Almuerzo', macros: { protein: 20, carbs: 30, fat: 10 } });
     });
 
-    document.getElementById('btn-weekly-report')?.addEventListener('click', async () => {
-        const loader = document.getElementById('loading-indicator');
-        if (loader) loader.classList.remove('hidden');
-        try {
-            const { generateWeeklyReport } = await import('../services/openai');
-            const r = await generateWeeklyReport(state);
+    input?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleAnalysis(input.value, fileInput.files[0]);
+    });
 
-            modal.innerHTML = `
-                <div class="glass-card p-10 w-full max-w-2xl relative overflow-hidden stagger-1">
-                    <div class="absolute -top-20 -right-20 size-60 bg-primary/10 blur-[100px] rounded-full"></div>
-                    
-                    <div class="flex justify-between items-start mb-10">
-                        <div>
-                            <p class="text-primary text-[10px] font-black uppercase tracking-[0.4em] mb-2 flex items-center gap-2">
-                                <span class="size-2 bg-primary rounded-full animate-pulse"></span> Neuralytics Report
-                            </p>
-                            <h3 class="text-white text-4xl font-display font-black italic tracking-tighter uppercase whitespace-pre-line">Operational\nSummary</h3>
-                        </div>
-                        <button id="close-modal" class="size-12 rounded-2xl bg-white/5 flex items-center justify-center text-text-dim hover:text-white transition-all">
-                            <span class="material-symbols-outlined">close</span>
-                        </button>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                        <div class="space-y-6">
-                            <div class="p-6 bg-white/5 rounded-3xl border border-white/10 relative overflow-hidden group">
-                                <p class="text-[10px] font-black text-text-dim uppercase tracking-widest mb-4">Neural Analysis</p>
-                                <p class="text-sm text-white/90 leading-relaxed italic">"${r.summary}"</p>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                    <p class="text-[8px] font-black text-text-dim uppercase tracking-widest mb-1">Efficiency</p>
-                                    <p class="text-2xl font-display font-black text-primary">${r.kpis.consistency_score}/10</p>
-                                </div>
-                                <div class="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                    <p class="text-[8px] font-black text-text-dim uppercase tracking-widest mb-1">Workouts</p>
-                                    <p class="text-2xl font-display font-black text-white">${r.kpis.total_workouts}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="space-y-6">
-                            <div>
-                                <h4 class="text-[10px] font-black text-primary uppercase tracking-widest mb-4">Core Strengths</h4>
-                                <div class="flex flex-wrap gap-2">
-                                    ${r.strengths.map(s => `<span class="px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-tight">${s}</span>`).join('')}
-                                </div>
-                            </div>
-                            <div>
-                                <h4 class="text-[10px] font-black text-red-400 uppercase tracking-widest mb-4">Integrity Risks</h4>
-                                <div class="flex flex-wrap gap-2">
-                                    ${r.weaknesses.map(w => `<span class="px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-tight">${w}</span>`).join('')}
-                                </div>
-                            </div>
-                            <div class="p-6 bg-primary/10 rounded-3xl border border-primary/20">
-                                <p class="text-[10px] font-black text-primary uppercase tracking-widest mb-2">Next Mission</p>
-                                <p class="text-white font-bold text-sm leading-tight">${r.mission}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button id="download-report-btn" class="w-full btn-primary py-5 text-[11px] font-black uppercase tracking-[0.2em] glow-primary">
-                        Acknowledge Protocol
-                    </button>
-                </div>
-            `;
-            modal.querySelector('#close-modal').onclick = () => modal.classList.add('hidden');
-            modal.querySelector('#download-report-btn').onclick = () => modal.classList.add('hidden');
-            modal.classList.remove('hidden');
-        } catch (e) {
-            window.showAlert('Datalink Error', 'Failed to synchronize weekly neuralytics.', 'error');
-            console.error(e);
-        } finally {
-            if (loader) loader.classList.add('hidden');
+    fileInput?.addEventListener('change', () => {
+        if (fileInput.files.length) {
+            handleAnalysis('', fileInput.files[0]);
         }
     });
 
     document.getElementById('add-water-btn')?.addEventListener('click', () => {
         const date = state.selectedDate || getArgentinaDate();
-        updateDayStat(date, 'water', (state.days?.[date]?.water || 0) + 250);
+        const currentWater = state.days?.[date]?.water || 0;
+        updateDayStat(date, 'water', currentWater + 250);
         window.router.navigate('dashboard');
-    });
-
-    document.querySelectorAll('.habit-btn').forEach(b => {
-        b.addEventListener('click', (e) => {
-            toggleHabit(e.currentTarget.dataset.id, state.selectedDate);
-            window.router.navigate('dashboard');
-        });
     });
 
     document.getElementById('prev-day-btn')?.addEventListener('click', () => {
@@ -622,22 +626,17 @@ export const attachDashboardEvents = () => {
         window.router.navigate('dashboard');
     });
 
-    document.querySelectorAll('.delete-meal-btn').forEach(b => {
-        b.addEventListener('click', (e) => {
-            window.showConfirm('PURGE DATA?', 'Remove this record?', () => {
-                deleteMeal(parseInt(e.currentTarget.dataset.id));
-                window.router.navigate('dashboard');
-            });
-        });
+    document.getElementById('open-calendar-btn')?.addEventListener('click', () => {
+        window.router.navigate('calendar');
     });
 
-    document.querySelectorAll('.edit-meal-btn').forEach(b => {
+    document.querySelectorAll('.delete-meal-btn').forEach(b => {
         b.addEventListener('click', (e) => {
             const id = parseInt(e.currentTarget.dataset.id);
-            const meal = state.dailyLog.find(m => m.id === id);
-            if (meal) {
-                showMealConfirmation(meal, true);
-            }
+            window.showConfirm?.('¿Eliminar comida?', 'Esta comida se quitará de tus calorías diarias.', () => {
+                deleteMeal(id);
+                window.router.navigate('dashboard');
+            });
         });
     });
 };

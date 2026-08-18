@@ -1,345 +1,311 @@
-import { analyzeFood, generateMealPlan } from '../services/openai';
-import { getState, addMeal } from '../state';
+import { getState, addMeal, deleteMeal, getArgentinaDate, setSelectedDate } from '../state';
+import { analyzeFood } from '../services/openai';
+import { getProductByBarcode, searchOpenFood } from '../services/openfoodfacts';
+import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
 
-let currentAnalysis = null;
-let isAnalyzing = false;
+let activeCategoryForAdd = 'Almuerzo';
+let barcodeScannerTrackerInstance = null;
 
 export const renderTracker = () => {
-  const state = getState(); // Need state for sidebar
-  const profile = state.profile || { name: 'User' };
+    const state = getState();
+    const today = getArgentinaDate();
+    const selectedDate = state.selectedDate || today;
+    const meals = (state.dailyLog || []).filter(m => m.date === selectedDate);
 
-  return `
-    <div class="flex h-screen w-full text-slate-900 dark:text-white font-display overflow-hidden fade-in">
-         <!-- Sidebar -->
-        <aside class="hidden md:flex w-64 flex-col justify-between border-r border-[#28392a] bg-surface-dark backdrop-blur-md p-4">
-            <div class="flex flex-col gap-8">
-                <div class="flex items-center gap-3 px-2">
-                     <img src="/lucas.jpeg" alt="Profile" class="w-12 h-12 rounded-full border-2 border-primary object-cover">
-                    <div class="flex flex-col">
-                        <img src="/logogrow.png" alt="GrowFit" class="h-6 object-contain self-start">
-                        <p class="text-primary text-xs font-medium uppercase tracking-wide">Plan Personal</p>
-                    </div>
-                </div>
-                <nav class="flex flex-col gap-2">
-                    <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('dashboard')">
-                        <span class="material-symbols-outlined">dashboard</span>
-                        <p class="text-sm font-medium">Inicio</p>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('measurements')">
-                        <span class="material-symbols-outlined">straighten</span>
-                        <p class="text-sm font-medium">Progreso</p>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('insights')">
-                        <span class="material-symbols-outlined">insights</span>
-                        <p class="text-sm font-medium">Estadísticas</p>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('workouts')">
-                        <span class="material-symbols-outlined">fitness_center</span>
-                        <p class="text-sm font-medium">Entrenamientos</p>
-                    </a>
-                     <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('profile')">
-                        <span class="material-symbols-outlined">settings</span>
-                        <p class="text-sm font-medium">Ajustes</p>
-                    </a>
-                </nav>
-            </div>
-        </aside>
+    const categories = [
+        { id: 'Desayuno', label: 'Desayuno', icon: 'wb_sunny', desc: 'Comienza el día con energía' },
+        { id: 'Media Mañana', label: 'Media Mañana', icon: 'coffee', desc: 'Colación ligera' },
+        { id: 'Almuerzo', label: 'Almuerzo', icon: 'lunch_dining', desc: 'Comida principal' },
+        { id: 'Merienda', label: 'Merienda', icon: 'bakery_dining', desc: 'Snack de la tarde' },
+        { id: 'Media Tarde', label: 'Media Tarde', icon: 'local_cafe', desc: 'Recarga pre/post entreno' },
+        { id: 'Cena', label: 'Cena', icon: 'dinner_dining', desc: 'Cierre nutricional del día' }
+    ];
 
-      <!-- Main Content -->
-      <main class="flex-1 flex flex-col h-full overflow-hidden relative">
-          <!-- Mobile Header -->
-          <div class="md:hidden flex items-center justify-between w-full p-4 border-b border-[#28392a] bg-surface-dark backdrop-blur-md">
-                <img src="/logogrow.png" alt="GrowFit" class="h-6 object-contain">
-                <button class="text-white" onclick="window.router.navigate('dashboard')"><span class="material-symbols-outlined">dashboard</span></button>
-          </div>
+    const totalCals = meals.reduce((s, m) => s + (m.calories || 0), 0);
+    const totalP = meals.reduce((s, m) => s + (m.macros?.protein || 0), 0);
+    const totalC = meals.reduce((s, m) => s + (m.macros?.carbs || 0), 0);
+    const totalF = meals.reduce((s, m) => s + (m.macros?.fat || 0), 0);
 
-          <div class="flex-1 overflow-y-auto w-full p-4 md:p-8 flex flex-col gap-8 max-w-3xl mx-auto">
-              
-              <header class="flex flex-col gap-2">
-                <div class="flex items-center gap-4">
-                     <button onclick="window.router.navigate('dashboard')" class="bg-[#28392a] hover:bg-primary hover:text-black text-white p-2 rounded-xl transition-colors">
-                        <span class="material-symbols-outlined">arrow_back</span>
-                    </button>
-                    <h2 class="text-3xl font-black text-white">Registrar Comida</h2>
-                </div>
-                <p class="text-text-secondary ml-14">Describe tu comida o sube una foto para análisis IA.</p>
-              </header>
+    return `
+    <div class="flex h-screen w-full bg-background-light font-body text-text-primary overflow-hidden fade-in">
+        ${renderSidebar('tracker')}
 
-              <div class="bg-surface-dark/90 backdrop-blur-md border border-[#28392a] rounded-2xl p-6 flex flex-col gap-6 shadow-lg">
-                
-                <!-- Text Input -->
-                <div class="flex flex-col gap-2">
-                    <label class="text-xs font-bold uppercase text-primary tracking-wider">Descripción</label>
-                    <div class="relative">
-                        <textarea id="food-text" rows="3" placeholder="Ej: 200g de pechuga de pollo con arroz blanco y ensalada mixta..." 
-                            class="w-full bg-[#1A261C] border border-[#28392a] rounded-xl p-4 text-white placeholder-gray-500 focus:border-primary outline-none transition-all resize-none"></textarea>
-                        <button id="mic-btn" class="absolute right-3 bottom-3 text-primary hover:text-white transition-colors p-2 rounded-full hover:bg-[#28392a]">
-                            <span class="material-symbols-outlined">mic</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Image Input -->
-                <div class="flex flex-col gap-2 text-center">
-                    <p class="text-xs font-bold uppercase text-[#5c6e5e] tracking-wider relative flex items-center gap-2 justify-center">
-                        <span class="h-px w-8 bg-[#28392a]"></span> O sube una foto <span class="h-px w-8 bg-[#28392a]"></span>
-                    </p>
-                    <label for="food-image" class="block w-full py-8 border-2 border-dashed border-[#28392a] hover:border-primary rounded-xl cursor-pointer transition-all hover:bg-[#28392a]/30 group">
-                        <div class="flex flex-col items-center gap-2">
-                            <span class="material-symbols-outlined text-4xl text-[#5c6e5e] group-hover:text-primary transition-colors">add_a_photo</span>
-                            <div id="file-label" class="text-sm text-text-secondary group-hover:text-white font-medium">Clic para subir imagen</div>
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-background-light">
+            ${renderMobileHeader('Diario de Comidas')}
+
+            <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-8">
+                <div class="max-w-4xl mx-auto flex flex-col gap-6">
+
+                    <!-- Top Header Summary Card -->
+                    <div class="white-card p-6 bg-gradient-to-r from-white via-emerald-50/40 to-white border-emerald-200">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <span class="badge-emerald mb-1">Diario Nutricional</span>
+                                <h2 class="text-3xl font-display font-black text-text-emerald uppercase tracking-tight">Registro de Alimentos</h2>
+                                <p class="text-xs text-text-muted mt-0.5">Control preciso de cada momento del día.</p>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <div class="text-right">
+                                    <span class="text-[10px] font-bold uppercase text-text-muted">Total Diario</span>
+                                    <p class="text-2xl font-display font-black text-text-emerald">${totalCals} <span class="text-xs font-normal text-text-muted">kcal</span></p>
+                                </div>
+                                <div class="h-10 w-px bg-slate-200"></div>
+                                <div class="text-xs font-mono font-bold text-text-muted space-y-0.5">
+                                    <p class="text-emerald-700">P: ${Math.round(totalP)}g</p>
+                                    <p class="text-blue-700">C: ${Math.round(totalC)}g</p>
+                                    <p class="text-amber-700">G: ${Math.round(totalF)}g</p>
+                                </div>
+                            </div>
                         </div>
-                    </label>
-                    <input type="file" id="food-image" accept="image/*" class="hidden">
+                    </div>
+
+                    <!-- Category Sections -->
+                    <div class="flex flex-col gap-4">
+                        ${categories.map(cat => {
+                            const catMeals = meals.filter(m => (m.category === cat.id || m.time === cat.id));
+                            const catCals = catMeals.reduce((s, m) => s + (m.calories || 0), 0);
+                            const catP = catMeals.reduce((s, m) => s + (m.macros?.protein || 0), 0);
+                            const catC = catMeals.reduce((s, m) => s + (m.macros?.carbs || 0), 0);
+                            const catF = catMeals.reduce((s, m) => s + (m.macros?.fat || 0), 0);
+
+                            return `
+                            <div class="white-card p-5">
+                                <div class="flex items-center justify-between pb-3 border-b border-border-soft">
+                                    <div class="flex items-center gap-3">
+                                        <div class="size-10 rounded-2xl bg-emerald-50 text-text-emerald flex items-center justify-center border border-emerald-100">
+                                            <span class="material-symbols-outlined text-xl">${cat.icon}</span>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-base font-display font-black text-text-primary uppercase tracking-tight">${cat.label}</h3>
+                                            <p class="text-xs font-mono font-semibold text-text-emerald">${catCals} kcal ${catMeals.length ? `· P:${Math.round(catP)}g C:${Math.round(catC)}g G:${Math.round(catF)}g` : ''}</p>
+                                        </div>
+                                    </div>
+
+                                    <button class="add-meal-cat-btn btn-emerald-soft text-xs px-3 py-1.5 font-bold" data-category="${cat.id}">
+                                        <span class="material-symbols-outlined text-sm">add</span> Agregar
+                                    </button>
+                                </div>
+
+                                <!-- Meals List inside Category -->
+                                <div class="mt-3 flex flex-col gap-2">
+                                    ${catMeals.length ? catMeals.map(m => `
+                                        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-emerald-200 transition-all">
+                                            <div>
+                                                <h4 class="text-sm font-bold text-text-primary capitalize">${m.name}</h4>
+                                                <p class="text-xs font-mono text-text-muted mt-0.5">
+                                                    <strong class="text-text-emerald">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g
+                                                </p>
+                                            </div>
+                                            <button class="delete-tracker-meal-btn size-7 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors" data-id="${m.id}">
+                                                <span class="material-symbols-outlined text-base">delete</span>
+                                            </button>
+                                        </div>
+                                    `).join('') : `
+                                        <p class="text-xs text-text-muted italic py-2 text-center">Sin registros en ${cat.label}</p>
+                                    `}
+                                </div>
+                            </div>
+                            `;
+                        }).join('')}
+                    </div>
+
                 </div>
+            </div>
 
-                <button id="analyze-btn" class="w-full bg-primary hover:bg-[#0fd620] text-black font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 text-lg">
-                    <span class="material-symbols-outlined">auto_awesome</span> 
-                    Analizar con IA
-                </button>
-              </div>
+            ${renderBottomNav('tracker')}
+        </main>
 
-              <!-- Generator CTA -->
-              <div class="bg-gradient-to-r from-[#1A261C] to-[#111812] border border-[#28392a] rounded-2xl p-6 flex flex-col items-center text-center gap-4 relative overflow-hidden group hover:border-[#3b543d] transition-colors shadow-lg">
-                  <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                      <span class="material-symbols-outlined text-8xl text-primary">restaurant_menu</span>
-                  </div>
-                  <h3 class="text-xl font-bold text-white relative z-10">¿Sin ideas para hoy?</h3>
-                  <p class="text-text-secondary text-sm max-w-sm relative z-10">Deja que la IA planifique tu día completo basándose en tus objetivos y gustos.</p>
-                  <button id="generate-plan-btn" class="bg-[#28392a] hover:bg-[#3b543d] text-white px-6 py-3 rounded-xl font-bold text-sm transition-all border border-[#3b543d] hover:border-primary flex items-center gap-2 relative z-10">
-                      <span class="material-symbols-outlined text-primary">auto_fix_high</span>
-                      Generar Plan Diario
-                  </button>
-              </div>
-              <div id="plan-loading" class="hidden flex flex-col items-center justify-center p-4 gap-2">
-                  <div class="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                  <p class="text-xs text-primary font-bold animate-pulse">Diseñando menú perfecto...</p>
-              </div>
-              <!-- Plan Result Area -->
-              <div id="plan-result" class="hidden animate-slide-in flex flex-col gap-4"></div>
-
-              <!-- Loading State -->
-              <div id="loading" class="hidden flex flex-col items-center justify-center p-8 gap-4 animate-fadeIn">
-                <div class="relative w-16 h-16">
-                    <div class="absolute inset-0 border-4 border-[#28392a] rounded-full"></div>
-                    <div class="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
-                </div>
-                <p class="text-primary font-bold animate-pulse">Analizando alimentos...</p>
-              </div>
-
-              <!-- Results Area -->
-              <div id="result-area" class="hidden animate-slide-in">
-                 <!-- Populated by JS -->
-              </div>
-          </div>
-      </main>
+        <!-- Add Meal & Barcode Modal -->
+        <div id="tracker-add-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"></div>
     </div>
-  `;
+    `;
 };
-
 
 export const attachTrackerEvents = () => {
-  const fileInput = document.querySelector('#food-image');
-  const analyzeBtn = document.querySelector('#analyze-btn');
-  const resultArea = document.querySelector('#result-area');
-  const loading = document.querySelector('#loading');
-  const fileLabel = document.querySelector('#file-label');
+    const state = getState();
+    const modal = document.getElementById('tracker-add-modal');
 
-  // File selection preview
-  if (fileInput) {
-    fileInput.addEventListener('change', (e) => {
-      if (e.target.files.length > 0) {
-        fileLabel.innerText = e.target.files[0].name;
-        // Could show image preview here
-        fileLabel.style.color = 'var(--primary-start)';
-      }
-    });
-  }
-
-  // Voice Recognition Logic
-  const micBtn = document.querySelector('#mic-btn');
-  if (micBtn) {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'es-ES'; // Spanish by default
-      recognition.interimResults = false;
-
-      micBtn.addEventListener('click', () => {
-        micBtn.style.color = '#ef4444'; // Recording state
-        recognition.start();
-      });
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        const textArea = document.querySelector('#food-text');
-        if (textArea) textArea.value = transcript;
-        micBtn.style.color = 'var(--primary-start)';
-      };
-
-      recognition.onerror = () => {
-        micBtn.style.color = 'var(--primary-start)';
-        window.showAlert('Voz', 'Error de reconocimiento de voz o permiso denegado.', 'error');
-      };
-
-      recognition.onend = () => {
-        micBtn.style.color = 'var(--primary-start)';
-      };
-    } else {
-      micBtn.style.display = 'none';
-    }
-  }
-
-  // Analyze Action
-  if (analyzeBtn) {
-    analyzeBtn.addEventListener('click', async () => {
-      const text = document.querySelector('#food-text').value;
-      const file = fileInput?.files[0];
-
-      if (!text && !file) {
-        window.showAlert('Atención', "Por favor ingresa un texto o sube una imagen.", 'info');
-        return;
-      }
-
-      isAnalyzing = true;
-      loading.style.display = 'block';
-      resultArea.style.display = 'none';
-      analyzeBtn.disabled = true;
-
-      try {
-        let result;
-        if (file) {
-          const base64 = await toBase64(file);
-          result = await analyzeFood(base64, 'image');
-        } else {
-          result = await analyzeFood(text, 'text');
-        }
-
-        currentAnalysis = result;
-        showResult(result);
-      } catch (error) {
-        window.showAlert('Análisis', "Error al analizar: " + error.message, 'error');
-      } finally {
-        isAnalyzing = false;
-        loading.style.display = 'none';
-        analyzeBtn.disabled = false;
-      }
-    });
-  }
-
-  // --- MEAL PLAN GENERATOR ---
-  const genBtn = document.querySelector('#generate-plan-btn');
-  const planLoading = document.querySelector('#plan-loading');
-  const planResult = document.querySelector('#plan-result');
-
-  if (genBtn) {
-    genBtn.addEventListener('click', async () => {
-      const state = getState();
-
-      planLoading.classList.remove('hidden');
-      planResult.classList.add('hidden');
-      genBtn.disabled = true;
-
-      try {
-        const plan = await generateMealPlan(state.profile);
-
-        if (!plan || !plan.meals) throw new Error("Error generando el plan.");
-
-        const mealsHtml = plan.meals.map(m => `
-                  <div class="bg-[#1A261C] border border-[#28392a] rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <div>
-                        <p class="text-primary text-[10px] font-bold uppercase tracking-wider mb-1">${m.category}</p>
-                        <h4 class="text-white font-bold">${m.name}</h4>
-                        <p class="text-xs text-gray-400 mt-1 line-clamp-2">${m.ingredients}</p>
-                    </div>
-                    <div class="text-right shrink-0">
-                        <p class="text-white font-bold">${m.calories} kcal</p>
-                        <p class="text-[10px] text-gray-500">P:${m.macros.protein} C:${m.macros.carbs} F:${m.macros.fat}</p>
-                    </div>
-                  </div>
-              `).join('');
-
-        planResult.innerHTML = `
-                  <div class="bg-surface-dark/90 backdrop-blur-md border border-[#28392a] rounded-2xl p-6 shadow-2xl animate-scale-up">
-                      <div class="flex justify-between items-center mb-4">
-                        <div>
-                            <h3 class="text-white font-bold text-lg">Plan Sugerido</h3>
-                            <p class="text-xs text-text-secondary">${plan.tips || 'Basado en tus preferencias'}</p>
-                        </div>
-                        <span class="text-primary font-bold text-sm bg-primary/10 px-3 py-1 rounded-full">${plan.total_calories} kcal</span>
-                      </div>
-                      <div class="flex flex-col gap-3">
-                        ${mealsHtml}
-                      </div>
-                      <button id="save-plan-btn" class="w-full bg-primary hover:bg-[#0fd620] text-black font-bold py-3.5 rounded-xl mt-4 transition-all shadow-lg flex items-center justify-center gap-2">
-                        <span class="material-symbols-outlined">save_all</span>
-                        Aceptar y Guardar Día
-                      </button>
-                  </div>
-              `;
-
-        planResult.classList.remove('hidden');
-
-        // Bind Save All
-        document.getElementById('save-plan-btn').addEventListener('click', () => {
-          // Instead of browser confirm, we could use a custom one, but for now just showAlert after
-          plan.meals.forEach(m => addMeal(m));
-          window.showAlert('Plan Guardado', 'Todas las comidas han sido añadidas a tu diario.', 'success');
-          setTimeout(() => window.router.navigate('dashboard'), 1500);
+    document.querySelectorAll('.add-meal-cat-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            activeCategoryForAdd = e.currentTarget.dataset.category || 'Almuerzo';
+            openAddMealModal(activeCategoryForAdd);
         });
-
-      } catch (e) {
-        alert(e.message);
-      } finally {
-        planLoading.classList.add('hidden');
-        genBtn.disabled = false;
-      }
     });
-  }
+
+    document.querySelectorAll('.delete-tracker-meal-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = parseInt(e.currentTarget.dataset.id);
+            window.showConfirm?.('¿Eliminar alimento?', 'Se restará del total de calorías del día.', () => {
+                deleteMeal(id);
+                window.router.navigate('tracker');
+            });
+        });
+    });
+
+    const openAddMealModal = (category) => {
+        modal.innerHTML = `
+            <div class="white-card p-6 w-full max-w-lg relative animate-scale-up shadow-emerald-md">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-soft">
+                    <div class="flex items-center gap-2">
+                        <span class="badge-emerald">${category}</span>
+                        <h3 class="text-lg font-display font-black text-text-emerald uppercase">Añadir Alimento</h3>
+                    </div>
+                    <button id="close-tracker-modal" class="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                        <span class="material-symbols-outlined text-base">close</span>
+                    </button>
+                </div>
+
+                <!-- Tabs: Manual / Barcode / Search -->
+                <div class="flex gap-2 p-1 bg-slate-100 rounded-xl mb-4 text-xs font-bold">
+                    <button id="tab-search" class="flex-1 py-2 rounded-lg bg-white shadow-xs text-text-emerald">Buscar Base de Datos</button>
+                    <button id="tab-manual" class="flex-1 py-2 rounded-lg text-text-muted hover:text-text-primary">Manual</button>
+                </div>
+
+                <!-- Search Container -->
+                <div id="search-container" class="flex flex-col gap-3">
+                    <div class="flex gap-2">
+                        <input id="food-search-input" type="text" placeholder="Buscar alimento (ej. Avena, Pollo, Yogur...)" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary">
+                        <button id="do-food-search-btn" class="btn-emerald px-4 py-2 text-xs font-bold">Buscar</button>
+                    </div>
+
+                    <div id="search-results" class="max-h-48 overflow-y-auto flex flex-col gap-2"></div>
+                </div>
+
+                <!-- Manual Input Container (Hidden by default or toggled) -->
+                <div id="manual-container" class="hidden flex-col gap-3">
+                    <div>
+                        <label class="text-xs font-bold text-text-muted uppercase">Nombre</label>
+                        <input id="manual-food-name" type="text" placeholder="ej. Pechuga de pollo con arroz" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-primary mt-1">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs font-bold text-text-muted uppercase">Calorías (kcal)</label>
+                            <input id="manual-food-cals" type="number" placeholder="350" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono font-bold text-text-emerald outline-none focus:border-primary mt-1">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-text-muted uppercase">Porción / Gramos</label>
+                            <input id="manual-food-serving" type="text" placeholder="150g" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary mt-1">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <div>
+                            <span class="text-[10px] font-bold text-emerald-600 uppercase">Proteína</span>
+                            <input id="manual-food-p" type="number" placeholder="25" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1">
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-blue-600 uppercase">Carbos</span>
+                            <input id="manual-food-c" type="number" placeholder="40" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1">
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-amber-600 uppercase">Grasas</span>
+                            <input id="manual-food-f" type="number" placeholder="10" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1">
+                        </div>
+                    </div>
+                    <button id="save-manual-food-btn" class="w-full btn-emerald py-3 text-xs font-bold mt-2">Guardar Alimento</button>
+                </div>
+            </div>
+        `;
+        modal.classList.remove('hidden');
+
+        document.getElementById('close-tracker-modal').onclick = () => modal.classList.add('hidden');
+
+        // Tab Switching
+        const tabSearch = document.getElementById('tab-search');
+        const tabManual = document.getElementById('tab-manual');
+        const searchCont = document.getElementById('search-container');
+        const manualCont = document.getElementById('manual-container');
+
+        tabSearch.onclick = () => {
+            tabSearch.className = 'flex-1 py-2 rounded-lg bg-white shadow-xs text-text-emerald';
+            tabManual.className = 'flex-1 py-2 rounded-lg text-text-muted hover:text-text-primary';
+            searchCont.classList.remove('hidden');
+            manualCont.classList.add('hidden');
+        };
+
+        tabManual.onclick = () => {
+            tabManual.className = 'flex-1 py-2 rounded-lg bg-white shadow-xs text-text-emerald';
+            tabSearch.className = 'flex-1 py-2 rounded-lg text-text-muted hover:text-text-primary';
+            manualCont.classList.remove('hidden');
+            manualCont.classList.add('flex');
+            searchCont.classList.add('hidden');
+        };
+
+        // Search action
+        const searchInput = document.getElementById('food-search-input');
+        const resultsCont = document.getElementById('search-results');
+        const doSearch = async () => {
+            const query = searchInput.value.trim();
+            if (!query) return;
+            resultsCont.innerHTML = `<p class="text-xs text-center py-4 text-slate-400">Buscando en Open Food Facts...</p>`;
+            
+            try {
+                const results = await searchOpenFood(query);
+                if (!results.length) {
+                    resultsCont.innerHTML = `<p class="text-xs text-center py-4 text-slate-400">No se encontraron productos. Prueba ingresarlo manualmente.</p>`;
+                    return;
+                }
+
+                resultsCont.innerHTML = results.map(item => `
+                    <div class="p-3 bg-white border border-slate-200 rounded-xl hover:border-emerald-300 transition-all flex items-center justify-between">
+                        <div>
+                            <h5 class="text-xs font-bold text-text-primary">${item.name}</h5>
+                            <p class="text-[10px] font-mono text-text-muted">${item.calories} kcal/100g · P:${item.protein}g C:${item.carbs}g G:${item.fat}g</p>
+                        </div>
+                        <button class="select-search-item btn-emerald px-3 py-1.5 text-xs font-bold" data-item='${JSON.stringify(item).replace(/'/g, "&apos;")}'>
+                            Seleccionar
+                        </button>
+                    </div>
+                `).join('');
+
+                resultsCont.querySelectorAll('.select-search-item').forEach(b => {
+                    b.onclick = (e) => {
+                        const itm = JSON.parse(e.currentTarget.dataset.item);
+                        addMeal({
+                            name: itm.name,
+                            calories: itm.calories,
+                            category: category,
+                            time: category,
+                            date: state.selectedDate || getArgentinaDate(),
+                            macros: { protein: itm.protein, carbs: itm.carbs, fat: itm.fat }
+                        });
+                        modal.classList.add('hidden');
+                        window.router.navigate('tracker');
+                    };
+                });
+            } catch (err) {
+                resultsCont.innerHTML = `<p class="text-xs text-center text-red-500 py-4">Error en búsqueda.</p>`;
+            }
+        };
+
+        document.getElementById('do-food-search-btn').onclick = doSearch;
+        searchInput.onkeypress = (e) => { if (e.key === 'Enter') doSearch(); };
+
+        // Save manual food
+        document.getElementById('save-manual-food-btn').onclick = () => {
+            const name = document.getElementById('manual-food-name').value;
+            const calories = parseInt(document.getElementById('manual-food-cals').value) || 0;
+            const protein = parseInt(document.getElementById('manual-food-p').value) || 0;
+            const carbs = parseInt(document.getElementById('manual-food-c').value) || 0;
+            const fat = parseInt(document.getElementById('manual-food-f').value) || 0;
+
+            if (!name || calories <= 0) {
+                alert('Por favor ingresa un nombre y calorías válidas.');
+                return;
+            }
+
+            addMeal({
+                name,
+                calories,
+                category,
+                time: category,
+                date: state.selectedDate || getArgentinaDate(),
+                macros: { protein, carbs, fat }
+            });
+
+            modal.classList.add('hidden');
+            window.router.navigate('tracker');
+        };
+    };
 };
-
-const showResult = (data) => {
-  const resultArea = document.querySelector('#result-area');
-  resultArea.style.display = 'block';
-  resultArea.innerHTML = `
-    <div class="bg-surface-dark/90 backdrop-blur-md border border-primary rounded-2xl p-6 shadow-lg flex flex-col gap-4 animate-scale-up">
-      <h3 class="text-2xl font-bold text-white text-center">${data.name}</h3>
-      
-      <div class="grid grid-cols-4 gap-4 py-4 border-y border-[#28392a]">
-        <div class="flex flex-col items-center">
-          <div class="text-2xl font-black text-white">${data.calories}</div>
-          <div class="text-xs font-bold text-text-secondary uppercase">kcal</div>
-        </div>
-        <div class="flex flex-col items-center">
-          <div class="text-xl font-bold text-blue-400">${data.macros.protein}g</div>
-          <div class="text-xs font-bold text-[#5c6e5e] uppercase">Prot</div>
-        </div>
-        <div class="flex flex-col items-center">
-          <div class="text-xl font-bold text-yellow-400">${data.macros.carbs}g</div>
-          <div class="text-xs font-bold text-[#5c6e5e] uppercase">Carb</div>
-        </div>
-        <div class="flex flex-col items-center">
-          <div class="text-xl font-bold text-red-400">${data.macros.fat}g</div>
-          <div class="text-xs font-bold text-[#5c6e5e] uppercase">Grasa</div>
-        </div>
-      </div>
-
-      <button id="save-meal-btn" class="w-full bg-primary hover:bg-[#0fd620] text-black font-bold py-3 rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
-        <span class="material-symbols-outlined">check_circle</span>
-        Guardar en Diario
-      </button>
-    </div>
-  `;
-
-  document.querySelector('#save-meal-btn').addEventListener('click', () => {
-    addMeal(currentAnalysis);
-    window.router.navigate('dashboard');
-  });
-};
-
-const toBase64 = (file) => new Promise((resolve, reject) => {
-  const reader = new FileReader();
-  reader.readAsDataURL(file);
-  reader.onload = () => resolve(reader.result);
-  reader.onerror = error => reject(error);
-});

@@ -1,19 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="es" class="light">
 
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/jpeg" href="/lucas.jpeg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GrowFit</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#10B981" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>GrowFit - Nutrition & Fitness Tracker</title>
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Outfit:wght@100..900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Unbounded:wght@200..900&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;1,700&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&family=Unbounded:wght@400;600;800&family=Inter:wght@400;500;600;700&display=swap"
     rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
     rel="stylesheet">
+  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- HTML5 QR & Barcode Scanner -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -21,40 +28,30 @@
       theme: {
         extend: {
           colors: {
-            "primary": "#00FF88", // GrowLabs Neon Green
-            "background-dark": "#000000",
-            "surface-dark": "rgba(10, 10, 10, 0.7)",
-            "text-secondary": "#9CA3AF",
-            "border-color": "rgba(255, 255, 255, 0.1)"
+            "primary": "#10B981",        // Emerald 500
+            "primary-dark": "#047857",   // Emerald 700
+            "primary-deep": "#064E3B",   // Emerald 950
+            "primary-light": "#ECFDF5",  // Emerald 50
+            "primary-soft": "#D1FAE5",   // Emerald 100
+            "background-light": "#F8FAFC", // Clean Slate 50
+            "surface-white": "#FFFFFF",
+            "text-primary": "#0F172A",   // Slate 900
+            "text-emerald": "#065F46",   // Emerald 800
+            "text-muted": "#64748B",     // Slate 500
+            "border-soft": "#E2E8F0",    // Slate 200
+            "border-emerald": "#A7F3D0"  // Emerald 200
           },
           fontFamily: {
-            "display": ["Unbounded", "Outfit", "sans-serif"],
-            "body": ["Outfit", "sans-serif"],
-            "mono": ["Space Mono", "monospace"]
+            "display": ["Barlow Condensed", "Outfit", "sans-serif"],
+            "body": ["Outfit", "Inter", "sans-serif"],
+            "mono": ["Space Mono", "monospace"],
+            "heading": ["Unbounded", "Outfit", "sans-serif"]
           },
-          screens: {
-            'xs': '475px',
-            ...tailwind.config.theme.screens,
-          },
-          animation: {
-            "glow": "glow 2s ease-in-out infinite alternate",
-            "float": "float 6s ease-in-out infinite",
-            "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-            "shimmer": "shimmer 2s linear infinite",
-          },
-          keyframes: {
-            glow: {
-              "from": { "box-shadow": "0 0 5px #00FF88, 0 0 10px #00FF88" },
-              "to": { "box-shadow": "0 0 20px #00FF88, 0 0 30px #00FF88" }
-            },
-            float: {
-              "0%, 100%": { "transform": "translateY(0)" },
-              "50%": { "transform": "translateY(-10px)" }
-            },
-            shimmer: {
-              "0%": { "background-position": "-200px 0" },
-              "100%": { "background-position": "200px 0" }
-            }
+          boxShadow: {
+            "emerald-sm": "0 2px 8px -1px rgba(16, 185, 129, 0.15)",
+            "emerald-md": "0 10px 25px -5px rgba(16, 185, 129, 0.2)",
+            "emerald-lg": "0 20px 35px -10px rgba(16, 185, 129, 0.3)",
+            "card-clean": "0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03)"
           }
         }
       }
@@ -62,18 +59,20 @@
   </script>
   <style>
     .material-symbols-outlined {
-      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
     }
   </style>
+</head>
 
-<body>
-  <div class="noise-overlay"></div>
+<body class="bg-background-light text-text-primary antialiased font-body selection:bg-emerald-100 selection:text-emerald-900">
   <div id="app"></div>
+  
   <!-- Global Notification Modal -->
   <div id="global-modal"
-    class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-    <div id="global-modal-content" class="animate-scale-up"></div>
+    class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 transition-all duration-300">
+    <div id="global-modal-content" class="w-full max-w-sm"></div>
   </div>
+  
   <script type="module" src="/src/main.js"></script>
 </body>
 

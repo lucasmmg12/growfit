@@ -18,7 +18,7 @@ export const getArgentinaDate = () => {
 
 const defaultState = {
     profile: {
-        name: '',
+        name: 'Usuario',
         age: 30,
         calorieGoal: 2000,
         proteinGoal: 150,
@@ -27,8 +27,8 @@ const defaultState = {
         height: 175,
         gender: 'male',
         checkinFrequency: 15,
-        startingWeight: null,
-        targetWeight: null,
+        startingWeight: 75,
+        targetWeight: 70,
         health: {
             conditions: '',
             medications: '',
@@ -42,10 +42,17 @@ const defaultState = {
     days: {},
     measurements: [],
     workouts: [],
+    gymSessions: [],
+    fasting: {
+        isActive: false,
+        startTime: null,
+        protocol: '16:8',
+        targetHours: 16
+    },
     habits: [
-        { id: 'h2', name: 'Sin Azúcar', icon: 'block' },
+        { id: 'h2', name: 'Sin Azúcar refinada', icon: 'block' },
         { id: 'h3', name: 'Caminar 30 min', icon: 'directions_walk' },
-        { id: 'h4', name: 'Leer 10 min', icon: 'menu_book' }
+        { id: 'h4', name: 'Lectura o Relax', icon: 'menu_book' }
     ],
     habitLog: {},
     dailyTip: { date: null, content: null },
@@ -54,7 +61,6 @@ const defaultState = {
 };
 
 const calculateLevel = (xp) => {
-    // Level 1: 0-100, Level 2: 101-300, etc. (Simple exponential curve)
     return Math.floor(Math.sqrt(xp / 100)) + 1;
 };
 
@@ -64,11 +70,10 @@ const addXP = (state, amount) => {
 
     state.profile.xp += amount;
     const newLevel = calculateLevel(state.profile.xp);
-
     state.profile.level = newLevel;
 
     if (newLevel > oldLevel) {
-        window.showAlert('¡Nivel Subido!', `Ahora eres Nivel ${newLevel}`, 'success');
+        window.showAlert?.('¡Nivel Subido!', `Ahora eres Nivel ${newLevel}`, 'success');
     }
 };
 
@@ -77,8 +82,11 @@ const addXP = (state, amount) => {
 export const getState = () => {
     const stored = localStorage.getItem(STORAGE_KEY);
     const state = stored ? { ...defaultState, ...JSON.parse(stored) } : defaultState;
-    if (state.habits) {
-        state.habits = state.habits.filter(h => !h.name.includes('Ayuno'));
+    if (!state.fasting) {
+        state.fasting = defaultState.fasting;
+    }
+    if (!state.gymSessions) {
+        state.gymSessions = [];
     }
     return state;
 };
@@ -86,10 +94,7 @@ export const getState = () => {
 // GLOBAL SAVE (Primarily for Profile & UI State)
 export const saveState = (newState) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-
-    // Persist everything to the cloud data JSON
     saveProfileDB(newState);
-
     window.dispatchEvent(new CustomEvent('state-changed', { detail: newState }));
 };
 
@@ -111,13 +116,12 @@ export const initializeState = async () => {
                 ...defaultState,
                 ...cloudState,
                 ...local,
-                selectedDate: getArgentinaDate(), // ALWAYS START ON TODAY
+                selectedDate: getArgentinaDate(),
                 dailyLog: cloudData.dailyLog || [],
                 measurements: cloudData.measurements || [],
                 workouts: cloudData.workouts || []
             };
 
-            // Ensure dailyLog correctly reflects the specialized tables if they are not empty
             if (cloudData.dailyLog?.length > 0) newState.dailyLog = cloudData.dailyLog;
             if (cloudData.measurements?.length > 0) newState.measurements = cloudData.measurements;
             if (cloudData.workouts?.length > 0) newState.workouts = cloudData.workouts;
@@ -126,12 +130,195 @@ export const initializeState = async () => {
             return newState;
         }
     } catch (e) {
-        console.warn("Offline, using local.", e);
+        console.warn("Offline, using local state.", e);
     }
     return getState();
 };
 
-// --- ACTIONS (Now Connected to Granular DB) ---
+// --- FASTING ENGINE ---
+
+export const startFasting = (protocol = '16:8', targetHours = 16) => {
+    const state = getState();
+    state.fasting = {
+        isActive: true,
+        startTime: new Date().toISOString(),
+        protocol,
+        targetHours
+    };
+    saveState(state);
+};
+
+export const stopFasting = () => {
+    const state = getState();
+    state.fasting = {
+        ...state.fasting,
+        isActive: false,
+        lastFinishedTime: new Date().toISOString()
+    };
+    addXP(state, 40); // XP for completing fast
+    saveState(state);
+};
+
+export const getFastingProgress = () => {
+    const state = getState();
+    const f = state.fasting || defaultState.fasting;
+    if (!f.isActive || !f.startTime) {
+        return {
+            isActive: false,
+            elapsedHours: 0,
+            elapsedMinutes: 0,
+            percent: 0,
+            stage: 'Inactivo',
+            protocol: f.protocol || '16:8',
+            targetHours: f.targetHours || 16
+        };
+    }
+
+    const start = new Date(f.startTime);
+    const now = new Date();
+    const diffMs = Math.max(0, now - start);
+    const elapsedMinutesTotal = Math.floor(diffMs / (1000 * 60));
+    const elapsedHours = Math.floor(elapsedMinutesTotal / 60);
+    const elapsedMinutes = elapsedMinutesTotal % 60;
+    const targetMinutes = (f.targetHours || 16) * 60;
+    const percent = Math.min(100, Math.round((elapsedMinutesTotal / targetMinutes) * 100));
+
+    // Biological Fasting Stage
+    let stage = 'Digestión & Nivelación';
+    if (elapsedHours >= 16) {
+        stage = 'Autofagia y Renovación';
+    } else if (elapsedHours >= 12) {
+        stage = 'Cetosis y Quema de Grasa';
+    } else if (elapsedHours >= 8) {
+        stage = 'Caída de Insulina';
+    }
+
+    return {
+        isActive: true,
+        startTime: f.startTime,
+        elapsedHours,
+        elapsedMinutes,
+        elapsedFormatted: `${elapsedHours}h ${elapsedMinutes}m`,
+        percent,
+        stage,
+        protocol: f.protocol,
+        targetHours: f.targetHours
+    };
+};
+
+// --- GYM LOGBOOK & 1RM CALCULATOR ---
+
+export const calculate1RM = (weight, reps) => {
+    const w = Number(weight) || 0;
+    const r = Number(reps) || 0;
+    if (w <= 0 || r <= 0) return 0;
+    if (r === 1) return w;
+    // Epley Formula: w * (1 + r/30)
+    const epley = w * (1 + r / 30);
+    // Brzycki Formula: w * (36 / (37 - r))
+    const brzycki = r < 37 ? w * (36 / (37 - r)) : epley;
+    return Math.round((epley + brzycki) / 2);
+};
+
+export const saveGymSession = async (sessionData) => {
+    const state = getState();
+    const tempId = Date.now();
+    
+    // Calculate total volume tonnage
+    let totalVolumeKg = 0;
+    let totalReps = 0;
+    (sessionData.exercises || []).forEach(ex => {
+        (ex.sets || []).forEach(s => {
+            if (s.completed) {
+                totalVolumeKg += (Number(s.weight) || 0) * (Number(s.reps) || 0);
+                totalReps += (Number(s.reps) || 0);
+            }
+        });
+    });
+
+    const newSession = {
+        id: tempId,
+        date: sessionData.date || state.selectedDate || getArgentinaDate(),
+        name: sessionData.name || 'Sesión de Fuerza',
+        duration: sessionData.duration || 45,
+        calories: sessionData.calories || Math.round(totalVolumeKg * 0.05 + 150),
+        exercises: sessionData.exercises || [],
+        totalVolumeKg,
+        totalReps
+    };
+
+    if (!state.gymSessions) state.gymSessions = [];
+    state.gymSessions.push(newSession);
+
+    // Also add to generic workouts table for unified calorie burns
+    await addWorkout({
+        name: newSession.name,
+        type: 'strength',
+        duration: newSession.duration,
+        calories: newSession.calories,
+        details: { volumeKg: totalVolumeKg, reps: totalReps }
+    });
+
+    addXP(state, 60);
+    saveState(state);
+    return newSession;
+};
+
+// --- ADAPTATIVE TDEE ENGINE (MacroFactor Style) ---
+
+export const calculateAdaptiveTDEE = (state = getState()) => {
+    const measurements = [...(state.measurements || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const dailyLog = state.dailyLog || [];
+    
+    // Default fallback to Mifflin-St Jeor formula
+    const bmr = getBMR();
+    const standardTDEE = Math.round(bmr * 1.4); // Moderately active default
+
+    if (measurements.length < 2 || dailyLog.length < 5) {
+        return {
+            adaptiveTDEE: standardTDEE,
+            confidence: 'Baja (Registra al menos 2 pesajes y 5 días de comidas)',
+            recommendedDeficit: standardTDEE - 400,
+            recommendedSurplus: standardTDEE + 300,
+            maintenance: standardTDEE,
+            weightDeltaKg: 0,
+            avgIntake: standardTDEE
+        };
+    }
+
+    const firstM = measurements[0];
+    const lastM = measurements[measurements.length - 1];
+    const daysBetween = Math.max(1, Math.round((new Date(lastM.date) - new Date(firstM.date)) / (1000 * 60 * 60 * 24)));
+    
+    // Average daily intake across the log
+    const totalLoggedCalories = dailyLog.reduce((sum, m) => sum + (m.calories || 0), 0);
+    // Group by date to find unique days logged
+    const loggedDates = new Set(dailyLog.map(m => m.date));
+    const daysWithLogs = Math.max(1, loggedDates.size);
+    const avgIntake = Math.round(totalLoggedCalories / daysWithLogs);
+
+    // 1 kg of fat ~= 7700 kcal
+    const weightDeltaKg = Number(lastM.weight) - Number(firstM.weight);
+    const dailyCaloricBalanceFromWeight = (weightDeltaKg * 7700) / daysBetween;
+
+    // Real TDEE = Average intake - daily weight calorie delta
+    let calculatedTDEE = Math.round(avgIntake - dailyCaloricBalanceFromWeight);
+    // Sanity boundary: between 1200 and 4500 kcal
+    calculatedTDEE = Math.max(1200, Math.min(4500, calculatedTDEE));
+
+    return {
+        adaptiveTDEE: calculatedTDEE,
+        confidence: daysBetween >= 14 && daysWithLogs >= 10 ? 'Alta' : 'Media',
+        recommendedDeficit: Math.round(calculatedTDEE - 450),
+        recommendedSurplus: Math.round(calculatedTDEE + 300),
+        maintenance: calculatedTDEE,
+        weightDeltaKg: Math.round(weightDeltaKg * 10) / 10,
+        avgIntake,
+        daysEvaluated: daysBetween
+    };
+};
+
+// --- ACTIONS ---
 
 export const addWorkout = async (data) => {
     const state = getState();
@@ -139,16 +326,15 @@ export const addWorkout = async (data) => {
 
     let caloriesBurned = data.calories;
     if (!caloriesBurned) {
-        const durationHours = data.duration / 60;
+        const durationHours = (data.duration || 30) / 60;
         const met = 5;
         caloriesBurned = Math.round(met * weight * durationHours);
     }
 
-    // Temporary ID for immediate UI update
     const tempId = Date.now();
     const newWorkout = {
         id: tempId,
-        date: data.date || state.selectedDate || new Date().toISOString().split('T')[0],
+        date: data.date || state.selectedDate || getArgentinaDate(),
         ...data,
         calories: caloriesBurned
     };
@@ -156,14 +342,11 @@ export const addWorkout = async (data) => {
     if (!state.workouts) state.workouts = [];
     state.workouts.push(newWorkout);
 
-    addXP(state, 50); // XP for Workout
-
+    addXP(state, 50);
     saveState(state);
 
-    // DB Sync
     const dbData = await addWorkoutDB(newWorkout);
     if (dbData && dbData.id) {
-        // Update local ID with real DB ID
         const currentState = getState();
         const workoutIndex = currentState.workouts.findIndex(w => w.id === tempId);
         if (workoutIndex !== -1) {
@@ -182,20 +365,19 @@ export const addMeal = async (meal) => {
     const mealTime = meal.time || meal.category || 'Desayuno';
     const tempId = Date.now();
 
-    // Check if it's "healthy" (simple logic: protein > fat) to give bonus XP
     const isHealthy = (meal.macros?.protein || 0) > (meal.macros?.fat || 0);
-    const xp = isHealthy ? 20 : 10;
+    const xp = isHealthy ? 25 : 15;
 
     const finalMeal = { ...meal, date: mealDate, time: mealTime, id: tempId };
 
+    if (!state.dailyLog) state.dailyLog = [];
     state.dailyLog.push(finalMeal);
-    addXP(state, xp); // XP for Meal
+    addXP(state, xp);
 
     saveState(state);
 
-    const dbData = await addMealDB(finalMeal); // DB Sync
+    const dbData = await addMealDB(finalMeal);
     if (dbData && dbData.id) {
-        // Update local ID with real DB ID
         const currentState = getState();
         const mealIndex = currentState.dailyLog.findIndex(m => m.id === tempId);
         if (mealIndex !== -1) {
@@ -214,27 +396,22 @@ export const deleteMeal = (id) => {
 
     if (meal) {
         const mealId = Number(id);
-        if (mealId > 0 && mealId < 1000000000000) { // Safely check if it's a DB ID (usually small numbers)
+        if (mealId > 0 && mealId < 1000000000000) {
             deleteMealByIdDB(mealId);
         } else {
-            // Fallback for unsynced or legacy items (timestamp-based IDs or string IDs)
             deleteMealByAttributesDB(meal.name, meal.date, meal.calories);
         }
     }
 };
 
 export const updateMeal = (id, updates) => {
-    // Updates are tricky in granular DB without ID.
-    // For MVP, we skip complex update sync or assume Add/Delete flow.
-    // If user edits, we update local. DB drift risk implies reload needed.
     const state = getState();
     const index = state.dailyLog.findIndex(m => m.id === id);
     if (index !== -1) {
         state.dailyLog[index] = { ...state.dailyLog[index], ...updates };
         saveState(state);
 
-        // Persist to DB if it's a valid ID
-        if (id > 0 && id < 1000000000000) { // IDs from DB are small, Date.now() is >= 13 digits
+        if (id > 0 && id < 1000000000000) {
             updateMealDB(id, state.dailyLog[index]);
         }
     }
@@ -247,15 +424,14 @@ export const addMeasurement = async (data) => {
     const height = profile.height || 175;
     const gender = profile.gender || 'male';
 
-    // BF Calc (Navy Seal Method)
     let bodyFat = 0;
     if (gender === 'male') {
-        const logWaistNeck = Math.log10(waist - neck);
+        const logWaistNeck = Math.log10(Math.max(1, waist - neck));
         const logHeight = Math.log10(height);
         bodyFat = (495 / (1.0324 - 0.19077 * logWaistNeck + 0.15456 * logHeight)) - 450;
     } else {
         const finalHip = hip || waist;
-        const logWaistHipNeck = Math.log10(waist + finalHip - neck);
+        const logWaistHipNeck = Math.log10(Math.max(1, waist + finalHip - neck));
         const logHeight = Math.log10(height);
         bodyFat = (495 / (1.29579 - 0.35004 * logWaistHipNeck + 0.22100 * logHeight)) - 450;
     }
@@ -266,9 +442,11 @@ export const addMeasurement = async (data) => {
 
     const newEntry = {
         id: Date.now(),
-        date: data.date || new Date().toISOString().split('T')[0],
+        date: data.date || getArgentinaDate(),
         weight: Number(weight),
-        neck, waist, hip,
+        neck: Number(neck) || 0,
+        waist: Number(waist) || 0,
+        hip: Number(hip) || 0,
         bodyFat: Number(bodyFat.toFixed(1)),
         fatMass: Number(fatMass.toFixed(1)),
         leanMass: Number(leanMass.toFixed(1))
@@ -277,6 +455,7 @@ export const addMeasurement = async (data) => {
     if (!state.measurements) state.measurements = [];
     state.measurements.push(newEntry);
 
+    addXP(state, 50);
     saveState(state);
     await addMeasurementDB(newEntry);
 
@@ -284,10 +463,11 @@ export const addMeasurement = async (data) => {
 };
 
 // ... Read-Only Getters ...
+
 export const getDailyStats = (dateStr) => {
     const state = getState();
-    const targetDate = dateStr || state.selectedDate || new Date().toISOString().split('T')[0];
-    const todaysMeals = state.dailyLog.filter(m => m.date === targetDate);
+    const targetDate = dateStr || state.selectedDate || getArgentinaDate();
+    const todaysMeals = (state.dailyLog || []).filter(m => m.date === targetDate);
 
     return todaysMeals.reduce((acc, meal) => {
         acc.calories += meal.calories || 0;
@@ -321,13 +501,13 @@ export const checkMeasurementStatus = () => {
 export const setDailyHabits = (newHabits) => {
     const state = getState();
     state.habits = newHabits;
-    state.lastHabitGenerationDate = new Date().toISOString().split('T')[0];
-    saveState(state); // Saves to Profile JSON in DB
+    state.lastHabitGenerationDate = getArgentinaDate();
+    saveState(state);
 };
 
 export const toggleHabit = (habitId, dateStr) => {
     const state = getState();
-    const targetDate = dateStr || state.selectedDate || new Date().toISOString().split('T')[0];
+    const targetDate = dateStr || state.selectedDate || getArgentinaDate();
     if (!state.habitLog) state.habitLog = {};
     if (!state.habitLog[targetDate]) state.habitLog[targetDate] = [];
 
@@ -340,23 +520,22 @@ export const toggleHabit = (habitId, dateStr) => {
 
 export const getBMR = () => {
     const state = getState();
-    const p = state.profile;
+    const p = state.profile || {};
     const lastM = getLatestMeasurement();
     const weight = lastM ? lastM.weight : (p.startingWeight || 70);
     const height = p.height || 175;
     const age = p.age || 30;
-    return Math.round((10 * weight) + (6.25 * height) - (5 * age) + 5); // Simple calculation
+    return Math.round((10 * weight) + (6.25 * height) - (5 * age) + 5);
 };
 
 export const getDailyBurn = (dateStr) => {
     const state = getState();
     const bmr = getBMR();
-    const date = dateStr || state.selectedDate || new Date().toISOString().split('T')[0];
+    const date = dateStr || state.selectedDate || getArgentinaDate();
 
     const workouts = state.workouts || [];
     const dailyWorkouts = workouts.filter(w => w.date === date);
-
-    const activityBurn = dailyWorkouts.reduce((sum, w) => sum + w.calories, 0);
+    const activityBurn = dailyWorkouts.reduce((sum, w) => sum + (w.calories || 0), 0);
 
     return {
         bmr,
@@ -377,7 +556,7 @@ export const updateDayStat = (date, key, value) => {
 
 export const setDailyTip = (content) => {
     const state = getState();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getArgentinaDate();
     state.dailyTip = { date: today, content };
     saveState(state);
 };

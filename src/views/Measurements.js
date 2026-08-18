@@ -1,176 +1,101 @@
-import { getState, addMeasurement, getLatestMeasurement } from '../state';
+import { getState, addMeasurement, getLatestMeasurement, getArgentinaDate } from '../state';
+import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
 
 export const renderMeasurements = () => {
     const state = getState();
     const history = state.measurements ? [...state.measurements].reverse() : [];
     const latest = getLatestMeasurement();
 
-    // Default values
-    const currentWeight = latest ? latest.weight : (state.profile.startingWeight || 70);
+    const currentWeight = latest ? latest.weight : (state.profile.startingWeight || 75);
     const bodyFat = latest ? latest.bodyFat : '--';
     const leanMass = latest ? latest.leanMass : '--';
+    const fatMass = latest ? latest.fatMass : '--';
 
     return `
-    <div class="flex h-screen w-full text-slate-900 dark:text-white font-display overflow-hidden fade-in">
-        <!-- Side Navigation (Desktop) - SAME AS DASHBOARD -->
-        <aside class="hidden md:flex w-64 flex-col justify-between border-r border-[#28392a] bg-surface-dark backdrop-blur-md p-4">
-            <div class="flex flex-col gap-8">
-                <div class="flex items-center gap-3 px-2">
-                     <img src="/lucas.jpeg" alt="Profile" class="w-12 h-12 rounded-full border-2 border-primary object-cover">
-                    <div class="flex flex-col">
-                        <img src="/logogrow.png" alt="GrowFit" class="h-6 object-contain self-start">
-                        <p class="text-primary text-xs font-medium uppercase tracking-wide">Plan Personal</p>
-                    </div>
-                </div>
-                <nav class="flex flex-col gap-2">
-                    <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('dashboard')">
-                        <span class="material-symbols-outlined">dashboard</span>
-                        <p class="text-sm font-medium">Inicio</p>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-3 rounded-xl bg-primary/10 border border-primary/20 group transition-colors cursor-pointer">
-                        <span class="material-symbols-outlined text-primary group-hover:text-white">straighten</span>
-                        <p class="text-white text-sm font-medium">Progreso</p>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('insights')">
-                        <span class="material-symbols-outlined">insights</span>
-                        <p class="text-sm font-medium">Estadísticas</p>
-                    </a>
-                    <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('workouts')">
-                        <span class="material-symbols-outlined">fitness_center</span>
-                        <p class="text-sm font-medium">Entrenamientos</p>
-                    </a>
-                     <a class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#28392a] transition-colors text-text-secondary hover:text-white cursor-pointer" onclick="window.router.navigate('profile')">
-                        <span class="material-symbols-outlined">settings</span>
-                        <p class="text-sm font-medium">Ajustes</p>
-                    </a>
-                </nav>
-            </div>
-        </aside>
+    <div class="flex h-screen w-full bg-background-light font-body text-text-primary overflow-hidden fade-in">
+        ${renderSidebar('measurements')}
 
         <!-- Main Content -->
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
-            <div class="flex-1 overflow-y-auto">
-                <div class="w-full max-w-4xl mx-auto px-4 md:px-8 py-6 md:py-10 flex flex-col gap-8">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-background-light">
+            ${renderMobileHeader('Progreso Corporal')}
 
-                    <!-- Header -->
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <h2 class="text-white text-3xl font-black">Progreso Corporal</h2>
-                            <p class="text-text-secondary">Monitorea tu evolución con el método Navy Seal</p>
-                        </div>
-                        <button id="toggle-form-btn" class="bg-primary text-[#102212] px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-green-400 transition-colors">
-                            <span class="material-symbols-outlined">add</span>
-                            Nuevo Registro
-                        </button>
-                    </div>
+            <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-8">
+                <div class="max-w-4xl mx-auto flex flex-col gap-6">
 
-                    <!-- Input Form (Hidden by default) -->
-                    <div id="measurement-form" class="hidden bg-surface-dark/90 backdrop-blur-md border border-[#28392a] rounded-2xl p-6 animate-slide-in">
-                        <h3 class="text-white font-bold mb-4">Nueva Medición</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs text-text-secondary uppercase">Fecha</label>
-                                <input id="m-date" type="date" class="bg-[#1A261C] border border-[#28392a] rounded-lg p-3 text-white focus:border-primary outline-none" value="${new Date().toISOString().split('T')[0]}">
+                    <!-- Top Header Card -->
+                    <div class="white-card p-6 bg-gradient-to-r from-white via-emerald-50/40 to-white border-emerald-200">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <span class="badge-emerald mb-1">Composición Corporal</span>
+                                <h2 class="text-3xl font-display font-black text-text-emerald uppercase tracking-tight">Progreso & Biometría</h2>
+                                <p class="text-xs text-text-muted mt-0.5">Seguimiento antropométrico con el método Navy Seal.</p>
                             </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs text-text-secondary uppercase">Peso (kg)</label>
-                                <input id="m-weight" type="number" step="0.1" class="bg-[#1A261C] border border-[#28392a] rounded-lg p-3 text-white focus:border-primary outline-none" placeholder="Ej. 75.5" value="${currentWeight}">
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs text-text-secondary uppercase">Cuello (cm)</label>
-                                <input id="m-neck" type="number" step="0.5" class="bg-[#1A261C] border border-[#28392a] rounded-lg p-3 text-white focus:border-primary outline-none" placeholder="Ej. 38">
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs text-text-secondary uppercase">Cintura (cm)</label> <!-- Al ombligo -->
-                                <input id="m-waist" type="number" step="0.5" class="bg-[#1A261C] border border-[#28392a] rounded-lg p-3 text-white focus:border-primary outline-none" placeholder="Altura ombligo. Ej. 85">
-                            </div>
-                            <div class="flex flex-col gap-1 ${state.profile.gender === 'female' ? '' : 'hidden'}">
-                                <label class="text-xs text-text-secondary uppercase">Cadera (cm)</label>
-                                <input id="m-hip" type="number" step="0.5" class="bg-[#1A261C] border border-[#28392a] rounded-lg p-3 text-white focus:border-primary outline-none" placeholder="Parte más ancha">
-                            </div>
+                            <button id="open-measurement-form-btn" class="btn-emerald px-4 py-2.5 text-xs font-bold shadow-emerald-sm">
+                                <span class="material-symbols-outlined text-base">add</span> Nueva Medición
+                            </button>
                         </div>
-                        <button id="save-measurement-btn" class="w-full bg-[#28392a] text-white py-3 rounded-xl font-bold hover:bg-primary hover:text-[#102212] transition-colors border border-primary/20">
-                            Calcular y Guardar
-                        </button>
-                    </div>
 
-                    <!-- Stats Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <!-- Body Fat -->
-                        <div class="bg-surface-dark/90 backdrop-blur-md border border-[#28392a] rounded-2xl p-5 relative overflow-hidden">
-                            <div class="absolute -right-4 -top-4 text-[#28392a] opacity-50">
-                                <span class="material-symbols-outlined text-[100px]">body_fat</span>
+                        <!-- 4 Stat Badges Grid -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+                            <div class="p-3 bg-white rounded-2xl border border-slate-200 text-center shadow-xs">
+                                <span class="text-[10px] font-bold uppercase text-text-muted">Peso Actual</span>
+                                <p class="text-2xl font-display font-black text-text-emerald">${currentWeight} <span class="text-xs font-normal text-text-muted">kg</span></p>
                             </div>
-                            <p class="text-text-secondary text-xs uppercase font-bold tracking-wider mb-1">Grasa Corporal</p>
-                            <h3 class="text-3xl font-black text-white relative z-10">${bodyFat}<span class="text-lg text-primary font-medium">%</span></h3>
-                            <p class="text-xs text-text-secondary mt-2">Estimación Navy Seal</p>
-                        </div>
-                        <!-- Lean Mass -->
-                        <div class="bg-surface-dark/90 backdrop-blur-md border border-[#28392a] rounded-2xl p-5 relative overflow-hidden">
-                            <div class="absolute -right-4 -top-4 text-[#28392a] opacity-50">
-                                <span class="material-symbols-outlined text-[100px]">fitness_center</span>
+                            <div class="p-3 bg-white rounded-2xl border border-slate-200 text-center shadow-xs">
+                                <span class="text-[10px] font-bold uppercase text-text-muted">% Grasa</span>
+                                <p class="text-2xl font-display font-black text-text-emerald">${bodyFat} <span class="text-xs font-normal text-text-muted">%</span></p>
                             </div>
-                            <p class="text-text-secondary text-xs uppercase font-bold tracking-wider mb-1">Masa Magra</p>
-                            <h3 class="text-3xl font-black text-white relative z-10">${leanMass}<span class="text-lg text-text-secondary font-medium">kg</span></h3>
-                            <p class="text-xs text-text-secondary mt-2">Músculo, huesos, agua</p>
-                        </div>
-                        <!-- Weight -->
-                        <div class="bg-surface-dark/90 backdrop-blur-md border border-[#28392a] rounded-2xl p-5 relative overflow-hidden">
-                            <div class="absolute -right-4 -top-4 text-[#28392a] opacity-50">
-                                <span class="material-symbols-outlined text-[100px]">monitor_weight</span>
+                            <div class="p-3 bg-white rounded-2xl border border-slate-200 text-center shadow-xs">
+                                <span class="text-[10px] font-bold uppercase text-text-muted">Masa Magra</span>
+                                <p class="text-2xl font-display font-black text-blue-600">${leanMass} <span class="text-xs font-normal text-text-muted">kg</span></p>
                             </div>
-                            <p class="text-text-secondary text-xs uppercase font-bold tracking-wider mb-1">Peso Actual</p>
-                            <h3 class="text-3xl font-black text-white relative z-10">${currentWeight}<span class="text-lg text-text-secondary font-medium">kg</span></h3>
-                            <p class="text-xs text-text-secondary mt-2">Último registro</p>
+                            <div class="p-3 bg-white rounded-2xl border border-slate-200 text-center shadow-xs">
+                                <span class="text-[10px] font-bold uppercase text-text-muted">Masa Grasa</span>
+                                <p class="text-2xl font-display font-black text-amber-600">${fatMass} <span class="text-xs font-normal text-text-muted">kg</span></p>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Progress Chart -->
-                    <div class="bg-surface-dark/90 backdrop-blur-md border border-[#28392a] rounded-2xl p-6 h-72 w-full flex flex-col">
-                        <h3 class="text-white font-bold mb-4 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary">trending_down</span>
-                            Tendencia de Grasa Corporal
-                        </h3>
-                        <div class="flex-1 relative w-full h-full">
-                            <canvas id="progressChart"></canvas>
+                    <!-- Chart Card -->
+                    <div class="white-card p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-display font-black text-text-emerald uppercase">Evolución de Peso y Grasa</h3>
+                            <span class="text-xs text-text-muted font-mono font-bold">${history.length} registros</span>
+                        </div>
+                        <div class="h-64 w-full relative">
+                            <canvas id="measurementsChart" class="w-full h-full"></canvas>
                         </div>
                     </div>
 
                     <!-- History Table -->
-                    <div class="bg-surface-dark/90 backdrop-blur-md border border-[#28392a] rounded-2xl overflow-hidden">
-                        <div class="p-4 border-b border-[#28392a]">
-                            <h3 class="text-white font-bold">Historial</h3>
-                        </div>
+                    <div class="white-card p-6">
+                        <h3 class="text-lg font-display font-black text-text-emerald uppercase mb-4 pb-2 border-b border-border-soft">
+                            Historial Antropométrico
+                        </h3>
                         <div class="overflow-x-auto">
-                            <table class="w-full text-left">
-                                <thead class="bg-[#132015] text-text-secondary text-xs uppercase">
-                                    <tr>
-                                        <th class="p-4 font-medium">Fecha</th>
-                                        <th class="p-4 font-medium">Peso</th>
-                                        <th class="p-4 font-medium">Grasa %</th>
-                                        <th class="p-4 font-medium">M. Magra</th>
-                                        <th class="p-4 font-medium hidden sm:table-cell">Cintura</th>
+                            <table class="w-full text-xs text-left">
+                                <thead>
+                                    <tr class="text-slate-400 font-bold uppercase text-[10px] border-b border-slate-100">
+                                        <th class="pb-2">Fecha</th>
+                                        <th class="pb-2">Peso</th>
+                                        <th class="pb-2">% Grasa</th>
+                                        <th class="pb-2">Cintura</th>
+                                        <th class="pb-2">Cuello</th>
+                                        <th class="pb-2">Masa Magra</th>
                                     </tr>
                                 </thead>
-                                <tbody class="text-sm">
-                                    ${history.length > 0 ? history.map(item => `
-                                        <tr class="border-b border-[#28392a] last:border-none hover:bg-white/5 transition-colors">
-                                            <td class="p-4 text-white font-mono">${new Date(item.date).toLocaleDateString()}</td>
-                                            <td class="p-4 text-white font-bold">${item.weight} kg</td>
-                                            <td class="p-4">
-                                                <span class="bg-primary/10 text-primary px-2 py-1 rounded-lg text-xs font-bold border border-primary/20">
-                                                    ${item.bodyFat}%
-                                                </span>
-                                            </td>
-                                            <td class="p-4 text-text-secondary">${item.leanMass} kg</td>
-                                            <td class="p-4 text-text-secondary hidden sm:table-cell">${item.waist} cm</td>
+                                <tbody class="divide-y divide-slate-100 font-medium">
+                                    ${history.length ? history.map(m => `
+                                        <tr>
+                                            <td class="py-3 font-bold text-text-primary">${m.date}</td>
+                                            <td class="py-3 font-mono font-bold text-text-emerald">${m.weight} kg</td>
+                                            <td class="py-3 font-mono font-bold">${m.bodyFat}%</td>
+                                            <td class="py-3 font-mono text-slate-500">${m.waist || '--'} cm</td>
+                                            <td class="py-3 font-mono text-slate-500">${m.neck || '--'} cm</td>
+                                            <td class="py-3 font-mono text-blue-600 font-bold">${m.leanMass || '--'} kg</td>
                                         </tr>
                                     `).join('') : `
-                                        <tr>
-                                            <td colspan="5" class="p-8 text-center text-text-secondary">
-                                                No hay registros aún. ¡Añade tu primera medición!
-                                            </td>
-                                        </tr>
+                                        <tr><td colspan="6" class="py-4 text-center text-text-muted italic">Sin mediciones registradas</td></tr>
                                     `}
                                 </tbody>
                             </table>
@@ -179,148 +104,123 @@ export const renderMeasurements = () => {
 
                 </div>
             </div>
+
+            ${renderBottomNav('measurements')}
         </main>
+
+        <!-- Measurement Form Modal -->
+        <div id="measurement-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"></div>
     </div>
     `;
 };
 
 export const attachMeasurementsEvents = () => {
-    const toggleBtn = document.getElementById('toggle-form-btn');
-    const form = document.getElementById('measurement-form');
-    const saveBtn = document.getElementById('save-measurement-btn');
-
-    toggleBtn?.addEventListener('click', () => {
-        form.classList.toggle('hidden');
-    });
-
-    saveBtn?.addEventListener('click', async () => {
-        const date = document.getElementById('m-date').value;
-        const weight = parseFloat(document.getElementById('m-weight').value);
-        const neck = parseFloat(document.getElementById('m-neck').value);
-        const waist = parseFloat(document.getElementById('m-waist').value);
-        const hip = parseFloat(document.getElementById('m-hip')?.value) || 0;
-
-        if (!weight || !neck || !waist) {
-            window.showAlert('Medición', "Por favor completa los campos requeridos (Peso, Cuello, Cintura)", 'info');
-            return;
-        }
-
-        saveBtn.textContent = 'Guardando...';
-        await addMeasurement({ date, weight, neck, waist, hip });
-        window.router.navigate('measurements');
-    });
-
-    // --- Chart Logic --- //
-    const ctx = document.getElementById('progressChart')?.getContext('2d');
     const state = getState();
-    const history = state.measurements ? [...state.measurements].sort((a, b) => new Date(a.date) - new Date(b.date)) : [];
+    const modal = document.getElementById('measurement-modal');
 
-    if (ctx && history.length > 0) {
-
-        // Data prep
-        const labels = history.map(h => new Date(h.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-        const dataBodyFat = history.map(h => h.bodyFat);
-
-        // Linear Regression for Trend Line
-        // X = time in days from start
-        if (history.length >= 2) {
-            const startDate = new Date(history[0].date).getTime();
-            const xValues = history.map(h => (new Date(h.date).getTime() - startDate) / (1000 * 3600 * 24)); // Days
-            const yValues = dataBodyFat;
-
-            const n = xValues.length;
-            const sumX = xValues.reduce((a, b) => a + b, 0);
-            const sumY = yValues.reduce((a, b) => a + b, 0);
-            const sumXY = xValues.reduce((sum, x, i) => sum + x * yValues[i], 0);
-            const sumXX = xValues.reduce((sum, x) => sum + x * x, 0);
-
-            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-            const intercept = (sumY - slope * sumX) / n;
-
-            // Generate trend points
-            const trendData = xValues.map(x => slope * x + intercept);
-
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Grasa Corporal (%)',
-                            data: dataBodyFat,
-                            borderColor: '#13ec25',
-                            backgroundColor: 'rgba(19, 236, 37, 0.1)',
-                            borderWidth: 3,
-                            fill: true,
-                            tension: 0.4,
-                            pointRadius: 4,
-                            pointHoverRadius: 6
-                        },
-                        {
-                            label: 'Tendencia',
-                            data: trendData,
-                            borderColor: 'rgba(255, 255, 255, 0.5)',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            pointRadius: 0,
-                            fill: false,
-                            tension: 0
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#9db99f', font: { family: 'Manrope' } }
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            backgroundColor: 'rgba(16, 34, 18, 0.9)',
-                            titleColor: '#fff',
-                            bodyColor: '#13ec25',
-                            borderColor: '#28392a',
-                            borderWidth: 1
-                        }
+    // Render Chart
+    const history = (state.measurements || []).slice(-10);
+    const ctx = document.getElementById('measurementsChart')?.getContext('2d');
+    if (ctx && history.length > 0 && window.Chart) {
+        new window.Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: history.map(m => m.date),
+                datasets: [
+                    {
+                        label: 'Peso (kg)',
+                        data: history.map(m => m.weight),
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.3,
+                        fill: true
                     },
-                    scales: {
-                        y: {
-                            grid: { color: '#28392a' },
-                            ticks: { color: '#9db99f' }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#9db99f' }
-                        }
+                    {
+                        label: '% Grasa',
+                        data: history.map(m => m.bodyFat),
+                        borderColor: '#F59E0B',
+                        backgroundColor: 'transparent',
+                        borderDash: [5, 5],
+                        tension: 0.3
                     }
-                }
-            });
-        } else {
-            // Not enough data for trend, just show line
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Grasa Corporal (%)',
-                        data: dataBodyFat,
-                        borderColor: '#13ec25',
-                        borderWidth: 3,
-                        tension: 0.4
-                    }]
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { grid: { color: '#28392a' }, ticks: { color: '#9db99f' } },
-                        x: { display: false }
-                    },
-                    plugins: { legend: { display: false } }
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { grid: { color: '#F1F5F9' } }
                 }
-            });
-        }
+            }
+        });
     }
+
+    document.getElementById('open-measurement-form-btn')?.addEventListener('click', () => {
+        modal.innerHTML = `
+            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-emerald-md">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-soft">
+                    <span class="badge-emerald">Método Navy Seal</span>
+                    <button id="close-meas-modal" class="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                        <span class="material-symbols-outlined text-base">close</span>
+                    </button>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs font-bold text-text-muted uppercase">Peso (kg)</label>
+                            <input id="input-weight" type="number" step="0.1" placeholder="75.5" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-text-emerald outline-none focus:border-primary mt-1">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-text-muted uppercase">Fecha</label>
+                            <input id="input-date" type="date" value="${getArgentinaDate()}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-primary mt-1">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-text-muted uppercase">Cintura (cm)</label>
+                            <input id="input-waist" type="number" placeholder="85" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold outline-none focus:border-primary mt-1">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-text-muted uppercase">Cuello (cm)</label>
+                            <input id="input-neck" type="number" placeholder="38" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold outline-none focus:border-primary mt-1">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-text-muted uppercase">Cadera (cm)</label>
+                            <input id="input-hip" type="number" placeholder="95" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold outline-none focus:border-primary mt-1">
+                        </div>
+                    </div>
+
+                    <button id="save-meas-btn" class="btn-emerald py-3 text-xs font-bold mt-3 shadow-emerald-sm">
+                        Calcular y Guardar Medición
+                    </button>
+                </div>
+            </div>
+        `;
+        modal.classList.remove('hidden');
+
+        document.getElementById('close-meas-modal').onclick = () => modal.classList.add('hidden');
+
+        document.getElementById('save-meas-btn').onclick = async () => {
+            const weight = parseFloat(document.getElementById('input-weight').value);
+            const date = document.getElementById('input-date').value;
+            const waist = parseFloat(document.getElementById('input-waist').value) || 80;
+            const neck = parseFloat(document.getElementById('input-neck').value) || 38;
+            const hip = parseFloat(document.getElementById('input-hip').value) || 90;
+
+            if (!weight || weight <= 0) {
+                alert('Ingresa un peso válido.');
+                return;
+            }
+
+            await addMeasurement({ weight, date, waist, neck, hip });
+            modal.classList.add('hidden');
+            window.router.navigate('measurements');
+        };
+    });
 };
