@@ -6,6 +6,7 @@ import {
     deleteMealByAttributesDB,
     addMeasurementDB,
     addWorkoutDB,
+    deleteWorkoutDB,
     updateMealDB
 } from './services/db';
 
@@ -388,6 +389,16 @@ export const addWorkout = async (data) => {
     }
 
     return newWorkout;
+};
+
+export const deleteWorkout = async (id) => {
+    const state = getState();
+    const idx = (state.workouts || []).findIndex(w => w.id === id || String(w.id) === String(id));
+    if (idx !== -1) {
+        state.workouts.splice(idx, 1);
+        saveState(state);
+        await deleteWorkoutDB(id);
+    }
 };
 
 export const addMeal = async (meal) => {

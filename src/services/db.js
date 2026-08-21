@@ -171,3 +171,10 @@ export const addWorkoutDB = async (w) => {
     }
     return data;
 };
+
+export const deleteWorkoutDB = async (id) => {
+    if (typeof id === 'string' && id.includes('-')) {
+        const { error } = await supabase.from('workouts').delete().eq('id', id);
+        if (error) console.error("Error deleting workout from DB:", error);
+    }
+};

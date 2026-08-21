@@ -44,5 +44,34 @@ export const HOME_ROUTINES = [
             { name: 'High Knees', sets: 4, duration: 30, type: 'time', rest: 30 },
             { name: 'Jump Squats', sets: 4, duration: 30, type: 'time', rest: 60 }
         ]
+    },
+    {
+        id: 'ciclismo-cardio',
+        title: 'Ciclismo / Rodada & Resistencia',
+        description: 'Pedaleo continuo, resistencia cardiovascular y cadencia.',
+        duration: 45,
+        level: 'Intermedio',
+        calories: 420,
+        image: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=800&q=80',
+        exercises: [
+            { name: 'Calentamiento y cadencia suave', sets: 1, duration: 300, type: 'time', rest: 0 },
+            { name: 'Ritmo constante zona 2-3', sets: 1, duration: 1800, type: 'time', rest: 60 },
+            { name: 'Sprints / Pendientes en bici', sets: 5, duration: 60, type: 'time', rest: 60 },
+            { name: 'Enfriamiento y pedaleo suave', sets: 1, duration: 300, type: 'time', rest: 0 }
+        ]
+    },
+    {
+        id: 'futbol-match',
+        title: 'Fútbol / Partido & Físico',
+        description: 'Partido de fútbol 5/7/11 con sprints y resistencia mixta.',
+        duration: 60,
+        level: 'Avanzado',
+        calories: 550,
+        image: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&q=80',
+        exercises: [
+            { name: 'Calentamiento dinámico y movilidad', sets: 1, duration: 300, type: 'time', rest: 0 },
+            { name: 'Primer tiempo (Juego continuo y sprints)', sets: 1, duration: 1500, type: 'time', rest: 300 },
+            { name: 'Segundo tiempo (Resistencia y cambios de ritmo)', sets: 1, duration: 1500, type: 'time', rest: 0 }
+        ]
     }
 ];

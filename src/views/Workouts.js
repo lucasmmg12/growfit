@@ -1,4 +1,4 @@
-import { getState, addWorkout, saveGymSession, calculate1RM, getArgentinaDate } from '../state';
+import { getState, addWorkout, deleteWorkout, saveGymSession, calculate1RM, getArgentinaDate } from '../state';
 import { HOME_ROUTINES } from '../data/routines';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
 
@@ -134,8 +134,20 @@ export const renderWorkouts = () => {
                     </div>
 
                     <!-- TAB 2: ROUTINES & CARDIO -->
-                    <div id="routines-view" class="${activeWorkoutTab === 'routines' ? 'grid' : 'hidden'} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        ${renderRoutinesCards()}
+                    <div id="routines-view" class="${activeWorkoutTab === 'routines' ? 'flex' : 'hidden'} flex-col gap-5">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                            <div>
+                                <h3 class="text-base font-display font-black text-text-emerald uppercase tracking-tight">Deportes, Cardio & Rutinas</h3>
+                                <p class="text-xs text-text-muted">Registra tu actividad favorita con 1 toque o ingresa una personalizada.</p>
+                            </div>
+                            <button id="custom-cardio-btn" class="btn-emerald-soft text-xs px-3.5 py-2 font-bold flex items-center justify-center gap-1.5 shadow-xs">
+                                <span class="material-symbols-outlined text-base">add_circle</span> Actividad Personalizada
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            ${renderRoutinesCards()}
+                        </div>
                     </div>
 
                     <!-- History / Recent Sessions -->
@@ -215,46 +227,69 @@ const renderExercises = (exercises) => {
 
 const renderRoutinesCards = () => {
     const routines = [
-        { name: 'HIIT Quema Grasa', duration: 20, calories: 220, category: 'Cardio Intenso', icon: 'bolt' },
+        { name: 'Ciclismo / Bicicleta', duration: 45, calories: 420, category: 'Cardio & Resistencia', icon: 'directions_bike', badge: 'Favorito' },
+        { name: 'Fútbol (Partido / Picado)', duration: 60, calories: 550, category: 'Deporte & Resistencia', icon: 'sports_soccer', badge: 'Favorito' },
         { name: 'Running & Trote Mixto', duration: 30, calories: 310, category: 'Resistencia', icon: 'sprint' },
+        { name: 'HIIT Quema Grasa', duration: 20, calories: 220, category: 'Cardio Intenso', icon: 'bolt' },
         { name: 'Full Body Peso Corporal', duration: 25, calories: 190, category: 'Fuerza Calistenia', icon: 'accessibility_new' },
         { name: 'Salsa & Baile Cardio', duration: 30, calories: 240, category: 'Cardio Ritmo', icon: 'music_note' },
         { name: 'Movilidad & Flexibilidad', duration: 15, calories: 75, category: 'Recuperación', icon: 'self_improvement' }
     ];
 
     return routines.map(r => `
-        <div class="white-card p-5 flex flex-col justify-between hover:border-emerald-300">
+        <div class="white-card p-5 flex flex-col justify-between hover:border-emerald-300 transition-all shadow-xs">
             <div>
-                <div class="size-10 rounded-xl bg-emerald-50 text-text-emerald flex items-center justify-center mb-3">
-                    <span class="material-symbols-outlined text-xl">${r.icon}</span>
+                <div class="flex items-center justify-between mb-3">
+                    <div class="size-10 rounded-xl bg-emerald-50 text-text-emerald flex items-center justify-center border border-emerald-100">
+                        <span class="material-symbols-outlined text-xl">${r.icon}</span>
+                    </div>
+                    ${r.badge ? `<span class="badge-emerald text-[10px] py-0.5 px-2 font-bold">${r.badge}</span>` : ''}
                 </div>
                 <span class="text-[10px] font-bold uppercase text-text-muted">${r.category}</span>
                 <h4 class="text-base font-display font-black text-text-primary uppercase tracking-tight mt-0.5">${r.name}</h4>
                 <p class="text-xs font-mono text-text-emerald mt-1 font-bold">~${r.calories} kcal · ${r.duration} min</p>
             </div>
 
-            <button class="log-quick-routine-btn btn-emerald w-full py-2 text-xs font-bold mt-4" data-name="${r.name}" data-duration="${r.duration}" data-calories="${r.calories}">
+            <button class="log-quick-routine-btn btn-emerald w-full py-2 text-xs font-bold mt-4" data-name="${r.name}" data-duration="${r.duration}" data-calories="${r.calories}" data-icon="${r.icon}">
                 Registrar Realizado
             </button>
         </div>
     `).join('');
 };
 
+const getWorkoutIcon = (workout) => {
+    if (workout.icon) return workout.icon;
+    const name = (workout.name || workout.type || '').toLowerCase();
+    if (name.includes('bici') || name.includes('cicl')) return 'directions_bike';
+    if (name.includes('futbol') || name.includes('fútbol') || name.includes('soccer') || name.includes('pelota')) return 'sports_soccer';
+    if (name.includes('run') || name.includes('trote') || name.includes('correr')) return 'sprint';
+    if (name.includes('hiit') || name.includes('quema')) return 'bolt';
+    if (name.includes('baile') || name.includes('salsa')) return 'music_note';
+    if (name.includes('movilidad') || name.includes('flex')) return 'self_improvement';
+    if (name.includes('fuerza') || name.includes('gym') || workout.type === 'strength') return 'fitness_center';
+    return 'fitness_center';
+};
+
 const renderWorkoutHistory = (workouts) => {
     if (!workouts.length) return `<p class="text-xs text-text-muted italic py-3 text-center">Sin entrenamientos recientes.</p>`;
 
-    return workouts.slice(-5).reverse().map(w => `
-        <div class="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
+    return workouts.slice(-8).reverse().map(w => `
+        <div class="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 hover:border-emerald-200 transition-all">
             <div class="flex items-center gap-3">
-                <div class="size-9 rounded-xl bg-emerald-100 text-text-emerald flex items-center justify-center">
-                    <span class="material-symbols-outlined text-base">fitness_center</span>
+                <div class="size-9 rounded-xl bg-emerald-100 text-text-emerald flex items-center justify-center border border-emerald-200/60">
+                    <span class="material-symbols-outlined text-base">${getWorkoutIcon(w)}</span>
                 </div>
                 <div>
                     <h5 class="text-xs font-bold text-text-primary capitalize">${w.name || w.type}</h5>
-                    <p class="text-[10px] font-mono text-text-muted">${w.date} · ${w.duration || 30} min</p>
+                    <p class="text-[10px] font-mono text-text-muted">${w.date || 'Hoy'} · ${w.duration || 30} min</p>
                 </div>
             </div>
-            <span class="text-xs font-mono font-black text-text-emerald">-${w.calories} kcal</span>
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-mono font-black text-text-emerald">-${w.calories} kcal</span>
+                <button class="delete-workout-btn text-slate-300 hover:text-red-500 transition-colors p-1" data-id="${w.id}" title="Eliminar registro">
+                    <span class="material-symbols-outlined text-base">delete</span>
+                </button>
+            </div>
         </div>
     `).join('');
 };
@@ -356,16 +391,55 @@ export const attachWorkoutsEvents = () => {
             const name = e.currentTarget.dataset.name;
             const duration = parseInt(e.currentTarget.dataset.duration);
             const calories = parseInt(e.currentTarget.dataset.calories);
+            const icon = e.currentTarget.dataset.icon;
 
             await addWorkout({
                 name,
                 duration,
                 calories,
+                icon,
                 type: 'routine'
             });
 
-            window.showAlert?.('Entrenamiento Registrado', `${name} (+${calories} kcal quemadas)`, 'success');
+            window.showAlert?.('¡Entrenamiento Registrado!', `${name} (+${calories} kcal quemadas)`, 'success');
             window.router.navigate('workouts');
+        };
+    });
+
+    // Custom cardio / sport button
+    document.getElementById('custom-cardio-btn')?.addEventListener('click', async () => {
+        const activityName = prompt('¿Qué deporte o actividad realizaste? (ej. Ciclismo, Fútbol, Spinning, Pádel, Natación):', 'Ciclismo');
+        if (!activityName) return;
+
+        const durationStr = prompt(`¿Cuántos minutos duró la sesión de ${activityName}?`, '45');
+        const duration = parseInt(durationStr);
+        if (isNaN(duration) || duration <= 0) return;
+
+        const estimatedCals = Math.round(duration * 9);
+        const caloriesStr = prompt(`Calorías quemadas estimadas (~${estimatedCals} kcal):`, estimatedCals.toString());
+        const calories = parseInt(caloriesStr) || estimatedCals;
+
+        await addWorkout({
+            name: activityName,
+            duration,
+            calories,
+            type: 'cardio'
+        });
+
+        window.showAlert?.('¡Actividad Registrada!', `${activityName} · ${duration} min (+${calories} kcal)`, 'success');
+        window.router.navigate('workouts');
+    });
+
+    // Delete workout from history
+    document.querySelectorAll('.delete-workout-btn').forEach(btn => {
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            const id = e.currentTarget.dataset.id;
+            if (confirm('¿Deseas eliminar este registro de entrenamiento?')) {
+                await deleteWorkout(id);
+                window.showAlert?.('Registro Eliminado', 'Se actualizó tu historial y balance calórico.', 'info');
+                window.router.navigate('workouts');
+            }
         };
     });
 
