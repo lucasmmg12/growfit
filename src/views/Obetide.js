@@ -9,26 +9,47 @@ export const renderObetide = () => {
     const state = getState();
     const treatments = state.obetideTreatments || [];
     const latest = treatments[0] || null;
-    const latestWeight = getLatestMeasurement()?.weight || state.profile.startingWeight || 75;
-    const startingWeight = state.profile.startingWeight || 75;
-    const weightDiff = (latestWeight - startingWeight).toFixed(1);
+    const latestMeasurement = getLatestMeasurement();
+    const startingWeight = state.profile.startingWeight || (latestMeasurement ? latestMeasurement.weight : 104);
 
     // Calculate days since last dose
     let daysSince = null;
     let nextDoseDate = 'Inmediato';
     let isDue = true;
+    let daysRemaining = 0;
 
     if (latest && latest.date) {
-        const lastD = new Date(latest.date);
-        const now = new Date(getArgentinaDate());
+        const [y, m, d] = latest.date.split('-').map(Number);
+        const lastD = new Date(y, m - 1, d);
+        const [nowY, nowM, nowD] = getArgentinaDate().split('-').map(Number);
+        const now = new Date(nowY, nowM - 1, nowD);
         const diffMs = now - lastD;
-        daysSince = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        daysSince = Math.round(diffMs / (1000 * 60 * 60 * 24));
         const nextD = new Date(lastD.getTime() + 7 * 24 * 60 * 60 * 1000);
-        nextDoseDate = nextD.toISOString().split('T')[0];
+        const nextY = nextD.getFullYear();
+        const nextM = String(nextD.getMonth() + 1).padStart(2, '0');
+        const nextDay = String(nextD.getDate()).padStart(2, '0');
+        nextDoseDate = `${nextY}-${nextM}-${nextDay}`;
+        daysRemaining = Math.max(0, 7 - daysSince);
         isDue = daysSince >= 7;
     }
 
     const currentDose = latest ? `${latest.dose_ml} ml` : '0.25 ml';
+
+    // Weight variation: if no measurement on/after dose date, show "Sin pesaje aún"
+    const hasPostTreatmentWeight = latest && latestMeasurement && latestMeasurement.date >= latest.date;
+    let weightDiffText = 'Sin pesaje';
+    let weightDiffColor = 'text-slate-400';
+
+    if (hasPostTreatmentWeight && startingWeight) {
+        const diff = Number((latestMeasurement.weight - startingWeight).toFixed(1));
+        weightDiffText = `${diff > 0 ? '+' : ''}${diff} kg`;
+        weightDiffColor = diff <= 0 ? 'text-emerald-300' : 'text-amber-300';
+    } else {
+        weightDiffText = 'Sin pesaje aún';
+        weightDiffColor = 'text-slate-400';
+    }
+
 
     return `
     <div class="flex h-screen w-full bg-[#0F172A] font-body text-slate-100 overflow-hidden fade-in">
@@ -67,7 +88,7 @@ export const renderObetide = () => {
                                 <div>
                                     <span class="text-[10px] uppercase font-bold text-emerald-300">Próxima Dosis</span>
                                     <p class="text-sm font-bold ${isDue ? 'text-amber-300' : 'text-white'}">
-                                        ${isDue ? '¡Toca Hoy!' : nextDoseDate}
+                                        ${isDue ? '¡Toca Hoy!' : `${nextDoseDate} (en ${daysRemaining}d)`}
                                     </p>
                                 </div>
                             </div>
@@ -81,8 +102,8 @@ export const renderObetide = () => {
                             </div>
                             <div>
                                 <span class="text-emerald-300/80 text-[10px] block uppercase font-bold">Variación Peso</span>
-                                <span class="font-mono font-black text-base ${Number(weightDiff) <= 0 ? 'text-emerald-300' : 'text-amber-300'}">
-                                    ${Number(weightDiff) > 0 ? '+' : ''}${weightDiff} kg
+                                <span class="font-mono font-black text-base ${weightDiffColor}">
+                                    ${weightDiffText}
                                 </span>
                             </div>
                             <div>
@@ -489,7 +510,7 @@ const initObetideChart = () => {
     const labels = sortedDates.length ? sortedDates : ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'];
     
     // Carry over values if sparse
-    let lastWeight = state.profile.startingWeight || 75;
+    let lastWeight = state.profile.startingWeight || (measurements[0]?.weight) || 104;
     let lastDose = 0.25;
 
     const doseData = labels.map(d => {

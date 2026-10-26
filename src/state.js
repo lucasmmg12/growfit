@@ -35,7 +35,7 @@ const defaultState = {
         height: 175,
         gender: 'male',
         checkinFrequency: 15,
-        startingWeight: 75,
+        startingWeight: 104,
         targetWeight: 70,
         health: {
             conditions: '',
