@@ -46,7 +46,44 @@ const defaultState = {
         xp: 0,
         level: 1
     },
-    dailyLog: [],
+    dailyLog: [
+        {
+            id: 'meal-init-1',
+            name: 'Pechuga a la plancha con puré de calabaza',
+            calories: 460,
+            category: 'Almuerzo',
+            time: 'Almuerzo',
+            date: '2026-10-26',
+            macros: { protein: 42, carbs: 30, fat: 12 },
+            satiety_score: 3,
+            sensations: ['Saciedad temprana', 'Digestión ligera'],
+            opinion: 'Sentí saciedad en la mitad del plato por efecto de Dutide. Cómodo y sin pesadez.'
+        },
+        {
+            id: 'meal-init-2',
+            name: 'Omelette de 2 huevos con queso magro y café',
+            calories: 320,
+            category: 'Desayuno',
+            time: 'Desayuno',
+            date: '2026-10-26',
+            macros: { protein: 22, carbs: 4, fat: 18 },
+            satiety_score: 3,
+            sensations: ['Energía óptima', 'Digestión ligera'],
+            opinion: 'Excelente saciedad para arrancar la mañana.'
+        },
+        {
+            id: 'meal-init-3',
+            name: 'Filet de merluza con vegetales al vapor',
+            calories: 310,
+            category: 'Cena',
+            time: 'Cena',
+            date: '2026-10-25',
+            macros: { protein: 36, carbs: 12, fat: 8 },
+            satiety_score: 2,
+            sensations: ['Digestión ligera'],
+            opinion: 'Muy liviano, ideal para descansar bien sin reflujo.'
+        }
+    ],
     days: {},
     measurements: [],
     workouts: [],
@@ -208,6 +245,12 @@ export const getState = () => {
             }
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         }
+    }
+
+    // Initialize demonstration dailyLog if empty
+    if (!state.dailyLog || state.dailyLog.length === 0) {
+        state.dailyLog = defaultState.dailyLog;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
     return state;
 };
@@ -535,7 +578,15 @@ export const addMeal = async (meal) => {
     const isHealthy = (meal.macros?.protein || 0) > (meal.macros?.fat || 0);
     const xp = isHealthy ? 25 : 15;
 
-    const finalMeal = { ...meal, date: mealDate, time: mealTime, id: tempId };
+    const finalMeal = { 
+        ...meal, 
+        date: mealDate, 
+        time: mealTime, 
+        id: tempId,
+        satiety_score: meal.satiety_score ? Number(meal.satiety_score) : null,
+        sensations: Array.isArray(meal.sensations) ? meal.sensations : [],
+        opinion: meal.opinion || null
+    };
 
     if (!state.dailyLog) state.dailyLog = [];
     state.dailyLog.push(finalMeal);
@@ -573,15 +624,135 @@ export const deleteMeal = (id) => {
 
 export const updateMeal = (id, updates) => {
     const state = getState();
-    const index = state.dailyLog.findIndex(m => m.id === id);
+    const index = state.dailyLog.findIndex(m => String(m.id) === String(id));
     if (index !== -1) {
         state.dailyLog[index] = { ...state.dailyLog[index], ...updates };
         saveState(state);
 
-        if (id > 0 && id < 1000000000000) {
-            updateMealDB(id, state.dailyLog[index]);
+        const numId = Number(id);
+        if (numId > 0 && numId < 1000000000000) {
+            updateMealDB(numId, state.dailyLog[index]);
         }
     }
+};
+
+export const updateMealSensations = (id, { satiety_score, sensations, opinion }) => {
+    const state = getState();
+    const index = (state.dailyLog || []).findIndex(m => String(m.id) === String(id));
+    if (index !== -1) {
+        state.dailyLog[index] = {
+            ...state.dailyLog[index],
+            satiety_score: satiety_score !== undefined ? (satiety_score ? Number(satiety_score) : null) : state.dailyLog[index].satiety_score,
+            sensations: sensations !== undefined ? sensations : (state.dailyLog[index].sensations || []),
+            opinion: opinion !== undefined ? opinion : (state.dailyLog[index].opinion || ''),
+            sensation_updated_at: new Date().toISOString()
+        };
+        saveState(state);
+
+        const numId = Number(id);
+        if (numId > 0 && numId < 1000000000000) {
+            updateMealDB(numId, state.dailyLog[index]);
+        }
+        return state.dailyLog[index];
+    }
+    return null;
+};
+
+export const getSensationsMetrics = (targetDate = null) => {
+    const state = getState();
+    const allMeals = state.dailyLog || [];
+    const meals = targetDate ? allMeals.filter(m => m.date === targetDate) : allMeals;
+
+    const ratedMeals = meals.filter(m => m.satiety_score || (m.sensations && m.sensations.length > 0) || m.opinion);
+    const scores = ratedMeals.filter(m => m.satiety_score > 0).map(m => Number(m.satiety_score));
+
+    const avgScore = scores.length > 0 
+        ? Number((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)) 
+        : 0;
+
+    // Distribution (1: Con Hambre, 2: Ligero, 3: En su punto, 4: Muy lleno, 5: Pesado)
+    const counts = {
+        hungry: scores.filter(s => s === 1).length,
+        light: scores.filter(s => s === 2).length,
+        optimal: scores.filter(s => s === 3).length,
+        full: scores.filter(s => s === 4).length,
+        heavy: scores.filter(s => s === 5).length
+    };
+
+    const totalScores = scores.length || 1;
+    const distribution = {
+        hungry: { count: counts.hungry, pct: Math.round((counts.hungry / totalScores) * 100) },
+        light: { count: counts.light, pct: Math.round((counts.light / totalScores) * 100) },
+        optimal: { count: counts.optimal, pct: Math.round((counts.optimal / totalScores) * 100) },
+        full: { count: counts.full, pct: Math.round((counts.full / totalScores) * 100) },
+        heavy: { count: counts.heavy, pct: Math.round((counts.heavy / totalScores) * 100) },
+        groupedOptimal: { count: counts.optimal + counts.light, pct: Math.round(((counts.optimal + counts.light) / totalScores) * 100) },
+        groupedOverfull: { count: counts.full + counts.heavy, pct: Math.round(((counts.full + counts.heavy) / totalScores) * 100) },
+        groupedHungry: { count: counts.hungry, pct: Math.round((counts.hungry / totalScores) * 100) }
+    };
+
+    // Sensations frequency counter
+    const tagMap = {};
+    ratedMeals.forEach(m => {
+        if (Array.isArray(m.sensations)) {
+            m.sensations.forEach(tag => {
+                tagMap[tag] = (tagMap[tag] || 0) + 1;
+            });
+        }
+    });
+
+    const topSensations = Object.entries(tagMap)
+        .map(([tag, count]) => ({ tag, count, pct: Math.round((count / (ratedMeals.length || 1)) * 100) }))
+        .sort((a, b) => b.count - a.count);
+
+    // Status label based on avgScore
+    let statusLabel = 'Sin registros de sensaciones';
+    let statusColor = 'text-slate-400';
+    let statusBg = 'bg-slate-800';
+    let statusDesc = 'Registra cómo te sentiste al terminar tus comidas para ver tus patrones de saciedad.';
+    if (avgScore > 0) {
+        if (avgScore >= 2.5 && avgScore <= 3.3) {
+            statusLabel = 'Saciedad Óptima (En su punto)';
+            statusColor = 'text-[#10E775]';
+            statusBg = 'bg-[#10E775]/20';
+            statusDesc = 'Excelente autorregulación: alcanzas saciedad confortable sin llegar a plenitud excesiva.';
+        } else if (avgScore > 3.3 && avgScore <= 4.0) {
+            statusLabel = 'Tendencia a Plenitud Alta';
+            statusColor = 'text-amber-400';
+            statusBg = 'bg-amber-400/20';
+            statusDesc = 'Se observa que con frecuencia terminas al límite de tu capacidad. Recomendado pausar a mitad de plato.';
+        } else if (avgScore > 4.0) {
+            statusLabel = 'Exceso / Pesadez Recurrente';
+            statusColor = 'text-rose-400';
+            statusBg = 'bg-rose-400/20';
+            statusDesc = 'Frecuencia alta de empacho o pesadez. Importante reducir volumen de porción para evitar reflujo.';
+        } else {
+            statusLabel = 'Sensación de Hambre / Déficit Pronunciado';
+            statusColor = 'text-blue-400';
+            statusBg = 'bg-blue-400/20';
+            statusDesc = 'Terminas con apetito residual. Podrías aumentar volumen con vegetales o fibra.';
+        }
+    }
+
+    // Recent opinions log
+    const recentOpinions = ratedMeals
+        .filter(m => m.opinion || m.satiety_score)
+        .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.id || 0) - (a.id || 0));
+
+    return {
+        totalMeals: meals.length,
+        ratedMealsCount: ratedMeals.length,
+        hasData: ratedMeals.length > 0,
+        avgScore,
+        statusLabel,
+        statusColor,
+        statusBg,
+        statusDesc,
+        counts,
+        distribution,
+        topSensations,
+        recentOpinions
+    };
 };
 
 export const addMeasurement = async (data) => {

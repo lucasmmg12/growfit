@@ -1,7 +1,8 @@
-import { getState, addMeal, deleteMeal, getArgentinaDate, setSelectedDate } from '../state';
+import { getState, addMeal, deleteMeal, getArgentinaDate, setSelectedDate, getSensationsMetrics } from '../state';
 import { analyzeFood } from '../services/openai';
 import { getProductByBarcode, searchOpenFood } from '../services/openfoodfacts';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
+import { renderMealSensationsModalContainer, renderSatietyBadge, attachSensationsModalEvents } from '../components/MealSensationsModal';
 
 let activeCategoryForAdd = 'Almuerzo';
 let barcodeScannerTrackerInstance = null;
@@ -25,6 +26,7 @@ export const renderTracker = () => {
     const totalP = meals.reduce((s, m) => s + (m.macros?.protein || 0), 0);
     const totalC = meals.reduce((s, m) => s + (m.macros?.carbs || 0), 0);
     const totalF = meals.reduce((s, m) => s + (m.macros?.fat || 0), 0);
+    const dayMetrics = getSensationsMetrics(selectedDate);
 
     return `
     <div class="flex h-screen w-full bg-[#0F172A] font-body text-slate-100 overflow-hidden fade-in">
@@ -38,12 +40,17 @@ export const renderTracker = () => {
                 <div class="max-w-4xl mx-auto flex flex-col gap-6">
 
                     <!-- Top Header Summary Card -->
-                    <div class="white-card p-6 border border-emerald-500/30 shadow-xl">
+                    <div class="white-card p-6 border border-emerald-500/30 shadow-xl bg-gradient-to-b from-[#1E293B] to-[#151E2E]">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
-                                <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30 mb-1">Diario Nutricional</span>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs">Diario Nutricional</span>
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${dayMetrics.statusBg} ${dayMetrics.statusColor} border border-white/5">
+                                        ${dayMetrics.statusLabel}
+                                    </span>
+                                </div>
                                 <h2 class="text-3xl font-display font-black text-white uppercase tracking-tight">Registro de Alimentos</h2>
-                                <p class="text-xs text-slate-400 mt-0.5">Control preciso de cada momento del día.</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Control de calorías, macros y sensaciones de plenitud.</p>
                             </div>
 
                             <div class="flex items-center gap-3">
@@ -58,6 +65,20 @@ export const renderTracker = () => {
                                     <p class="text-amber-400">G: ${Math.round(totalF)}g</p>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Mini Satiety Day Strip -->
+                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg">🧠</span>
+                                <span class="text-slate-300 font-semibold">Saciedad del Día:</span>
+                                <span class="font-mono font-bold text-white">${dayMetrics.avgScore ? `${dayMetrics.avgScore} / 5.0` : 'Sin registrar'}</span>
+                                <span class="text-[11px] ${dayMetrics.statusColor}">(${dayMetrics.statusLabel})</span>
+                            </div>
+                            <button onclick="window.router.navigate('insights')" class="text-emerald-400 hover:text-emerald-300 text-xs font-bold flex items-center gap-1 cursor-pointer">
+                                <span>Ver Métricas & Estadísticas</span>
+                                <span class="material-symbols-outlined text-xs">arrow_forward</span>
+                            </button>
                         </div>
                     </div>
 
@@ -91,16 +112,20 @@ export const renderTracker = () => {
                                 <!-- Meals List inside Category -->
                                 <div class="mt-3 flex flex-col gap-2">
                                     ${catMeals.length ? catMeals.map(m => `
-                                        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-700/60 hover:border-slate-600 transition-all">
-                                            <div>
-                                                <h4 class="text-sm font-bold text-white capitalize">${m.name}</h4>
-                                                <p class="text-xs font-mono text-slate-400 mt-0.5">
-                                                    <strong class="text-emerald-400">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g
-                                                </p>
+                                        <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-700/60 hover:border-slate-600 transition-all flex flex-col gap-1.5">
+                                            <div class="flex items-center justify-between">
+                                                <div>
+                                                    <h4 class="text-sm font-bold text-white capitalize">${m.name}</h4>
+                                                    <p class="text-xs font-mono text-slate-400 mt-0.5">
+                                                        <strong class="text-emerald-400">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g
+                                                    </p>
+                                                </div>
+                                                <button class="delete-tracker-meal-btn size-7 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors cursor-pointer" data-id="${m.id}" title="Eliminar alimento">
+                                                    <span class="material-symbols-outlined text-base">delete</span>
+                                                </button>
                                             </div>
-                                            <button class="delete-tracker-meal-btn size-7 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors" data-id="${m.id}">
-                                                <span class="material-symbols-outlined text-base">delete</span>
-                                            </button>
+                                            <!-- Satiety & Sensations Badge -->
+                                            ${renderSatietyBadge(m)}
                                         </div>
                                     `).join('') : `
                                         <p class="text-xs text-slate-500 italic py-2 text-center">Sin registros en ${cat.label}</p>
@@ -119,6 +144,7 @@ export const renderTracker = () => {
 
         <!-- Add Meal & Barcode Modal -->
         <div id="tracker-add-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4"></div>
+        ${renderMealSensationsModalContainer()}
     </div>
     `;
 };
@@ -136,12 +162,17 @@ export const attachTrackerEvents = () => {
 
     document.querySelectorAll('.delete-tracker-meal-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const id = parseInt(e.currentTarget.dataset.id);
+            const id = e.currentTarget.dataset.id;
             window.showConfirm?.('¿Eliminar alimento?', 'Se restará del total de calorías del día.', () => {
                 deleteMeal(id);
                 window.router.navigate('tracker');
             });
         });
+    });
+
+    // Attach sensations feedback modal events
+    attachSensationsModalEvents(() => {
+        window.router.navigate('tracker');
     });
 
     const openAddMealModal = (category) => {

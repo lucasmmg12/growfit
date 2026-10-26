@@ -45,7 +45,10 @@ export const analyzeFood = async (input, type = 'text', context = '') => {
           "calories": number,
           "macros": { "protein": number, "carbs": number, "fat": number },
           "category": "Desayuno" | "Media Mañana" | "Almuerzo" | "Merienda" | "Media Tarde" | "Cena",
-          "date": "YYYY-MM-DD"
+          "date": "YYYY-MM-DD",
+          "satiety_score": number | null, // 1: Con hambre, 2: Ligero, 3: En su punto, 4: Muy lleno, 5: Pesado / empachado
+          "sensations": string[], // e.g. ["Saciedad temprana", "Muy lleno", "Pesadez", "Digestión ligera"]
+          "opinion": string | null // Any text reflecting user's feeling or opinion (e.g. "me sentí muy lleno")
         }
       ],
       "sleep": number | null, // Hours of sleep.

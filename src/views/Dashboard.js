@@ -10,10 +10,13 @@ import {
     toggleHabit, 
     setDailyHabits, 
     setSelectedDate, 
-    getArgentinaDate,} from '../state';
+    getArgentinaDate,
+    getSensationsMetrics
+} from '../state';
 import { analyzeFood, generateDailyTip, generateSmartHabits } from '../services/openai';
 import { getProductByBarcode } from '../services/openfoodfacts';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
+import { renderMealSensationsModalContainer, renderSatietyBadge, attachSensationsModalEvents } from '../components/MealSensationsModal';
 
 let barcodeScannerInstance = null;
 
@@ -314,16 +317,121 @@ export const renderDashboard = () => {
                             </div>
                             <p class="text-xs text-slate-300 font-medium italic leading-relaxed">"${displayTip}"</p>
                         </div>
+                                  <!-- Sensations & Satiety Metrics Card -->
+                    <div class="white-card p-6 border border-slate-700/80 shadow-xl bg-gradient-to-b from-[#1E293B] to-[#151E2E]">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-700/60">
+                            <div class="flex items-center gap-3">
+                                <div class="size-11 rounded-2xl bg-[#10E775]/20 text-[#10E775] border border-[#10E775]/30 flex items-center justify-center text-xl shadow-xs">
+                                    🧠
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="text-base font-display font-black text-white uppercase tracking-tight">Métricas de Sensaciones & Saciedad</h3>
+                                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${getSensationsMetrics().statusBg} ${getSensationsMetrics().statusColor} border border-white/5">
+                                            ${getSensationsMetrics().statusLabel}
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-0.5">Control de plenitud, saciedad temprana (Dutide) y confort digestivo</p>
+                                </div>
+                            </div>
+
+                            <button onclick="window.router.navigate('insights')" class="btn-emerald-soft text-xs px-3.5 py-1.5 font-bold self-start sm:self-center flex items-center gap-1.5 cursor-pointer">
+                                <span>Ver Métricas & Historial</span>
+                                <span class="material-symbols-outlined text-sm">trending_up</span>
+                            </button>
+                        </div>
+
+                        <!-- Stats Row -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                            <!-- Stat 1: Promedio de Saciedad -->
+                            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+                                <div>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Nivel Promedio de Saciedad</span>
+                                    <p class="text-2xl font-mono font-black text-white mt-0.5">
+                                        ${getSensationsMetrics().avgScore ? `${getSensationsMetrics().avgScore} <span class="text-xs font-normal text-slate-400">/ 5.0</span>` : 'Sin datos'}
+                                    </p>
+                                    <span class="text-[10px] ${getSensationsMetrics().statusColor} font-medium block mt-0.5">
+                                        ${getSensationsMetrics().hasData ? getSensationsMetrics().statusLabel : 'Califica tus comidas'}
+                                    </span>
+                                </div>
+                                <div class="text-3xl">
+                                    ${getSensationsMetrics().avgScore >= 4 ? '🍕' : getSensationsMetrics().avgScore >= 2.5 ? '⚖️' : getSensationsMetrics().avgScore > 0 ? '🥣' : '🍽️'}
+                                </div>
+                            </div>
+
+                            <!-- Stat 2: Saciedad Óptima -->
+                            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+                                <div>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Comidas "En su punto"</span>
+                                    <p class="text-2xl font-mono font-black text-[#10E775] mt-0.5">
+                                        ${getSensationsMetrics().distribution.groupedOptimal.pct}%
+                                    </p>
+                                    <span class="text-[10px] text-slate-400 block mt-0.5">
+                                        ${getSensationsMetrics().distribution.groupedOptimal.count} comidas en rango ideal
+                                    </span>
+                                </div>
+                                <div class="text-3xl">🟢</div>
+                            </div>
+
+                            <!-- Stat 3: Comidas Muy Lleno / Pesado -->
+                            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+                                <div>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Exceso / Muy Lleno</span>
+                                    <p class="text-2xl font-mono font-black ${getSensationsMetrics().distribution.groupedOverfull.pct > 25 ? 'text-amber-400' : 'text-slate-300'} mt-0.5">
+                                        ${getSensationsMetrics().distribution.groupedOverfull.pct}%
+                                    </p>
+                                    <span class="text-[10px] text-slate-400 block mt-0.5">
+                                        ${getSensationsMetrics().distribution.groupedOverfull.count} con pesadez
+                                    </span>
+                                </div>
+                                <div class="text-3xl">
+                                    ${getSensationsMetrics().distribution.groupedOverfull.pct > 25 ? '🟡' : '✅'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Distribution Bar -->
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between text-xs mb-1.5">
+                                <span class="font-bold text-slate-300">Distribución de Plenitud Post-Comida</span>
+                                <span class="font-mono text-slate-400">${getSensationsMetrics().ratedMealsCount} comidas evaluadas</span>
+                            </div>
+                            <div class="h-3 w-full bg-slate-900 rounded-full overflow-hidden flex p-0.5 border border-slate-800 gap-0.5">
+                                <div style="width: ${Math.max(4, getSensationsMetrics().distribution.groupedOptimal.pct)}%" class="h-full bg-[#10E775] rounded-l-full transition-all" title="En su punto: ${getSensationsMetrics().distribution.groupedOptimal.pct}%"></div>
+                                <div style="width: ${getSensationsMetrics().distribution.groupedOverfull.pct}%" class="h-full bg-amber-400 transition-all" title="Muy lleno/Pesado: ${getSensationsMetrics().distribution.groupedOverfull.pct}%"></div>
+                                <div style="width: ${getSensationsMetrics().distribution.groupedHungry.pct}%" class="h-full bg-blue-400 rounded-r-full transition-all" title="Con hambre: ${getSensationsMetrics().distribution.groupedHungry.pct}%"></div>
+                            </div>
+                            <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-400 mt-2 gap-2 font-medium">
+                                <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-[#10E775]"></span> En su punto (${getSensationsMetrics().distribution.groupedOptimal.pct}%)</span>
+                                <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-amber-400"></span> Muy lleno / Pesado (${getSensationsMetrics().distribution.groupedOverfull.pct}%)</span>
+                                <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-blue-400"></span> Con hambre (${getSensationsMetrics().distribution.groupedHungry.pct}%)</span>
+                            </div>
+                        </div>
+
+                        <!-- Top Sensations Chips -->
+                        ${getSensationsMetrics().topSensations.length > 0 ? `
+                            <div class="pt-3 border-t border-slate-800/80">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">Sensaciones Más Frecuentes Reportadas</span>
+                                <div class="flex flex-wrap gap-2">
+                                    ${getSensationsMetrics().topSensations.map(s => `
+                                        <span class="px-3 py-1 rounded-xl bg-slate-900/90 border border-slate-700/80 text-xs font-semibold text-slate-200 flex items-center gap-2">
+                                            <span>${s.tag}</span>
+                                            <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded">${s.count}</span>
+                                        </span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
 
                     <!-- Daily Meal Timeline -->
-                    <div class="white-card p-6">
+                    <div class="white-card p-6 border border-slate-700/80 shadow-xl">
                         <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
                             <div class="flex items-center gap-2">
                                 <span class="material-symbols-outlined text-emerald-400 text-xl">restaurant_menu</span>
                                 <h3 class="text-lg font-display font-black text-white uppercase tracking-tight">Comidas Registradas</h3>
                             </div>
-                            <button onclick="window.router.navigate('tracker')" class="btn-emerald-soft text-xs px-3 py-1.5 font-bold">
+                            <button onclick="window.router.navigate('tracker')" class="btn-emerald-soft text-xs px-3 py-1.5 font-bold cursor-pointer">
                                 Ver Diario Completo →
                             </button>
                         </div>
@@ -342,6 +450,7 @@ export const renderDashboard = () => {
         <!-- Global Modals Container -->
         <div id="meal-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4"></div>
         <div id="barcode-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4"></div>
+        ${renderMealSensationsModalContainer()}
     </div>
     `;
 };
@@ -363,29 +472,34 @@ const renderMealsList = (state, selectedDate) => {
     }
 
     return meals.map(m => `
-        <div class="flex items-center justify-between p-4 bg-slate-900/60 hover:bg-slate-800/80 rounded-2xl border border-slate-700/60 transition-all">
-            <div class="flex items-center gap-3.5">
-                <div class="size-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">
-                    <span class="material-symbols-outlined text-lg">${m.type === 'workout' ? 'fitness_center' : 'restaurant'}</span>
-                </div>
-                <div>
-                    <div class="flex items-center gap-2">
-                        <h4 class="text-sm font-bold text-white capitalize">${m.name}</h4>
-                        <span class="px-2 py-0.5 rounded-full bg-slate-800 text-[9px] font-bold text-emerald-400 border border-slate-700">
-                            ${m.time || m.category || 'Comida'}
-                        </span>
+        <div class="p-4 bg-slate-900/60 hover:bg-slate-800/80 rounded-2xl border border-slate-700/60 transition-all flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3.5">
+                    <div class="size-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">
+                        <span class="material-symbols-outlined text-lg">${m.type === 'workout' ? 'fitness_center' : 'restaurant'}</span>
                     </div>
-                    <p class="text-xs font-mono text-slate-400 mt-0.5">
-                        <strong class="text-emerald-400">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g
-                    </p>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-sm font-bold text-white capitalize">${m.name}</h4>
+                            <span class="px-2 py-0.5 rounded-full bg-slate-800 text-[9px] font-bold text-emerald-400 border border-slate-700">
+                                ${m.time || m.category || 'Comida'}
+                            </span>
+                        </div>
+                        <p class="text-xs font-mono text-slate-400 mt-0.5">
+                            <strong class="text-emerald-400">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1">
+                    <button class="delete-meal-btn size-8 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center cursor-pointer" data-id="${m.id}" title="Eliminar comida">
+                        <span class="material-symbols-outlined text-lg">delete</span>
+                    </button>
                 </div>
             </div>
 
-            <div class="flex items-center gap-1">
-                <button class="delete-meal-btn size-8 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center" data-id="${m.id}">
-                    <span class="material-symbols-outlined text-lg">delete</span>
-                </button>
-            </div>
+            <!-- Satiety & Sensations Badge / Feedback -->
+            ${renderSatietyBadge(m)}
         </div>
     `).join('');
 };
@@ -582,14 +696,74 @@ export const attachDashboardEvents = () => {
                         </div>
                     </div>
 
+                    <!-- Sensations & Satiety Inputs -->
+                    <div class="p-3 bg-slate-900/60 rounded-2xl border border-slate-700/60 flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Sensación & Plenitud</label>
+                            <span class="text-[10px] text-emerald-400 font-mono" id="confirm-satiety-label">⚖️ En su punto (3/5)</span>
+                        </div>
+                        <div class="grid grid-cols-5 gap-1.5" id="quick-satiety-selector">
+                            <button type="button" class="quick-satiety-btn p-2 rounded-xl border border-slate-700 bg-slate-800 text-center hover:border-blue-400 transition-all cursor-pointer" data-score="1" title="Con hambre">
+                                <span class="text-base">🥣</span>
+                                <span class="text-[8px] font-bold block text-slate-400 mt-0.5">Hambre</span>
+                            </button>
+                            <button type="button" class="quick-satiety-btn p-2 rounded-xl border border-slate-700 bg-slate-800 text-center hover:border-cyan-400 transition-all cursor-pointer" data-score="2" title="Ligero">
+                                <span class="text-base">🥗</span>
+                                <span class="text-[8px] font-bold block text-slate-400 mt-0.5">Ligero</span>
+                            </button>
+                            <button type="button" class="quick-satiety-btn p-2 rounded-xl border-2 border-[#10E775] bg-[#10E775]/20 text-center shadow-xs transition-all cursor-pointer" data-score="3" title="En su punto">
+                                <span class="text-base">⚖️</span>
+                                <span class="text-[8px] font-bold block text-[#10E775] mt-0.5">Óptimo</span>
+                            </button>
+                            <button type="button" class="quick-satiety-btn p-2 rounded-xl border border-slate-700 bg-slate-800 text-center hover:border-amber-400 transition-all cursor-pointer" data-score="4" title="Muy lleno">
+                                <span class="text-base">🍕</span>
+                                <span class="text-[8px] font-bold block text-slate-400 mt-0.5">Lleno</span>
+                            </button>
+                            <button type="button" class="quick-satiety-btn p-2 rounded-xl border border-slate-700 bg-slate-800 text-center hover:border-rose-400 transition-all cursor-pointer" data-score="5" title="Pesado">
+                                <span class="text-base">🫄</span>
+                                <span class="text-[8px] font-bold block text-slate-400 mt-0.5">Pesado</span>
+                            </button>
+                        </div>
+                        <input id="confirm-meal-opinion" type="text" placeholder="Opinión o sensación (ej: Dejé la mitad por Dutide)..." value="${mealData.opinion || ''}" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-500 mt-1 placeholder:text-slate-500" />
+                    </div>
+
                     <div class="flex gap-2 mt-2">
-                        <button id="cancel-meal-btn" class="flex-1 btn-ghost-light py-3 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700">Cancelar</button>
-                        <button id="save-meal-btn" class="flex-1 btn-emerald py-3 text-xs font-bold">Guardar en Diario</button>
+                        <button id="cancel-meal-btn" class="flex-1 btn-ghost-light py-3 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 cursor-pointer">Cancelar</button>
+                        <button id="save-meal-btn" class="flex-1 btn-emerald py-3 text-xs font-bold cursor-pointer">Guardar en Diario</button>
                     </div>
                 </div>
             </div>
         `;
         modal.classList.remove('hidden');
+
+        let selectedSatietyScore = mealData.satiety_score ? Number(mealData.satiety_score) : 3;
+        const labelsMap = {
+            1: '🥣 Con hambre (1/5)',
+            2: '🥗 Ligero (2/5)',
+            3: '⚖️ En su punto (3/5)',
+            4: '🍕 Muy lleno (4/5)',
+            5: '🫄 Pesado (5/5)'
+        };
+
+        const updateQuickButtonsUI = () => {
+            document.querySelectorAll('.quick-satiety-btn').forEach(btn => {
+                const s = Number(btn.dataset.score);
+                if (s === selectedSatietyScore) {
+                    btn.className = 'quick-satiety-btn p-2 rounded-xl border-2 border-[#10E775] bg-[#10E775]/20 text-center shadow-xs transition-all cursor-pointer scale-105';
+                } else {
+                    btn.className = 'quick-satiety-btn p-2 rounded-xl border border-slate-700 bg-slate-800 text-center hover:border-slate-500 transition-all cursor-pointer';
+                }
+            });
+            const lbl = document.getElementById('confirm-satiety-label');
+            if (lbl) lbl.textContent = labelsMap[selectedSatietyScore] || 'En su punto';
+        };
+
+        document.querySelectorAll('.quick-satiety-btn').forEach(btn => {
+            btn.onclick = () => {
+                selectedSatietyScore = Number(btn.dataset.score);
+                updateQuickButtonsUI();
+            };
+        });
 
         document.getElementById('close-meal-modal-btn').onclick = () => modal.classList.add('hidden');
         document.getElementById('cancel-meal-btn').onclick = () => modal.classList.add('hidden');
@@ -601,6 +775,14 @@ export const attachDashboardEvents = () => {
             const protein = parseInt(document.getElementById('confirm-meal-p').value) || 0;
             const carbs = parseInt(document.getElementById('confirm-meal-c').value) || 0;
             const fat = parseInt(document.getElementById('confirm-meal-f').value) || 0;
+            const opinion = document.getElementById('confirm-meal-opinion')?.value?.trim() || null;
+
+            let sensations = mealData.sensations || [];
+            if (selectedSatietyScore === 3 && sensations.length === 0) {
+                sensations = ['Saciedad temprana'];
+            } else if (selectedSatietyScore >= 4 && sensations.length === 0) {
+                sensations = ['Pesadez abdominal'];
+            }
 
             addMeal({
                 name,
@@ -608,7 +790,10 @@ export const attachDashboardEvents = () => {
                 category,
                 time: category,
                 date: state.selectedDate || todayDate,
-                macros: { protein, carbs, fat }
+                macros: { protein, carbs, fat },
+                satiety_score: selectedSatietyScore,
+                sensations: sensations,
+                opinion: opinion
             });
 
             modal.classList.add('hidden');
@@ -671,6 +856,11 @@ export const attachDashboardEvents = () => {
                 window.router.navigate('dashboard');
             });
         });
+    });
+
+    // Attach sensations modal feedback triggers
+    attachSensationsModalEvents(() => {
+        window.router.navigate('dashboard');
     });
 };
 

@@ -181,7 +181,10 @@ export const addMealDB = async (meal) => {
         photo_url: meal.photo_url || null,
         ai_analysis: meal.ai_analysis || null,
         icon: meal.category || meal.icon || 'restaurant',
-        time: meal.time || ''
+        time: meal.time || '',
+        satiety_score: meal.satiety_score || null,
+        sensations: meal.sensations || [],
+        opinion: meal.opinion || null
     };
     const { data, error } = await supabase
         .from('meals')
@@ -204,7 +207,10 @@ export const updateMealDB = async (id, meal) => {
         calories: meal.calories,
         macros: meal.macros,
         icon: meal.category || meal.icon,
-        time: meal.time
+        time: meal.time,
+        satiety_score: meal.satiety_score || null,
+        sensations: meal.sensations || [],
+        opinion: meal.opinion || null
     };
     const { error } = await supabase
         .from('meals')
