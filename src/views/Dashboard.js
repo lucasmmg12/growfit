@@ -80,54 +80,54 @@ export const renderDashboard = () => {
                 <div class="max-w-5xl mx-auto flex flex-col gap-6">
 
                     <!-- Top Welcome & Date Bar -->
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-white p-5 rounded-3xl border border-border-soft shadow-xs">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#1E293B] p-5 rounded-3xl border border-slate-700 shadow-sm">
                         <div>
                             <div class="flex items-center gap-2 mb-1">
                                 <span class="badge-emerald">Tracker Diario</span>
-                                <span class="text-xs text-text-muted font-bold flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-sm text-amber-500">local_fire_department</span> Racha Activa
+                                <span class="text-xs text-slate-400 font-bold flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-sm text-amber-400">local_fire_department</span> Racha Activa
                                 </span>
                             </div>
-                            <h2 class="text-2xl md:text-3xl font-display font-black text-text-emerald uppercase tracking-tight">
+                            <h2 class="text-2xl md:text-3xl font-display font-bold text-white uppercase tracking-tight">
                                 ¡Hola, ${state.profile.name || 'Atleta'}!
                             </h2>
                         </div>
 
                         <!-- Date Navigation Buttons -->
                         <div class="flex items-center gap-2">
-                            <div class="flex items-center bg-slate-100 p-1 rounded-2xl border border-border-soft">
-                                <button id="prev-day-btn" class="size-8 rounded-xl bg-white hover:bg-emerald-50 text-text-emerald transition-all flex items-center justify-center shadow-xs">
+                            <div class="flex items-center bg-slate-900 p-1 rounded-2xl border border-slate-700">
+                                <button id="prev-day-btn" class="size-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 transition-all flex items-center justify-center shadow-xs border border-slate-700">
                                     <span class="material-symbols-outlined text-base">chevron_left</span>
                                 </button>
-                                <span class="px-3 text-xs font-bold text-text-primary font-mono">
+                                <span class="px-3 text-xs font-bold text-white font-mono">
                                     ${isToday ? 'HOY' : new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }).toUpperCase()}
                                 </span>
-                                <button id="next-day-btn" class="size-8 rounded-xl bg-white hover:bg-emerald-50 text-text-emerald transition-all flex items-center justify-center shadow-xs">
+                                <button id="next-day-btn" class="size-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 transition-all flex items-center justify-center shadow-xs border border-slate-700">
                                     <span class="material-symbols-outlined text-base">chevron_right</span>
                                 </button>
                             </div>
-                            <button id="open-calendar-btn" class="size-10 rounded-2xl bg-white border border-border-soft text-text-emerald flex items-center justify-center hover:bg-emerald-50 transition-all shadow-xs">
+                            <button id="open-calendar-btn" class="size-10 rounded-2xl bg-slate-800 border border-slate-700 text-emerald-400 flex items-center justify-center hover:bg-slate-700 transition-all shadow-xs">
                                 <span class="material-symbols-outlined text-lg">calendar_month</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- Quick Input Bar (Food, Voice, Photo & Barcode) -->
-                    <div class="white-card p-3 md:p-4 bg-gradient-to-r from-white via-emerald-50/30 to-white border-2 border-emerald-200 shadow-sm">
+                    <div class="white-card p-3 md:p-4 bg-[#1E293B] border border-slate-700 shadow-sm">
                         <div class="flex items-center gap-2">
-                            <div class="flex-1 flex items-center bg-slate-50 border border-slate-200 rounded-2xl px-3 py-2 focus-within:border-primary focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-100 transition-all">
+                            <div class="flex-1 flex items-center bg-slate-900 border border-slate-700 rounded-2xl px-3 py-2 focus-within:border-primary transition-all">
                                 <span class="material-symbols-outlined text-slate-400 text-xl mr-2">search</span>
-                                <input id="quick-log-input" type="text" placeholder="¿Qué comiste? ej. 2 huevos con tostada y café..." class="w-full bg-transparent border-none outline-none text-sm font-medium text-text-primary placeholder:text-slate-400" />
+                                <input id="quick-log-input" type="text" placeholder="¿Qué comiste? ej. 2 huevos con tostada y café..." class="w-full bg-transparent border-none outline-none text-sm font-medium text-white placeholder:text-slate-500" />
                             </div>
 
                             <!-- Camera AI Button -->
                             <input type="file" id="quick-log-file" accept="image/*" class="hidden">
-                            <label for="quick-log-file" title="Subir foto de comida (IA)" class="size-11 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-text-emerald border border-emerald-200 flex items-center justify-center cursor-pointer transition-all active:scale-95">
+                            <label for="quick-log-file" title="Subir foto de comida (IA)" class="size-11 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 flex items-center justify-center cursor-pointer transition-all active:scale-95">
                                 <span class="material-symbols-outlined text-xl">photo_camera</span>
                             </label>
 
                             <!-- Barcode Scanner Button -->
-                            <button id="open-barcode-modal-btn" title="Escanear código de barras" class="size-11 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-text-emerald border border-emerald-200 flex items-center justify-center transition-all active:scale-95">
+                            <button id="open-barcode-modal-btn" title="Escanear código de barras" class="size-11 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 flex items-center justify-center transition-all active:scale-95">
                                 <span class="material-symbols-outlined text-xl">barcode_scanner</span>
                             </button>
 
@@ -221,49 +221,49 @@ export const renderDashboard = () => {
                         <div class="md:col-span-7 white-card p-6 flex flex-col justify-between">
                             <div class="flex justify-between items-start mb-4">
                                 <div>
-                                    <span class="text-[11px] font-bold uppercase tracking-wider text-text-muted">Balance Calórico Diario</span>
-                                    <h3 class="text-3xl font-display font-black text-text-emerald mt-0.5">
-                                        ${Math.round(stats.calories)} <span class="text-base font-normal text-text-muted">/ ${calGoal} kcal</span>
+                                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Balance Calórico Diario</span>
+                                    <h3 class="text-3xl font-display font-black text-emerald-400 mt-0.5">
+                                        ${Math.round(stats.calories)} <span class="text-base font-normal text-slate-400">/ ${calGoal} kcal</span>
                                     </h3>
                                 </div>
-                                <span class="badge-emerald">${calProgress}% Meta</span>
+                                <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30">${calProgress}% Meta</span>
                             </div>
 
                             <!-- Progress Bar -->
-                            <div class="h-3 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200 p-0.5 mb-4">
-                                <div class="h-full bg-gradient-to-r from-emerald-400 to-primary rounded-full transition-all duration-500 shadow-emerald-sm" style="width: ${calProgress}%"></div>
+                            <div class="h-3 w-full bg-slate-900/80 rounded-full overflow-hidden border border-slate-700/70 p-0.5 mb-4">
+                                <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500 shadow-sm" style="width: ${calProgress}%"></div>
                             </div>
 
                             <!-- Metrics Row -->
-                            <div class="grid grid-cols-3 gap-3 pt-3 border-t border-slate-100 text-center">
-                                <div class="p-2.5 rounded-2xl bg-emerald-50/60 border border-emerald-100">
-                                    <span class="text-[10px] font-bold uppercase text-text-muted">Consumidas</span>
-                                    <p class="text-lg font-display font-black text-text-emerald">${Math.round(stats.calories)}</p>
+                            <div class="grid grid-cols-3 gap-3 pt-3 border-t border-slate-700/60 text-center">
+                                <div class="p-2.5 rounded-2xl bg-emerald-950/40 border border-emerald-800/40">
+                                    <span class="text-[10px] font-bold uppercase text-slate-400">Consumidas</span>
+                                    <p class="text-lg font-display font-black text-emerald-400">${Math.round(stats.calories)}</p>
                                 </div>
-                                <div class="p-2.5 rounded-2xl bg-orange-50/60 border border-orange-100">
-                                    <span class="text-[10px] font-bold uppercase text-text-muted">Quemadas</span>
-                                    <p class="text-lg font-display font-black text-orange-600">${Math.round(dailyBurn.activity)}</p>
+                                <div class="p-2.5 rounded-2xl bg-orange-950/40 border border-orange-800/40">
+                                    <span class="text-[10px] font-bold uppercase text-slate-400">Quemadas</span>
+                                    <p class="text-lg font-display font-black text-orange-400">${Math.round(dailyBurn.activity)}</p>
                                 </div>
-                                <div class="p-2.5 rounded-2xl bg-slate-50 border border-slate-200">
-                                    <span class="text-[10px] font-bold uppercase text-text-muted">Restantes</span>
-                                    <p class="text-lg font-display font-black text-slate-800">${remainingCals}</p>
+                                <div class="p-2.5 rounded-2xl bg-slate-900/60 border border-slate-700/60">
+                                    <span class="text-[10px] font-bold uppercase text-slate-400">Restantes</span>
+                                    <p class="text-lg font-display font-black text-slate-200">${remainingCals}</p>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Intermittent Fasting Card (5 Cols) -->
-                        <div class="md:col-span-5 white-card p-6 flex flex-col justify-between bg-gradient-to-br from-white via-emerald-50/30 to-white border-emerald-200 shadow-sm">
+                        <div class="md:col-span-5 white-card p-6 flex flex-col justify-between border-emerald-500/30 shadow-lg">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <div class="flex items-center gap-1.5 mb-1">
-                                        <span class="material-symbols-outlined text-primary text-base">timer</span>
-                                        <span class="text-[11px] font-bold uppercase tracking-wider text-text-emerald">Ayuno Intermitente</span>
+                                        <span class="material-symbols-outlined text-emerald-400 text-base">timer</span>
+                                        <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Ayuno Intermitente</span>
                                     </div>
-                                    <h4 class="text-xl font-display font-black text-text-primary">
+                                    <h4 class="text-xl font-display font-black text-white">
                                         ${fasting.targetHours} Horas (${fasting.protocol})
                                     </h4>
                                 </div>
-                                <span class="badge-emerald ${fasting.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600 border-slate-200'}">
+                                <span class="badge-emerald ${fasting.isActive ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-slate-700/50 text-slate-300 border-slate-600'}">
                                     ${fasting.isActive ? (fasting.isCompleted ? '¡Meta Cumplida!' : 'En Curso') : 'En Pausa'}
                                 </span>
                             </div>
@@ -271,18 +271,18 @@ export const renderDashboard = () => {
                             <div class="my-4 flex items-center justify-between gap-4">
                                 <div>
                                     <div class="flex items-baseline gap-2">
-                                        <p class="text-3xl font-display font-black text-text-emerald">
+                                        <p class="text-3xl font-display font-black text-emerald-400">
                                             ${fasting.isActive ? fasting.elapsedFormatted : `${fasting.targetHours}h 0m`}
                                         </p>
                                         ${fasting.isActive ? `
-                                            <span class="text-xs text-text-muted font-bold font-mono">(${fasting.remainingFormatted} rest.)</span>
+                                            <span class="text-xs text-slate-400 font-bold font-mono">(${fasting.remainingFormatted} rest.)</span>
                                         ` : ''}
                                     </div>
-                                    <p class="text-xs font-bold text-text-emerald mt-0.5">${fasting.stage}</p>
-                                    <p class="text-[11px] text-text-muted mt-0.5 leading-tight">${fasting.stageDesc}</p>
+                                    <p class="text-xs font-bold text-emerald-300 mt-0.5">${fasting.stage}</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5 leading-tight">${fasting.stageDesc}</p>
                                     
                                     ${fasting.isActive ? `
-                                        <div class="flex items-center gap-3 mt-2 text-[10px] font-mono text-slate-500">
+                                        <div class="flex items-center gap-3 mt-2 text-[10px] font-mono text-slate-400">
                                             <span><strong>Inicio:</strong> ${fasting.startTimeFormatted}</span>
                                             <span><strong>Fin:</strong> ${fasting.endTimeFormatted}</span>
                                         </div>
@@ -290,18 +290,18 @@ export const renderDashboard = () => {
                                 </div>
 
                                 <div class="size-16 rounded-full border-4 relative flex items-center justify-center ${
-                                    fasting.isActive ? (fasting.isCompleted ? 'border-emerald-500 bg-emerald-50 shadow-emerald-sm' : 'border-primary bg-emerald-50/50') : 'border-slate-200'
+                                    fasting.isActive ? (fasting.isCompleted ? 'border-emerald-400 bg-emerald-950/60 shadow-md' : 'border-emerald-500 bg-emerald-950/40') : 'border-slate-700 bg-slate-800'
                                 }">
-                                    <span class="material-symbols-outlined text-2xl ${fasting.isActive ? 'text-primary animate-pulse' : 'text-slate-300'}">
+                                    <span class="material-symbols-outlined text-2xl ${fasting.isActive ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}">
                                         ${fasting.isCompleted ? 'check_circle' : 'local_fire_department'}
                                     </span>
                                 </div>
                             </div>
 
                             <!-- Fasting Action Buttons -->
-                            <div class="flex gap-2 pt-2 border-t border-slate-100">
+                            <div class="flex gap-2 pt-2 border-t border-slate-700/60">
                                 ${fasting.isActive ? `
-                                    <button id="open-fasting-modal-btn" class="flex-1 btn-ghost-light py-2.5 text-xs font-bold" title="Editar hora de inicio o meta de horas">
+                                    <button id="open-fasting-modal-btn" class="flex-1 btn-ghost-light py-2.5 text-xs font-bold bg-slate-700/50 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl" title="Editar hora de inicio o meta de horas">
                                         <span class="material-symbols-outlined text-sm">edit</span> Editar
                                     </button>
                                     <button id="stop-fasting-btn" class="flex-1 btn-emerald-soft py-2.5 text-xs font-bold">
@@ -321,37 +321,37 @@ export const renderDashboard = () => {
                         <!-- Protein -->
                         <div class="white-card p-5 border-l-4 border-l-emerald-500">
                             <div class="flex justify-between items-center mb-2">
-                                <span class="text-xs font-bold text-text-muted uppercase">Proteína</span>
-                                <span class="text-xs font-mono font-bold text-emerald-600">${Math.round(stats.protein)} / ${pGoal}g</span>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Proteína</span>
+                                <span class="text-xs font-mono font-bold text-emerald-400">${Math.round(stats.protein)} / ${pGoal}g</span>
                             </div>
-                            <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden mb-1">
+                            <div class="h-2 w-full bg-slate-900 rounded-full overflow-hidden mb-1">
                                 <div class="h-full bg-emerald-500 rounded-full" style="width: ${pPct}%"></div>
                             </div>
-                            <span class="text-[10px] text-text-muted font-medium">${pPct}% completado</span>
+                            <span class="text-[10px] text-slate-400 font-medium">${pPct}% completado</span>
                         </div>
 
                         <!-- Carbs -->
                         <div class="white-card p-5 border-l-4 border-l-blue-500">
                             <div class="flex justify-between items-center mb-2">
-                                <span class="text-xs font-bold text-text-muted uppercase">Carbohidratos</span>
-                                <span class="text-xs font-mono font-bold text-blue-600">${Math.round(stats.carbs)} / ${cGoal}g</span>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Carbohidratos</span>
+                                <span class="text-xs font-mono font-bold text-blue-400">${Math.round(stats.carbs)} / ${cGoal}g</span>
                             </div>
-                            <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden mb-1">
+                            <div class="h-2 w-full bg-slate-900 rounded-full overflow-hidden mb-1">
                                 <div class="h-full bg-blue-500 rounded-full" style="width: ${cPct}%"></div>
                             </div>
-                            <span class="text-[10px] text-text-muted font-medium">${cPct}% completado</span>
+                            <span class="text-[10px] text-slate-400 font-medium">${cPct}% completado</span>
                         </div>
 
                         <!-- Fats -->
                         <div class="white-card p-5 border-l-4 border-l-amber-500">
                             <div class="flex justify-between items-center mb-2">
-                                <span class="text-xs font-bold text-text-muted uppercase">Grasas</span>
-                                <span class="text-xs font-mono font-bold text-amber-600">${Math.round(stats.fat)} / ${fGoal}g</span>
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Grasas</span>
+                                <span class="text-xs font-mono font-bold text-amber-400">${Math.round(stats.fat)} / ${fGoal}g</span>
                             </div>
-                            <div class="h-2 w-full bg-slate-100 rounded-full overflow-hidden mb-1">
+                            <div class="h-2 w-full bg-slate-900 rounded-full overflow-hidden mb-1">
                                 <div class="h-full bg-amber-500 rounded-full" style="width: ${fPct}%"></div>
                             </div>
-                            <span class="text-[10px] text-text-muted font-medium">${fPct}% completado</span>
+                            <span class="text-[10px] text-slate-400 font-medium">${fPct}% completado</span>
                         </div>
                     </div>
 
@@ -361,13 +361,13 @@ export const renderDashboard = () => {
                         <!-- Hydration Card -->
                         <div class="white-card p-5 flex items-center justify-between">
                             <div class="flex items-center gap-3.5">
-                                <div class="size-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                                <div class="size-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
                                     <span class="material-symbols-outlined text-2xl">water_drop</span>
                                 </div>
                                 <div>
-                                    <span class="text-[10px] font-bold uppercase text-text-muted">Hidratación</span>
-                                    <h4 class="text-xl font-display font-black text-text-primary">${waterAmount} <span class="text-xs font-normal text-text-muted">/ ${waterGoal} ml</span></h4>
-                                    <div class="h-1.5 w-32 bg-slate-100 rounded-full overflow-hidden mt-1">
+                                    <span class="text-[10px] font-bold uppercase text-slate-400">Hidratación</span>
+                                    <h4 class="text-xl font-display font-black text-white">${waterAmount} <span class="text-xs font-normal text-slate-400">/ ${waterGoal} ml</span></h4>
+                                    <div class="h-1.5 w-32 bg-slate-900 rounded-full overflow-hidden mt-1">
                                         <div class="h-full bg-blue-500 rounded-full" style="width: ${waterPct}%"></div>
                                     </div>
                                 </div>
@@ -378,21 +378,21 @@ export const renderDashboard = () => {
                         </div>
 
                         <!-- AI Coach Tip Card -->
-                        <div class="white-card p-5 bg-gradient-to-br from-emerald-50/50 to-white border-emerald-200 flex flex-col justify-between">
+                        <div class="white-card p-5 border-emerald-500/30 flex flex-col justify-between">
                             <div class="flex items-center gap-2 mb-2">
-                                <span class="material-symbols-outlined text-primary text-base">auto_awesome</span>
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-text-emerald">AI Coach Insight</span>
+                                <span class="material-symbols-outlined text-emerald-400 text-base">auto_awesome</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">AI Coach Insight</span>
                             </div>
-                            <p class="text-xs text-text-primary/90 font-medium italic leading-relaxed">"${displayTip}"</p>
+                            <p class="text-xs text-slate-300 font-medium italic leading-relaxed">"${displayTip}"</p>
                         </div>
                     </div>
 
                     <!-- Daily Meal Timeline -->
                     <div class="white-card p-6">
-                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-soft">
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
                             <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-primary text-xl">restaurant_menu</span>
-                                <h3 class="text-lg font-display font-black text-text-emerald uppercase tracking-tight">Comidas Registradas</h3>
+                                <span class="material-symbols-outlined text-emerald-400 text-xl">restaurant_menu</span>
+                                <h3 class="text-lg font-display font-black text-white uppercase tracking-tight">Comidas Registradas</h3>
                             </div>
                             <button onclick="window.router.navigate('tracker')" class="btn-emerald-soft text-xs px-3 py-1.5 font-bold">
                                 Ver Diario Completo →
@@ -411,9 +411,9 @@ export const renderDashboard = () => {
         </main>
 
         <!-- Global Modals Container -->
-        <div id="meal-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"></div>
-        <div id="barcode-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"></div>
-        <div id="fasting-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"></div>
+        <div id="meal-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4"></div>
+        <div id="barcode-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4"></div>
+        <div id="fasting-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4"></div>
     </div>
     `;
 };
@@ -425,36 +425,36 @@ const renderMealsList = (state, selectedDate) => {
     if (!meals.length) {
         return `
             <div class="py-10 text-center flex flex-col items-center gap-2">
-                <div class="size-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                <div class="size-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-500">
                     <span class="material-symbols-outlined text-2xl">restaurant</span>
                 </div>
-                <p class="text-sm font-semibold text-text-muted">No has registrado comidas para este día</p>
-                <p class="text-xs text-slate-400">Escribe lo que comiste o escanea un código de barras arriba.</p>
+                <p class="text-sm font-semibold text-slate-300">No has registrado comidas para este día</p>
+                <p class="text-xs text-slate-400">Escribe lo que comiste o sube una foto con la cámara arriba.</p>
             </div>
         `;
     }
 
     return meals.map(m => `
-        <div class="flex items-center justify-between p-4 bg-slate-50/80 hover:bg-emerald-50/50 rounded-2xl border border-slate-200/80 hover:border-emerald-200 transition-all">
+        <div class="flex items-center justify-between p-4 bg-slate-900/60 hover:bg-slate-800/80 rounded-2xl border border-slate-700/60 transition-all">
             <div class="flex items-center gap-3.5">
-                <div class="size-10 rounded-xl bg-primary-light flex items-center justify-center text-primary border border-border-emerald">
+                <div class="size-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">
                     <span class="material-symbols-outlined text-lg">${m.type === 'workout' ? 'fitness_center' : 'restaurant'}</span>
                 </div>
                 <div>
                     <div class="flex items-center gap-2">
-                        <h4 class="text-sm font-bold text-text-primary capitalize">${m.name}</h4>
-                        <span class="px-2 py-0.5 rounded-full bg-white text-[9px] font-bold text-text-emerald border border-slate-200">
+                        <h4 class="text-sm font-bold text-white capitalize">${m.name}</h4>
+                        <span class="px-2 py-0.5 rounded-full bg-slate-800 text-[9px] font-bold text-emerald-400 border border-slate-700">
                             ${m.time || m.category || 'Comida'}
                         </span>
                     </div>
-                    <p class="text-xs font-mono text-text-muted mt-0.5">
-                        <strong class="text-text-emerald">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g
+                    <p class="text-xs font-mono text-slate-400 mt-0.5">
+                        <strong class="text-emerald-400">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g
                     </p>
                 </div>
             </div>
 
             <div class="flex items-center gap-1">
-                <button class="delete-meal-btn size-8 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors flex items-center justify-center" data-id="${m.id}">
+                <button class="delete-meal-btn size-8 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center" data-id="${m.id}">
                     <span class="material-symbols-outlined text-lg">delete</span>
                 </button>
             </div>
@@ -547,15 +547,15 @@ export const attachDashboardEvents = () => {
         ];
 
         fastingModal.innerHTML = `
-            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-emerald-lg">
-                <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-soft">
+            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-2xl border border-slate-700/80">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-primary text-xl">timer</span>
-                        <h3 class="text-lg font-display font-black text-text-emerald uppercase">
+                        <span class="material-symbols-outlined text-emerald-400 text-xl">timer</span>
+                        <h3 class="text-lg font-display font-black text-white uppercase">
                             ${f.isActive ? 'Editar Ayuno Activo' : 'Configurar Ayuno Intermitente'}
                         </h3>
                     </div>
-                    <button id="close-fasting-modal-btn" class="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                    <button id="close-fasting-modal-btn" class="size-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700">
                         <span class="material-symbols-outlined text-base">close</span>
                     </button>
                 </div>
@@ -564,14 +564,14 @@ export const attachDashboardEvents = () => {
                     
                     <!-- Fasting Duration Presets -->
                     <div>
-                        <label class="text-xs font-bold text-text-muted uppercase mb-1.5 block">1. Selecciona las Horas de Ayuno</label>
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1.5 block">1. Selecciona las Horas de Ayuno</label>
                         <div class="grid grid-cols-3 gap-2">
                             ${presets.map(p => `
                                 <button type="button" class="fasting-preset-btn p-2.5 rounded-xl border text-center transition-all ${
-                                    currentHours === p.hours ? 'bg-primary-light border-primary text-text-emerald font-bold shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-emerald-50'
+                                    currentHours === p.hours ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold shadow-xs' : 'bg-slate-900/60 border-slate-700 text-slate-300 hover:bg-slate-800'
                                 }" data-hours="${p.hours}">
                                     <span class="block text-sm font-black">${p.label}</span>
-                                    <span class="block text-[9px] text-text-muted">${p.desc}</span>
+                                    <span class="block text-[9px] text-slate-400">${p.desc}</span>
                                 </button>
                             `).join('')}
                         </div>
@@ -580,36 +580,36 @@ export const attachDashboardEvents = () => {
                     <!-- Custom Hours Input -->
                     <div>
                         <div class="flex justify-between items-center mb-1">
-                            <label class="text-xs font-bold text-text-muted uppercase">Horas Exactas</label>
-                            <span id="fasting-hours-display" class="text-xs font-mono font-bold text-text-emerald">${currentHours} horas</span>
+                            <label class="text-xs font-bold text-slate-400 uppercase">Horas Exactas</label>
+                            <span id="fasting-hours-display" class="text-xs font-mono font-bold text-emerald-400">${currentHours} horas</span>
                         </div>
-                        <input id="fasting-hours-input" type="range" min="6" max="48" step="1" value="${currentHours}" class="w-full accent-primary cursor-pointer">
+                        <input id="fasting-hours-input" type="range" min="6" max="48" step="1" value="${currentHours}" class="w-full accent-emerald-500 cursor-pointer">
                     </div>
 
                     <!-- Start Date and Time Picker -->
                     <div>
-                        <label class="text-xs font-bold text-text-muted uppercase mb-1.5 block">2. ¿A qué hora comenzaste / comienzas?</label>
-                        <input id="fasting-start-input" type="datetime-local" value="${toLocalDatetimeValue(initialDate)}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-primary">
+                        <label class="text-xs font-bold text-slate-400 uppercase mb-1.5 block">2. ¿A qué hora comenzaste / comienzas?</label>
+                        <input id="fasting-start-input" type="datetime-local" value="${toLocalDatetimeValue(initialDate)}" class="w-full bg-slate-900/80 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-bold text-white outline-none focus:border-emerald-500">
                         
                         <!-- Quick Time Shortcuts -->
                         <div class="flex flex-wrap gap-1.5 mt-2">
-                            <button type="button" id="time-now" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 text-[10px] font-bold text-text-emerald">Ahora</button>
-                            <button type="button" id="time-minus-1h" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 text-[10px] font-bold text-text-muted">Hace 1h</button>
-                            <button type="button" id="time-minus-2h" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 text-[10px] font-bold text-text-muted">Hace 2h</button>
-                            <button type="button" id="time-yesterday-20" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 text-[10px] font-bold text-text-muted">Ayer 20:00</button>
-                            <button type="button" id="time-yesterday-22" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-100 text-[10px] font-bold text-text-muted">Ayer 22:00</button>
+                            <button type="button" id="time-now" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-emerald-400">Ahora</button>
+                            <button type="button" id="time-minus-1h" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300">Hace 1h</button>
+                            <button type="button" id="time-minus-2h" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300">Hace 2h</button>
+                            <button type="button" id="time-yesterday-20" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300">Ayer 20:00</button>
+                            <button type="button" id="time-yesterday-22" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300">Ayer 22:00</button>
                         </div>
                     </div>
 
                     <!-- Target End Calculation Preview -->
-                    <div class="p-3.5 bg-gradient-to-r from-emerald-50 to-white rounded-2xl border border-emerald-200">
-                        <span class="text-[10px] font-bold uppercase text-emerald-800">Objetivo Estimado</span>
-                        <p id="fasting-end-preview" class="text-xs font-bold text-text-primary mt-0.5">Calculando fin de ayuno...</p>
+                    <div class="p-3.5 bg-slate-900/60 rounded-2xl border border-emerald-500/30">
+                        <span class="text-[10px] font-bold uppercase text-emerald-400">Objetivo Estimado</span>
+                        <p id="fasting-end-preview" class="text-xs font-bold text-slate-200 mt-0.5">Calculando fin de ayuno...</p>
                     </div>
 
                     <!-- Submit Buttons -->
                     <div class="flex gap-2 mt-2">
-                        <button id="cancel-fasting-btn" class="flex-1 btn-ghost-light py-3 text-xs font-bold">Cancelar</button>
+                        <button id="cancel-fasting-btn" class="flex-1 btn-ghost-light py-3 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700">Cancelar</button>
                         <button id="save-fasting-btn" class="flex-1 btn-emerald py-3 text-xs font-bold shadow-emerald-sm">
                             ${f.isActive ? 'Actualizar Horario' : 'Comenzar Ayuno'}
                         </button>
@@ -643,9 +643,9 @@ export const attachDashboardEvents = () => {
                 const h = parseInt(e.currentTarget.dataset.hours);
                 hoursInput.value = h;
                 document.querySelectorAll('.fasting-preset-btn').forEach(btn => {
-                    btn.className = 'fasting-preset-btn p-2.5 rounded-xl border text-center transition-all bg-slate-50 border-slate-200 text-slate-600 hover:bg-emerald-50';
+                    btn.className = 'fasting-preset-btn p-2.5 rounded-xl border text-center transition-all bg-slate-900/60 border-slate-700 text-slate-300 hover:bg-slate-800';
                 });
-                e.currentTarget.className = 'fasting-preset-btn p-2.5 rounded-xl border text-center transition-all bg-primary-light border-primary text-text-emerald font-bold shadow-xs';
+                e.currentTarget.className = 'fasting-preset-btn p-2.5 rounded-xl border text-center transition-all bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold shadow-xs';
                 updatePreview();
             };
         });
@@ -711,26 +711,26 @@ export const attachDashboardEvents = () => {
 
     const showBarcodeScannerModal = () => {
         barcodeModal.innerHTML = `
-            <div class="white-card p-6 w-full max-w-md relative animate-scale-up">
-                <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-soft">
+            <div class="white-card p-6 w-full max-w-md relative animate-scale-up border border-slate-700/80 shadow-2xl">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-primary text-xl">barcode_scanner</span>
-                        <h3 class="text-lg font-display font-black text-text-emerald uppercase">Escanear Código de Barras</h3>
+                        <span class="material-symbols-outlined text-emerald-400 text-xl">barcode_scanner</span>
+                        <h3 class="text-lg font-display font-black text-white uppercase">Escanear Código de Barras</h3>
                     </div>
-                    <button id="close-barcode-btn" class="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                    <button id="close-barcode-btn" class="size-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700">
                         <span class="material-symbols-outlined text-base">close</span>
                     </button>
                 </div>
 
                 <!-- Camera viewport for HTML5 QRCode -->
-                <div id="qr-reader-container" class="w-full h-64 bg-slate-950 rounded-2xl overflow-hidden mb-4 relative flex items-center justify-center">
+                <div id="qr-reader-container" class="w-full h-64 bg-slate-950 rounded-2xl overflow-hidden mb-4 relative flex items-center justify-center border border-slate-800">
                     <div id="qr-reader" class="w-full h-full"></div>
                 </div>
 
                 <div class="flex flex-col gap-3">
-                    <p class="text-xs text-text-muted text-center">O ingresa el número de código de barras:</p>
+                    <p class="text-xs text-slate-400 text-center">O ingresa el número de código de barras:</p>
                     <div class="flex gap-2">
-                        <input id="manual-barcode-input" type="number" placeholder="ej. 7790070412059" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono outline-none focus:border-primary">
+                        <input id="manual-barcode-input" type="number" placeholder="ej. 7790070412059" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono text-white outline-none focus:border-emerald-500">
                         <button id="manual-barcode-search-btn" class="btn-emerald px-4 py-2 text-xs font-bold">Buscar</button>
                     </div>
                 </div>
@@ -812,50 +812,50 @@ export const attachDashboardEvents = () => {
         const todayDate = getArgentinaDate();
 
         modal.innerHTML = `
-            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-emerald-md">
-                <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-soft">
-                    <span class="badge-emerald text-xs">Confirmar Registro</span>
-                    <button id="close-meal-modal-btn" class="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-2xl border border-slate-700/80">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
+                    <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs">Confirmar Registro</span>
+                    <button id="close-meal-modal-btn" class="size-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700">
                         <span class="material-symbols-outlined text-base">close</span>
                     </button>
                 </div>
 
                 <div class="flex flex-col gap-4">
                     <div>
-                        <label class="text-xs font-bold text-text-muted uppercase">Nombre del Alimento</label>
-                        <input id="confirm-meal-name" value="${mealData.name || ''}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-base font-bold text-text-primary outline-none focus:border-primary mt-1" />
+                        <label class="text-xs font-bold text-slate-400 uppercase">Nombre del Alimento</label>
+                        <input id="confirm-meal-name" value="${mealData.name || ''}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-base font-bold text-white outline-none focus:border-emerald-500 mt-1" />
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="text-xs font-bold text-text-muted uppercase">Calorías (kcal)</label>
-                            <input id="confirm-meal-cals" type="number" value="${mealData.calories || 0}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-lg font-mono font-bold text-text-emerald outline-none focus:border-primary mt-1" />
+                            <label class="text-xs font-bold text-slate-400 uppercase">Calorías (kcal)</label>
+                            <input id="confirm-meal-cals" type="number" value="${mealData.calories || 0}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-lg font-mono font-bold text-emerald-400 outline-none focus:border-emerald-500 mt-1" />
                         </div>
                         <div>
-                            <label class="text-xs font-bold text-text-muted uppercase">Momento</label>
-                            <select id="confirm-meal-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-text-primary outline-none focus:border-primary mt-1">
+                            <label class="text-xs font-bold text-slate-400 uppercase">Momento</label>
+                            <select id="confirm-meal-category" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-white outline-none focus:border-emerald-500 mt-1">
                                 ${categories.map(c => `<option value="${c}" ${mealData.category === c ? 'selected' : ''}>${c}</option>`).join('')}
                             </select>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                    <div class="grid grid-cols-3 gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-700/60">
                         <div>
-                            <span class="text-[10px] font-bold uppercase text-emerald-600">Proteína</span>
-                            <input id="confirm-meal-p" type="number" value="${Math.round(mealData.macros?.protein || 0)}" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
+                            <span class="text-[10px] font-bold uppercase text-emerald-400">Proteína</span>
+                            <input id="confirm-meal-p" type="number" value="${Math.round(mealData.macros?.protein || 0)}" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
                         </div>
                         <div>
-                            <span class="text-[10px] font-bold uppercase text-blue-600">Carbos</span>
-                            <input id="confirm-meal-c" type="number" value="${Math.round(mealData.macros?.carbs || 0)}" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
+                            <span class="text-[10px] font-bold uppercase text-blue-400">Carbos</span>
+                            <input id="confirm-meal-c" type="number" value="${Math.round(mealData.macros?.carbs || 0)}" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
                         </div>
                         <div>
-                            <span class="text-[10px] font-bold uppercase text-amber-600">Grasas</span>
-                            <input id="confirm-meal-f" type="number" value="${Math.round(mealData.macros?.fat || 0)}" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
+                            <span class="text-[10px] font-bold uppercase text-amber-400">Grasas</span>
+                            <input id="confirm-meal-f" type="number" value="${Math.round(mealData.macros?.fat || 0)}" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
                         </div>
                     </div>
 
                     <div class="flex gap-2 mt-2">
-                        <button id="cancel-meal-btn" class="flex-1 btn-ghost-light py-3 text-xs font-bold">Cancelar</button>
+                        <button id="cancel-meal-btn" class="flex-1 btn-ghost-light py-3 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700">Cancelar</button>
                         <button id="save-meal-btn" class="flex-1 btn-emerald py-3 text-xs font-bold">Guardar en Diario</button>
                     </div>
                 </div>

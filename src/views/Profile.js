@@ -16,29 +16,29 @@ export const renderProfile = () => {
     ];
 
     return `
-    <div class="flex h-screen w-full bg-background-light font-body text-text-primary overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#0F172A] font-body text-slate-100 overflow-hidden fade-in">
         ${renderSidebar('profile')}
 
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-background-light">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-[#0F172A]">
             ${renderMobileHeader('Ajustes y Perfil')}
 
             <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-8">
                 <div class="max-w-3xl mx-auto flex flex-col gap-6">
 
                     <!-- Profile Header Card -->
-                    <div class="white-card p-6 bg-gradient-to-r from-white via-emerald-50/40 to-white border-emerald-200">
+                    <div class="white-card p-6 border border-emerald-500/30 shadow-2xl">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-4">
                                 <div class="size-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-display font-black text-2xl shadow-emerald-sm">
                                     ${(profile.name || 'U').charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                    <h2 class="text-2xl font-display font-black text-text-emerald uppercase tracking-tight">${profile.name || 'Mi Perfil'}</h2>
-                                    <p class="text-xs text-text-muted">Nivel ${profile.level || 1} · ${profile.xp || 0} XP acumulados</p>
+                                    <h2 class="text-2xl font-display font-black text-white uppercase tracking-tight">${profile.name || 'Mi Perfil'}</h2>
+                                    <p class="text-xs text-slate-400">Nivel ${profile.level || 1} · ${profile.xp || 0} XP acumulados</p>
                                 </div>
                             </div>
 
-                            <button id="logout-btn" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors">
+                            <button id="logout-btn" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors">
                                 <span class="material-symbols-outlined text-base">logout</span>
                                 <span class="hidden sm:inline">Cerrar Sesión</span>
                             </button>
@@ -46,26 +46,26 @@ export const renderProfile = () => {
                     </div>
 
                     <!-- Medical & Treatment Goals (Obetide Focus) -->
-                    <div class="white-card p-6 border-l-4 border-l-emerald-600">
+                    <div class="white-card p-6 border-l-4 border-l-emerald-500 border border-slate-700/60 shadow-xl">
                         <div class="flex items-center gap-2 mb-3">
-                            <span class="material-symbols-outlined text-emerald-600">medical_services</span>
-                            <h3 class="text-base font-display font-black text-text-primary uppercase">
+                            <span class="material-symbols-outlined text-emerald-400">medical_services</span>
+                            <h3 class="text-base font-display font-black text-white uppercase">
                                 Tratamiento Obetide & Descenso de Peso
                             </h3>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
-                                <label class="text-[10px] font-bold text-text-muted uppercase">Peso Inicial (kg)</label>
-                                <input id="profile-starting-weight" type="number" step="0.1" value="${profile.startingWeight || 75}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-primary mt-1">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase">Peso Inicial (kg)</label>
+                                <input id="profile-starting-weight" type="number" step="0.1" value="${profile.startingWeight || 75}" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-emerald-500 mt-1">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-emerald-700 uppercase">Peso Meta (kg)</label>
-                                <input id="profile-target-weight" type="number" step="0.1" value="${profile.targetWeight || 70}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-primary mt-1">
+                                <label class="text-[10px] font-bold text-emerald-400 uppercase">Peso Meta (kg)</label>
+                                <input id="profile-target-weight" type="number" step="0.1" value="${profile.targetWeight || 70}" class="w-full bg-slate-900 border border-slate-700 text-emerald-400 rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-emerald-500 mt-1">
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-blue-700 uppercase">Moneda Presupuesto</label>
-                                <select id="profile-currency" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-primary mt-1">
+                                <label class="text-[10px] font-bold text-blue-400 uppercase">Moneda Presupuesto</label>
+                                <select id="profile-currency" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500 mt-1">
                                     <option value="ARS" ${(profile.currency === 'ARS' || !profile.currency) ? 'selected' : ''}>ARS ($ Pesos)</option>
                                     <option value="USD" ${(profile.currency === 'USD') ? 'selected' : ''}>USD ($ Dólares)</option>
                                 </select>
@@ -74,56 +74,56 @@ export const renderProfile = () => {
                     </div>
 
                     <!-- Macro & Calorie Targets Form -->
-                    <div class="white-card p-6">
-                        <h3 class="text-base font-display font-black text-text-emerald uppercase mb-4 pb-2 border-b border-border-soft">
+                    <div class="white-card p-6 border border-slate-700/60 shadow-xl">
+                        <h3 class="text-base font-display font-black text-white uppercase mb-4 pb-2 border-b border-slate-700/60">
                             Objetivos Nutricionales Diarios
                         </h3>
 
                         <div class="flex flex-col gap-4">
                             <div>
-                                <label class="text-xs font-bold text-text-muted uppercase">Meta Calórica Diaria (kcal)</label>
-                                <input id="profile-cal-goal" type="number" value="${profile.calorieGoal || 2000}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-base font-mono font-bold text-text-emerald outline-none focus:border-primary mt-1">
+                                <label class="text-xs font-bold text-slate-400 uppercase">Meta Calórica Diaria (kcal)</label>
+                                <input id="profile-cal-goal" type="number" value="${profile.calorieGoal || 2000}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-base font-mono font-bold text-emerald-400 outline-none focus:border-emerald-500 mt-1">
                             </div>
 
                             <div class="grid grid-cols-3 gap-3">
                                 <div>
-                                    <label class="text-[10px] font-bold text-emerald-700 uppercase">Proteína (g)</label>
-                                    <input id="profile-p-goal" type="number" value="${profile.proteinGoal || 150}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-primary mt-1">
+                                    <label class="text-[10px] font-bold text-emerald-400 uppercase">Proteína (g)</label>
+                                    <input id="profile-p-goal" type="number" value="${profile.proteinGoal || 150}" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-emerald-500 mt-1">
                                 </div>
                                 <div>
-                                    <label class="text-[10px] font-bold text-blue-700 uppercase">Carbos (g)</label>
-                                    <input id="profile-c-goal" type="number" value="${profile.carbsGoal || 200}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-primary mt-1">
+                                    <label class="text-[10px] font-bold text-blue-400 uppercase">Carbos (g)</label>
+                                    <input id="profile-c-goal" type="number" value="${profile.carbsGoal || 200}" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-emerald-500 mt-1">
                                 </div>
                                 <div>
-                                    <label class="text-[10px] font-bold text-amber-700 uppercase">Grasas (g)</label>
-                                    <input id="profile-f-goal" type="number" value="${profile.fatGoal || 65}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-primary mt-1">
+                                    <label class="text-[10px] font-bold text-amber-400 uppercase">Grasas (g)</label>
+                                    <input id="profile-f-goal" type="number" value="${profile.fatGoal || 65}" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-emerald-500 mt-1">
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Personal Metrics -->
-                    <div class="white-card p-6">
-                        <h3 class="text-base font-display font-black text-text-emerald uppercase mb-4 pb-2 border-b border-border-soft">
+                    <div class="white-card p-6 border border-slate-700/60 shadow-xl">
+                        <h3 class="text-base font-display font-black text-white uppercase mb-4 pb-2 border-b border-slate-700/60">
                             Datos Personales
                         </h3>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="text-xs font-bold text-text-muted uppercase">Nombre</label>
-                                <input id="profile-name" type="text" value="${profile.name || ''}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-primary mt-1">
+                                <label class="text-xs font-bold text-slate-400 uppercase">Nombre</label>
+                                <input id="profile-name" type="text" value="${profile.name || ''}" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500 mt-1">
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-text-muted uppercase">Altura (cm)</label>
-                                <input id="profile-height" type="number" value="${profile.height || 175}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-primary mt-1">
+                                <label class="text-xs font-bold text-slate-400 uppercase">Altura (cm)</label>
+                                <input id="profile-height" type="number" value="${profile.height || 175}" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500 mt-1">
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-text-muted uppercase">Edad</label>
-                                <input id="profile-age" type="number" value="${profile.age || 30}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-primary mt-1">
+                                <label class="text-xs font-bold text-slate-400 uppercase">Edad</label>
+                                <input id="profile-age" type="number" value="${profile.age || 30}" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500 mt-1">
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-text-muted uppercase">Protocolo de Ayuno</label>
-                                <select id="profile-fasting-protocol" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-primary mt-1">
+                                <label class="text-xs font-bold text-slate-400 uppercase">Protocolo de Ayuno</label>
+                                <select id="profile-fasting-protocol" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500 mt-1">
                                     <option value="16:8" ${(state.fasting?.protocol === '16:8') ? 'selected' : ''}>16:8 (Clásico - 16h ayuno)</option>
                                     <option value="18:6" ${(state.fasting?.protocol === '18:6') ? 'selected' : ''}>18:6 (Intermedio - 18h ayuno)</option>
                                     <option value="20:4" ${(state.fasting?.protocol === '20:4') ? 'selected' : ''}>20:4 (Warrior - 20h ayuno)</option>
@@ -138,20 +138,20 @@ export const renderProfile = () => {
                     </div>
 
                     <!-- Achievements & Badges Grid -->
-                    <div class="white-card p-6">
-                        <h3 class="text-base font-display font-black text-text-emerald uppercase mb-4 pb-2 border-b border-border-soft">
+                    <div class="white-card p-6 border border-slate-700/60 shadow-xl">
+                        <h3 class="text-base font-display font-black text-white uppercase mb-4 pb-2 border-b border-slate-700/60">
                             Logros & Progreso
                         </h3>
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             ${badges.map(b => `
                                 <div class="p-4 rounded-2xl border text-center flex flex-col items-center gap-1.5 ${
-                                    b.unlocked ? 'bg-emerald-50/70 border-emerald-200' : 'bg-slate-50 border-slate-200 opacity-50'
+                                    b.unlocked ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200' : 'bg-slate-900/60 border-slate-700/60 text-slate-400 opacity-60'
                                 }">
-                                    <div class="size-11 rounded-full ${b.unlocked ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'} flex items-center justify-center shadow-xs">
+                                    <div class="size-11 rounded-full ${b.unlocked ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-500'} flex items-center justify-center shadow-xs">
                                         <span class="material-symbols-outlined text-xl">${b.icon}</span>
                                     </div>
-                                    <h5 class="text-xs font-bold text-text-primary mt-1">${b.label}</h5>
-                                    <p class="text-[10px] text-text-muted">${b.desc}</p>
+                                    <h5 class="text-xs font-bold text-white mt-1">${b.label}</h5>
+                                    <p class="text-[10px] text-slate-400">${b.desc}</p>
                                 </div>
                             `).join('')}
                         </div>

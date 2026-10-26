@@ -40,46 +40,46 @@ export const renderWorkouts = () => {
     const daysTrainedMonth = new Set(thisMonthWorkouts.map(w => w.date)).size;
 
     return `
-    <div class="flex h-screen w-full bg-background-light font-body text-text-primary overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#0F172A] font-sans text-slate-100 overflow-hidden fade-in">
         ${renderSidebar('workouts')}
 
         <!-- Main Content -->
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-background-light">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-[#0F172A]">
             ${renderMobileHeader('Entrenamientos')}
 
             <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-8">
                 <div class="max-w-5xl mx-auto flex flex-col gap-6">
 
                     <!-- Top KPI Banner -->
-                    <div class="white-card p-6 bg-gradient-to-r from-white via-emerald-50/40 to-white border-emerald-200">
+                    <div class="white-card p-6 border-slate-700/60 bg-gradient-to-r from-slate-900 via-slate-800/80 to-slate-900">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
                                 <span class="badge-emerald mb-1">Módulo de Rendimiento</span>
-                                <h2 class="text-3xl font-display font-black text-text-emerald uppercase tracking-tight">Registro de Ejercicio</h2>
-                                <p class="text-xs text-text-muted mt-0.5">Controla tu sobrecarga progresiva y gasto calórico.</p>
+                                <h2 class="text-3xl font-bold text-white tracking-tight">Registro de Ejercicio</h2>
+                                <p class="text-xs text-slate-400 mt-0.5">Controla tu sobrecarga progresiva y gasto calórico.</p>
                             </div>
 
                             <div class="flex items-center gap-4">
-                                <div class="p-3 bg-white rounded-2xl border border-slate-200 text-center shadow-xs">
-                                    <span class="text-[10px] font-bold uppercase text-text-muted">Este Mes</span>
-                                    <p class="text-xl font-display font-black text-text-emerald">${totalBurnedMonth} <span class="text-xs font-normal text-text-muted">kcal</span></p>
+                                <div class="p-3 bg-slate-800/90 rounded-2xl border border-slate-700/60 text-center shadow-sm">
+                                    <span class="text-[10px] font-bold uppercase text-slate-400">Este Mes</span>
+                                    <p class="text-xl font-bold text-emerald-400">${totalBurnedMonth} <span class="text-xs font-normal text-slate-400">kcal</span></p>
                                 </div>
-                                <div class="p-3 bg-white rounded-2xl border border-slate-200 text-center shadow-xs">
-                                    <span class="text-[10px] font-bold uppercase text-text-muted">Sesiones</span>
-                                    <p class="text-xl font-display font-black text-text-emerald">${daysTrainedMonth} <span class="text-xs font-normal text-text-muted">días</span></p>
+                                <div class="p-3 bg-slate-800/90 rounded-2xl border border-slate-700/60 text-center shadow-sm">
+                                    <span class="text-[10px] font-bold uppercase text-slate-400">Sesiones</span>
+                                    <p class="text-xl font-bold text-emerald-400">${daysTrainedMonth} <span class="text-xs font-normal text-slate-400">días</span></p>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Tab Switcher (Gym Logbook vs Quick Routines) -->
-                        <div class="flex gap-2 p-1 bg-slate-100 rounded-2xl mt-5 text-xs font-bold">
+                        <div class="flex gap-2 p-1 bg-slate-800/80 border border-slate-700/60 rounded-2xl mt-5 text-xs font-bold">
                             <button id="tab-gym-btn" class="flex-1 py-2.5 rounded-xl transition-all ${
-                                activeWorkoutTab === 'gym' ? 'bg-white text-text-emerald shadow-xs' : 'text-text-muted hover:text-text-primary'
+                                activeWorkoutTab === 'gym' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'
                             }">
                                 <span class="material-symbols-outlined text-base align-middle mr-1">fitness_center</span> Bitácora Gym & 1RM
                             </button>
                             <button id="tab-routines-btn" class="flex-1 py-2.5 rounded-xl transition-all ${
-                                activeWorkoutTab === 'routines' ? 'bg-white text-text-emerald shadow-xs' : 'text-text-muted hover:text-text-primary'
+                                activeWorkoutTab === 'routines' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'
                             }">
                                 <span class="material-symbols-outlined text-base align-middle mr-1">timer</span> Rutinas & Cardio
                             </button>
@@ -90,14 +90,14 @@ export const renderWorkouts = () => {
                     <div id="gym-logbook-view" class="${activeWorkoutTab === 'gym' ? 'flex' : 'hidden'} flex-col gap-6">
                         
                         <!-- Rest Timer Widget Card -->
-                        <div class="white-card p-5 bg-gradient-to-r from-emerald-50/70 to-white border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="white-card p-5 bg-gradient-to-r from-slate-900 to-slate-800 border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
-                                <div class="size-11 rounded-2xl bg-white text-primary border border-border-emerald flex items-center justify-center shadow-xs">
+                                <div class="size-11 rounded-2xl bg-slate-800 text-emerald-400 border border-slate-700 flex items-center justify-center shadow-sm">
                                     <span class="material-symbols-outlined text-2xl">hourglass_empty</span>
                                 </div>
                                 <div>
-                                    <h4 class="text-sm font-bold text-text-emerald uppercase">Temporizador de Descanso</h4>
-                                    <p id="rest-timer-display" class="text-2xl font-mono font-black text-text-primary">
+                                    <h4 class="text-sm font-bold text-emerald-400 uppercase">Temporizador de Descanso</h4>
+                                    <p id="rest-timer-display" class="text-2xl font-mono font-black text-white">
                                         ${restSecondsRemaining > 0 ? `${restSecondsRemaining}s` : 'Listo para la serie'}
                                     </p>
                                 </div>
@@ -108,14 +108,14 @@ export const renderWorkouts = () => {
                                 <button class="start-rest-btn btn-emerald-soft px-3 py-1.5 text-xs font-bold" data-sec="60">60s</button>
                                 <button class="start-rest-btn btn-emerald-soft px-3 py-1.5 text-xs font-bold" data-sec="90">90s</button>
                                 <button class="start-rest-btn btn-emerald-soft px-3 py-1.5 text-xs font-bold" data-sec="120">120s</button>
-                                ${restSecondsRemaining > 0 ? `<button id="stop-rest-btn" class="btn-ghost-light px-3 py-1.5 text-xs font-bold text-red-500">Parar</button>` : ''}
+                                ${restSecondsRemaining > 0 ? `<button id="stop-rest-btn" class="btn-ghost-light px-3 py-1.5 text-xs font-bold text-red-400">Parar</button>` : ''}
                             </div>
                         </div>
 
                         <!-- Active Exercises in Session -->
                         <div class="flex flex-col gap-4">
                             <div class="flex items-center justify-between">
-                                <h3 class="text-xl font-display font-black text-text-emerald uppercase">Ejercicios de la Sesión</h3>
+                                <h3 class="text-xl font-bold text-white uppercase">Ejercicios de la Sesión</h3>
                                 <button id="add-exercise-btn" class="btn-emerald-soft text-xs px-3.5 py-1.5 font-bold">
                                     <span class="material-symbols-outlined text-sm">add</span> Añadir Ejercicio
                                 </button>
@@ -135,12 +135,12 @@ export const renderWorkouts = () => {
 
                     <!-- TAB 2: ROUTINES & CARDIO -->
                     <div id="routines-view" class="${activeWorkoutTab === 'routines' ? 'flex' : 'hidden'} flex-col gap-5">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-800/90 p-4 rounded-2xl border border-slate-700/60 shadow-sm">
                             <div>
-                                <h3 class="text-base font-display font-black text-text-emerald uppercase tracking-tight">Deportes, Cardio & Rutinas</h3>
-                                <p class="text-xs text-text-muted">Registra tu actividad favorita con 1 toque o ingresa una personalizada.</p>
+                                <h3 class="text-base font-bold text-white uppercase tracking-tight">Deportes, Cardio & Rutinas</h3>
+                                <p class="text-xs text-slate-400">Registra tu actividad favorita con 1 toque o ingresa una personalizada.</p>
                             </div>
-                            <button id="custom-cardio-btn" class="btn-emerald-soft text-xs px-3.5 py-2 font-bold flex items-center justify-center gap-1.5 shadow-xs">
+                            <button id="custom-cardio-btn" class="btn-emerald-soft text-xs px-3.5 py-2 font-bold flex items-center justify-center gap-1.5 shadow-sm">
                                 <span class="material-symbols-outlined text-base">add_circle</span> Actividad Personalizada
                             </button>
                         </div>
@@ -152,7 +152,7 @@ export const renderWorkouts = () => {
 
                     <!-- History / Recent Sessions -->
                     <div class="white-card p-6">
-                        <h3 class="text-lg font-display font-black text-text-emerald uppercase mb-4 pb-2 border-b border-border-soft">
+                        <h3 class="text-lg font-bold text-white uppercase mb-4 pb-2 border-b border-slate-700/60">
                             Historial de Entrenamientos
                         </h3>
                         <div class="flex flex-col gap-3">
@@ -170,13 +170,13 @@ export const renderWorkouts = () => {
 };
 
 const renderExercises = (exercises) => {
-    if (!exercises.length) return `<p class="text-xs text-text-muted italic py-4 text-center">No hay ejercicios agregados.</p>`;
+    if (!exercises.length) return `<p class="text-xs text-slate-400 italic py-4 text-center">No hay ejercicios agregados.</p>`;
 
     return exercises.map((ex, exIdx) => `
-        <div class="white-card p-5 border border-slate-200">
-            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
-                <input class="exercise-name-input bg-transparent border-none font-display font-black text-base md:text-lg text-text-emerald uppercase outline-none focus:bg-emerald-50 rounded px-1" value="${ex.name}" data-exidx="${exIdx}">
-                <button class="remove-exercise-btn text-xs text-slate-400 hover:text-red-500 font-semibold" data-exidx="${exIdx}">
+        <div class="white-card p-5 border border-slate-700/60">
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-700/60">
+                <input class="exercise-name-input bg-transparent border-none font-bold text-base md:text-lg text-white uppercase outline-none focus:bg-slate-800 rounded px-1" value="${ex.name}" data-exidx="${exIdx}">
+                <button class="remove-exercise-btn text-xs text-slate-400 hover:text-red-400 font-semibold" data-exidx="${exIdx}">
                     Quitar
                 </button>
             </div>
@@ -185,7 +185,7 @@ const renderExercises = (exercises) => {
             <div class="overflow-x-auto">
                 <table class="w-full text-xs text-left">
                     <thead>
-                        <tr class="text-slate-400 font-bold uppercase text-[10px] border-b border-slate-100">
+                        <tr class="text-slate-400 font-bold uppercase text-[10px] border-b border-slate-700/60">
                             <th class="pb-2">Set</th>
                             <th class="pb-2">Peso (kg)</th>
                             <th class="pb-2">Reps</th>
@@ -193,23 +193,23 @@ const renderExercises = (exercises) => {
                             <th class="pb-2 text-center">Listo</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-slate-700/60">
                         ${ex.sets.map((set, sIdx) => {
                             const oneRM = calculate1RM(set.weight, set.reps);
                             return `
                             <tr class="font-medium">
-                                <td class="py-2.5 font-bold text-text-muted">#${sIdx + 1}</td>
+                                <td class="py-2.5 font-bold text-slate-400">#${sIdx + 1}</td>
                                 <td class="py-2.5">
-                                    <input type="number" value="${set.weight}" class="set-weight-input w-16 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-mono font-bold outline-none focus:border-primary" data-exidx="${exIdx}" data-sidx="${sIdx}">
+                                    <input type="number" value="${set.weight}" class="set-weight-input w-16 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 font-mono font-bold text-white outline-none focus:border-emerald-500" data-exidx="${exIdx}" data-sidx="${sIdx}">
                                 </td>
                                 <td class="py-2.5">
-                                    <input type="number" value="${set.reps}" class="set-reps-input w-14 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-mono font-bold outline-none focus:border-primary" data-exidx="${exIdx}" data-sidx="${sIdx}">
+                                    <input type="number" value="${set.reps}" class="set-reps-input w-14 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 font-mono font-bold text-white outline-none focus:border-emerald-500" data-exidx="${exIdx}" data-sidx="${sIdx}">
                                 </td>
-                                <td class="py-2.5 font-mono font-bold text-text-emerald">
+                                <td class="py-2.5 font-mono font-bold text-emerald-400">
                                     ${oneRM > 0 ? oneRM + ' kg' : '--'}
                                 </td>
                                 <td class="py-2.5 text-center">
-                                    <input type="checkbox" ${set.completed ? 'checked' : ''} class="set-completed-check size-4 accent-primary cursor-pointer" data-exidx="${exIdx}" data-sidx="${sIdx}">
+                                    <input type="checkbox" ${set.completed ? 'checked' : ''} class="set-completed-check size-4 accent-emerald-500 cursor-pointer" data-exidx="${exIdx}" data-sidx="${sIdx}">
                                 </td>
                             </tr>
                             `;
@@ -237,17 +237,17 @@ const renderRoutinesCards = () => {
     ];
 
     return routines.map(r => `
-        <div class="white-card p-5 flex flex-col justify-between hover:border-emerald-300 transition-all shadow-xs">
+        <div class="white-card p-5 flex flex-col justify-between hover:border-emerald-500/50 transition-all shadow-sm">
             <div>
                 <div class="flex items-center justify-between mb-3">
-                    <div class="size-10 rounded-xl bg-emerald-50 text-text-emerald flex items-center justify-center border border-emerald-100">
+                    <div class="size-10 rounded-xl bg-emerald-950/60 text-emerald-400 flex items-center justify-center border border-emerald-800/50">
                         <span class="material-symbols-outlined text-xl">${r.icon}</span>
                     </div>
                     ${r.badge ? `<span class="badge-emerald text-[10px] py-0.5 px-2 font-bold">${r.badge}</span>` : ''}
                 </div>
-                <span class="text-[10px] font-bold uppercase text-text-muted">${r.category}</span>
-                <h4 class="text-base font-display font-black text-text-primary uppercase tracking-tight mt-0.5">${r.name}</h4>
-                <p class="text-xs font-mono text-text-emerald mt-1 font-bold">~${r.calories} kcal · ${r.duration} min</p>
+                <span class="text-[10px] font-bold uppercase text-slate-400">${r.category}</span>
+                <h4 class="text-base font-bold text-white uppercase tracking-tight mt-0.5">${r.name}</h4>
+                <p class="text-xs font-mono text-emerald-400 mt-1 font-bold">~${r.calories} kcal · ${r.duration} min</p>
             </div>
 
             <button class="log-quick-routine-btn btn-emerald w-full py-2 text-xs font-bold mt-4" data-name="${r.name}" data-duration="${r.duration}" data-calories="${r.calories}" data-icon="${r.icon}">
@@ -271,22 +271,22 @@ const getWorkoutIcon = (workout) => {
 };
 
 const renderWorkoutHistory = (workouts) => {
-    if (!workouts.length) return `<p class="text-xs text-text-muted italic py-3 text-center">Sin entrenamientos recientes.</p>`;
+    if (!workouts.length) return `<p class="text-xs text-slate-400 italic py-3 text-center">Sin entrenamientos recientes.</p>`;
 
     return workouts.slice(-8).reverse().map(w => `
-        <div class="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 hover:border-emerald-200 transition-all">
+        <div class="flex items-center justify-between p-3.5 bg-slate-800/80 rounded-xl border border-slate-700/60 hover:border-emerald-500/40 transition-all">
             <div class="flex items-center gap-3">
-                <div class="size-9 rounded-xl bg-emerald-100 text-text-emerald flex items-center justify-center border border-emerald-200/60">
+                <div class="size-9 rounded-xl bg-emerald-950/80 text-emerald-400 flex items-center justify-center border border-emerald-800/50">
                     <span class="material-symbols-outlined text-base">${getWorkoutIcon(w)}</span>
                 </div>
                 <div>
-                    <h5 class="text-xs font-bold text-text-primary capitalize">${w.name || w.type}</h5>
-                    <p class="text-[10px] font-mono text-text-muted">${w.date || 'Hoy'} · ${w.duration || 30} min</p>
+                    <h5 class="text-xs font-bold text-white capitalize">${w.name || w.type}</h5>
+                    <p class="text-[10px] font-mono text-slate-400">${w.date || 'Hoy'} · ${w.duration || 30} min</p>
                 </div>
             </div>
             <div class="flex items-center gap-3">
-                <span class="text-xs font-mono font-black text-text-emerald">-${w.calories} kcal</span>
-                <button class="delete-workout-btn text-slate-300 hover:text-red-500 transition-colors p-1" data-id="${w.id}" title="Eliminar registro">
+                <span class="text-xs font-mono font-black text-emerald-400">-${w.calories} kcal</span>
+                <button class="delete-workout-btn text-slate-400 hover:text-red-400 transition-colors p-1" data-id="${w.id}" title="Eliminar registro">
                     <span class="material-symbols-outlined text-base">delete</span>
                 </button>
             </div>

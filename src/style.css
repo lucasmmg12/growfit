@@ -1,73 +1,109 @@
-/* GrowFit Ultra-Clean White & Emerald Green Design System */
+/* GrowFit Modern iOS Dark Slate & Emerald Design System */
 :root {
   --primary: #10B981;
-  --primary-dark: #047857;
+  --primary-dark: #059669;
   --primary-deep: #064E3B;
-  --primary-light: #ECFDF5;
-  --bg-main: #F8FAFC;
-  --surface: #FFFFFF;
-  --border: #E2E8F0;
-  --border-emerald: #A7F3D0;
-  --text-main: #0F172A;
-  --text-emerald: #065F46;
-  --text-muted: #64748B;
+  --primary-light: rgba(16, 185, 129, 0.15);
+  --bg-main: #0F172A; /* Deep Slate (not pure pitch black) */
+  --surface: #1E293B; /* Slate 800 Card Container */
+  --surface-hover: #273549;
+  --border: #334155; /* Slate 700 */
+  --border-emerald: rgba(16, 185, 129, 0.35);
+  --text-main: #F8FAFC; /* Crisp White Text */
+  --text-emerald: #34D399; /* Vibrant Emerald 400 */
+  --text-muted: #94A3B8; /* Slate 400 Secondary */
 }
 
 body {
   background-color: var(--bg-main);
   color: var(--text-main);
-  font-family: 'Outfit', 'Inter', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Helvetica Neue", Inter, sans-serif;
   margin: 0;
   overflow-x: hidden;
   background-image: 
-    radial-gradient(circle at 10% 10%, rgba(16, 185, 129, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 90% 90%, rgba(5, 150, 105, 0.04) 0%, transparent 45%);
+    radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.06) 0%, transparent 50%);
   background-attachment: fixed;
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #app {
   width: 100%;
   min-height: 100vh;
   display: flex;
+  background-color: var(--bg-main);
 }
 
-/* White & Emerald Cards */
+/* Modern Apple Slate Cards */
 .white-card {
-  background: #FFFFFF;
-  border: 1px solid var(--border);
+  background: #1E293B !important;
+  border: 1px solid var(--border) !important;
   border-radius: 24px;
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+  color: #F8FAFC !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
   transition: all 0.25s cubic-bezier(0.2, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
 }
 
 .white-card:hover {
-  border-color: var(--border-emerald);
-  box-shadow: 0 12px 28px -4px rgba(16, 185, 129, 0.12), 0 4px 10px -2px rgba(0, 0, 0, 0.03);
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.4), 0 4px 12px -2px rgba(16, 185, 129, 0.15);
   transform: translateY(-2px);
 }
 
+/* iOS Glass Navigation and Modals */
 .glass-white {
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(30, 41, 59, 0.85) !important;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid rgba(51, 65, 85, 0.8) !important;
+  color: #F8FAFC !important;
 }
 
 .glass-nav-light {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(15, 23, 42, 0.92) !important;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
+  border-top: 1px solid rgba(51, 65, 85, 0.8) !important;
+  box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Universal Inputs & Selects Dark Form Styling */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select,
+textarea {
+  background-color: #0F172A !important;
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #64748B !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #10B981 !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+}
+
+/* Inner sub-containers (slate-50 override to slate-900) */
+.bg-slate-50, .bg-slate-100 {
+  background-color: #0F172A !important;
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
 }
 
 /* Emerald Accents & Buttons */
 .btn-emerald {
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-  color: #FFFFFF;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+  color: #FFFFFF !important;
   font-weight: 700;
   border-radius: 16px;
   border: none;
@@ -76,13 +112,13 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-emerald:hover {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
   transform: translateY(-1px);
 }
 
@@ -91,9 +127,9 @@ body {
 }
 
 .btn-emerald-soft {
-  background: #ECFDF5;
-  color: #047857;
-  border: 1px solid #A7F3D0;
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34D399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
   font-weight: 600;
   border-radius: 14px;
   cursor: pointer;
@@ -105,30 +141,30 @@ body {
 }
 
 .btn-emerald-soft:hover {
-  background: #D1FAE5;
-  color: #065F46;
-  border-color: #6EE7B7;
+  background: rgba(16, 185, 129, 0.25) !important;
+  color: #6EE7B7 !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
 }
 
 .btn-ghost-light {
-  background: #F1F5F9;
-  border: 1px solid #E2E8F0;
-  color: #334155;
+  background: #0F172A !important;
+  border: 1px solid #334155 !important;
+  color: #E2E8F0 !important;
   border-radius: 14px;
   transition: all 0.2s ease-in-out;
   cursor: pointer;
 }
 
 .btn-ghost-light:hover {
-  background: #E2E8F0;
-  color: #0F172A;
+  background: #273549 !important;
+  color: #FFFFFF !important;
 }
 
 /* Badges & Pills */
 .badge-emerald {
-  background: #ECFDF5;
-  color: #047857;
-  border: 1px solid #A7F3D0;
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34D399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
   border-radius: 9999px;
   padding: 4px 12px;
   font-weight: 700;
@@ -153,31 +189,22 @@ body {
 }
 
 .fade-in {
-  animation: slideUp 0.4s cubic-bezier(0.2, 1, 0.3, 1) forwards;
+  animation: slideUp 0.35s cubic-bezier(0.2, 1, 0.3, 1) forwards;
 }
 
-.stagger-1 { animation: slideUp 0.3s ease-out both 0.05s; }
-.stagger-2 { animation: slideUp 0.3s ease-out both 0.1s; }
-.stagger-3 { animation: slideUp 0.3s ease-out both 0.15s; }
-.stagger-4 { animation: slideUp 0.3s ease-out both 0.2s; }
-.stagger-5 { animation: slideUp 0.3s ease-out both 0.25s; }
-
-/* Typography */
-h1, h2, h3, .font-display {
-  font-family: 'Barlow Condensed', 'Outfit', sans-serif;
+/* Typography (iOS iPhone SF Pro Styling) */
+h1, h2, h3, h4, .font-display {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Helvetica Neue", Inter, sans-serif !important;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
+  color: #F8FAFC;
 }
 
-.text-emerald-deep {
-  color: #064E3B;
+p, span, div, label, input, button {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Helvetica Neue", Inter, sans-serif;
 }
 
-.text-emerald-primary {
-  color: #059669;
-}
-
-/* Clean Custom Scrollbar */
+/* Dark Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -188,7 +215,7 @@ h1, h2, h3, .font-display {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #334155;
   border-radius: 10px;
 }
 

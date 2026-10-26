@@ -24,17 +24,17 @@ export const renderWallet = () => {
         : 0;
 
     return `
-    <div class="flex h-screen w-full bg-background-light font-body text-text-primary overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#0F172A] font-body text-slate-100 overflow-hidden fade-in">
         ${renderSidebar('wallet')}
 
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-background-light">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-[#0F172A]">
             ${renderMobileHeader('Mi Billetera')}
 
             <div class="flex-1 overflow-y-auto px-4 md:px-8 py-5 custom-scrollbar pb-28 lg:pb-8">
                 <div class="max-w-4xl mx-auto flex flex-col gap-6">
 
                     <!-- Header Balance & Budget Card (Mi Billetera Style) -->
-                    <div class="white-card p-6 bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 text-white border-0 shadow-emerald-lg relative overflow-hidden">
+                    <div class="white-card p-6 bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 text-white border border-blue-500/30 shadow-2xl relative overflow-hidden">
                         <div class="absolute -right-6 -bottom-6 opacity-10 pointer-events-none">
                             <span class="material-symbols-outlined text-[170px]">account_balance_wallet</span>
                         </div>
@@ -86,7 +86,7 @@ export const renderWallet = () => {
                             <span class="material-symbols-outlined text-xl">add_card</span>
                             Registrar Gasto
                         </button>
-                        <button id="open-categories-modal-btn" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs shadow-xs transition-all active:scale-95">
+                        <button id="open-categories-modal-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs shadow-xs transition-all active:scale-95">
                             <span class="material-symbols-outlined text-lg">tune</span>
                             Presupuestos
                         </button>
@@ -95,10 +95,10 @@ export const renderWallet = () => {
                     <!-- Chart & Distribution -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <!-- Chart -->
-                        <div class="white-card p-5 flex flex-col">
+                        <div class="white-card p-5 border border-slate-700/60 shadow-xl flex flex-col">
                             <div class="flex items-center justify-between mb-3">
-                                <h3 class="text-sm font-display font-black uppercase text-text-primary">Distribución de Gastos</h3>
-                                <span class="badge-emerald text-[10px]">${currentMonth}</span>
+                                <h3 class="text-sm font-display font-black uppercase text-white">Distribución de Gastos</h3>
+                                <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[10px]">${currentMonth}</span>
                             </div>
                             <div class="flex-1 min-h-[220px] relative flex items-center justify-center">
                                 <canvas id="wallet-breakdown-chart"></canvas>
@@ -106,27 +106,27 @@ export const renderWallet = () => {
                         </div>
 
                         <!-- Obetide & Health Financial Ratio -->
-                        <div class="white-card p-5 flex flex-col justify-between">
+                        <div class="white-card p-5 border border-slate-700/60 shadow-xl flex flex-col justify-between">
                             <div>
-                                <span class="badge-emerald mb-1">Impacto en Salud</span>
-                                <h3 class="text-sm font-display font-black uppercase text-text-primary">Tratamiento & Bienestar</h3>
-                                <p class="text-xs text-text-muted mt-1">
+                                <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30 mb-1">Impacto en Salud</span>
+                                <h3 class="text-sm font-display font-black uppercase text-white">Tratamiento & Bienestar</h3>
+                                <p class="text-xs text-slate-400 mt-1">
                                     Control específico de inversión en salud, medicación Obetide, consultas y suplementos.
                                 </p>
                             </div>
 
-                            <div class="my-4 p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between">
+                            <div class="my-4 p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between">
                                 <div class="flex items-center gap-3">
-                                    <div class="size-11 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-xl">
+                                    <div class="size-11 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl">
                                         💉
                                     </div>
                                     <div>
-                                        <p class="text-xs font-bold text-emerald-950">Salud & Obetide</p>
-                                        <span class="text-[10px] text-emerald-700">Gasto mensual acumulado</span>
+                                        <p class="text-xs font-bold text-white">Salud & Obetide</p>
+                                        <span class="text-[10px] text-emerald-400">Gasto mensual acumulado</span>
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <span class="font-mono font-black text-emerald-900 text-lg">
+                                    <span class="font-mono font-black text-emerald-400 text-lg">
                                         ${formatMoney(
                                             (state.expenses || [])
                                                 .filter(e => e.date?.startsWith(currentMonth) && (e.category_name?.toLowerCase().includes('obetide') || e.category_name?.toLowerCase().includes('salud')))
@@ -136,17 +136,17 @@ export const renderWallet = () => {
                                 </div>
                             </div>
 
-                            <p class="text-[11px] text-slate-500">
+                            <p class="text-[11px] text-slate-400">
                                 💡 Tip: Considera el tratamiento con Obetide como una inversión preventiva en longevidad y salud cardiovascular.
                             </p>
                         </div>
                     </div>
 
                     <!-- Category Budgets List -->
-                    <div class="white-card p-5">
-                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-soft">
-                            <h3 class="text-base font-display font-black text-text-primary uppercase tracking-tight">Presupuesto por Categoría</h3>
-                            <span class="text-xs text-text-muted font-mono font-bold">${categories.length} categorías</span>
+                    <div class="white-card p-5 border border-slate-700/60 shadow-xl">
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
+                            <h3 class="text-base font-display font-black text-white uppercase tracking-tight">Presupuesto por Categoría</h3>
+                            <span class="text-xs text-slate-400 font-mono font-bold">${categories.length} categorías</span>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -157,22 +157,22 @@ export const renderWallet = () => {
                                 const isOver = item.spent > item.budget && item.budget > 0;
 
                                 return `
-                                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col gap-2">
+                                <div class="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-700/60 flex flex-col gap-2">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center gap-2.5">
                                             <span class="text-xl">${cat.icon || '🏷️'}</span>
                                             <div>
-                                                <h4 class="text-xs font-bold text-text-primary">${cat.name}</h4>
-                                                <span class="text-[10px] text-slate-500 font-mono">${spentFormatted} de ${budgetFormatted}</span>
+                                                <h4 class="text-xs font-bold text-white">${cat.name}</h4>
+                                                <span class="text-[10px] text-slate-400 font-mono">${spentFormatted} de ${budgetFormatted}</span>
                                             </div>
                                         </div>
-                                        <span class="text-xs font-mono font-bold ${isOver ? 'text-red-500' : 'text-slate-700'}">
+                                        <span class="text-xs font-mono font-bold ${isOver ? 'text-red-400' : 'text-slate-300'}">
                                             ${item.percent}%
                                         </span>
                                     </div>
-                                    <div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                                    <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
                                         <div class="h-full rounded-full transition-all duration-300 ${
-                                            isOver ? 'bg-red-500' : item.percent > 80 ? 'bg-amber-400' : 'bg-emerald-500'
+                                            isOver ? 'bg-red-500' : item.percent > 80 ? 'bg-amber-400' : 'bg-emerald-400'
                                         }" style="width: ${Math.min(100, item.percent)}%"></div>
                                     </div>
                                 </div>
@@ -182,34 +182,34 @@ export const renderWallet = () => {
                     </div>
 
                     <!-- Recent Expenses List -->
-                    <div class="white-card p-5">
-                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-border-soft">
-                            <h3 class="text-base font-display font-black text-text-primary uppercase tracking-tight">Movimientos Recientes</h3>
-                            <span class="text-xs text-text-muted font-mono font-bold">${(state.expenses || []).length} totales</span>
+                    <div class="white-card p-5 border border-slate-700/60 shadow-xl">
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
+                            <h3 class="text-base font-display font-black text-white uppercase tracking-tight">Movimientos Recientes</h3>
+                            <span class="text-xs text-slate-400 font-mono font-bold">${(state.expenses || []).length} totales</span>
                         </div>
 
                         <div class="flex flex-col gap-2">
                             ${(state.expenses || []).length ? (state.expenses || []).slice(0, 15).map(e => `
-                                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-colors">
+                                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-700/60 hover:border-slate-600 transition-colors">
                                     <div class="flex items-center gap-3">
-                                        <div class="size-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-lg shadow-2xs">
+                                        <div class="size-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-lg shadow-2xs">
                                             ${categories.find(c => c.id === e.category_id || c.name === e.category_name)?.icon || '💳'}
                                         </div>
                                         <div>
-                                            <h4 class="text-xs font-bold text-text-primary">${e.description || e.category_name || 'Gasto'}</h4>
-                                            <p class="text-[10px] text-slate-500 font-mono mt-0.5">${e.date} · ${e.category_name || 'General'} · <span class="capitalize">${(e.payment_method || '').replace('_', ' ')}</span></p>
+                                            <h4 class="text-xs font-bold text-white">${e.description || e.category_name || 'Gasto'}</h4>
+                                            <p class="text-[10px] text-slate-400 font-mono mt-0.5">${e.date} · ${e.category_name || 'General'} · <span class="capitalize">${(e.payment_method || '').replace('_', ' ')}</span></p>
                                         </div>
                                     </div>
 
                                     <div class="flex items-center gap-3">
-                                        <span class="font-mono font-black text-sm text-slate-900">-${formatMoney(e.amount)}</span>
-                                        <button class="delete-expense-btn size-7 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors" data-id="${e.id}">
+                                        <span class="font-mono font-black text-sm text-slate-200">-${formatMoney(e.amount)}</span>
+                                        <button class="delete-expense-btn size-7 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors" data-id="${e.id}">
                                             <span class="material-symbols-outlined text-base">delete</span>
                                         </button>
                                     </div>
                                 </div>
                             `).join('') : `
-                                <div class="text-center py-8 text-slate-400">
+                                <div class="text-center py-8 text-slate-500">
                                     <span class="material-symbols-outlined text-4xl mb-1">payments</span>
                                     <p class="text-xs font-bold">Sin gastos registrados este mes</p>
                                 </div>
@@ -224,19 +224,19 @@ export const renderWallet = () => {
         </main>
 
         <!-- New Expense Modal -->
-        <div id="expense-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
-            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-emerald-xl my-6">
-                <div class="flex items-center justify-between pb-3 mb-4 border-b border-border-soft">
+        <div id="expense-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto">
+            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-2xl border border-slate-700/80 my-6">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-700/60">
                     <div class="flex items-center gap-2">
-                        <div class="size-9 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center">
+                        <div class="size-9 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center">
                             <span class="material-symbols-outlined text-xl">add_card</span>
                         </div>
                         <div>
-                            <h3 class="text-lg font-display font-black text-text-primary uppercase">Nuevo Gasto</h3>
-                            <p class="text-[11px] text-text-muted">Registro rápido para Mi Billetera</p>
+                            <h3 class="text-lg font-display font-black text-white uppercase">Nuevo Gasto</h3>
+                            <p class="text-[11px] text-slate-400">Registro rápido para Mi Billetera</p>
                         </div>
                     </div>
-                    <button id="close-expense-modal" class="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+                    <button id="close-expense-modal" class="size-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700">
                         <span class="material-symbols-outlined text-base">close</span>
                     </button>
                 </div>
@@ -244,17 +244,17 @@ export const renderWallet = () => {
                 <form id="expense-form" class="flex flex-col gap-4">
                     <!-- Amount (Big input for mobile thumb) -->
                     <div>
-                        <label class="text-[11px] font-bold text-text-muted uppercase">Monto ($)</label>
+                        <label class="text-[11px] font-bold text-slate-400 uppercase">Monto ($)</label>
                         <div class="relative mt-1">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-lg text-slate-400">$</span>
-                            <input type="number" id="expense-amount" placeholder="0" required autofocus step="any" class="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-8 pr-4 py-3 text-2xl font-mono font-black text-slate-900 outline-none focus:border-blue-500">
+                            <input type="number" id="expense-amount" placeholder="0" required autofocus step="any" class="w-full bg-slate-900 border border-slate-700 rounded-2xl pl-8 pr-4 py-3 text-2xl font-mono font-black text-white outline-none focus:border-blue-500">
                         </div>
                     </div>
 
                     <!-- Category Selector -->
                     <div>
-                        <label class="text-[11px] font-bold text-text-muted uppercase mb-1 block">Categoría</label>
-                        <select id="expense-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-blue-500">
+                        <label class="text-[11px] font-bold text-slate-400 uppercase mb-1 block">Categoría</label>
+                        <select id="expense-category" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-200 outline-none focus:border-blue-500">
                             ${categories.map(c => `
                                 <option value="${c.id}" data-name="${c.name}">${c.icon} ${c.name}</option>
                             `).join('')}
@@ -263,19 +263,19 @@ export const renderWallet = () => {
 
                     <!-- Description -->
                     <div>
-                        <label class="text-[11px] font-bold text-text-muted uppercase">Descripción / Comercio</label>
-                        <input type="text" id="expense-description" placeholder="ej. Farmacia (Obetide), Supermercado Vea, etc." class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-medium outline-none focus:border-blue-500">
+                        <label class="text-[11px] font-bold text-slate-400 uppercase">Descripción / Comercio</label>
+                        <input type="text" id="expense-description" placeholder="ej. Farmacia (Obetide), Supermercado Vea, etc." class="w-full mt-1 bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-xs font-medium outline-none focus:border-blue-500">
                     </div>
 
                     <!-- Date & Payment Method -->
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="text-[11px] font-bold text-text-muted uppercase">Fecha</label>
-                            <input type="date" id="expense-date" value="${getArgentinaDate()}" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-blue-500">
+                            <label class="text-[11px] font-bold text-slate-400 uppercase">Fecha</label>
+                            <input type="date" id="expense-date" value="${getArgentinaDate()}" class="w-full mt-1 bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-blue-500">
                         </div>
                         <div>
-                            <label class="text-[11px] font-bold text-text-muted uppercase">Método</label>
-                            <select id="expense-payment-method" class="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-blue-500">
+                            <label class="text-[11px] font-bold text-slate-400 uppercase">Método</label>
+                            <select id="expense-payment-method" class="w-full mt-1 bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-blue-500">
                                 <option value="tarjeta_debito">Débito</option>
                                 <option value="efectivo">Efectivo</option>
                                 <option value="transferencia">Transferencia</option>
@@ -292,25 +292,25 @@ export const renderWallet = () => {
         </div>
 
         <!-- Budget Configuration Modal -->
-        <div id="categories-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
-            <div class="white-card p-6 w-full max-w-lg relative animate-scale-up shadow-emerald-xl my-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
-                <div class="flex items-center justify-between pb-3 mb-4 border-b border-border-soft">
-                    <h3 class="text-base font-display font-black text-text-primary uppercase">Presupuestos Mensuales</h3>
-                    <button id="close-categories-modal" class="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+        <div id="categories-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto">
+            <div class="white-card p-6 w-full max-w-lg relative animate-scale-up shadow-2xl border border-slate-700/80 my-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-700/60">
+                    <h3 class="text-base font-display font-black text-white uppercase">Presupuestos Mensuales</h3>
+                    <button id="close-categories-modal" class="size-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700">
                         <span class="material-symbols-outlined text-base">close</span>
                     </button>
                 </div>
 
                 <div class="flex flex-col gap-3">
                     ${categories.map(c => `
-                        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 gap-3">
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-700 gap-3">
                             <div class="flex items-center gap-2">
                                 <span class="text-xl">${c.icon}</span>
-                                <span class="text-xs font-bold">${c.name}</span>
+                                <span class="text-xs font-bold text-white">${c.name}</span>
                             </div>
                             <div class="flex items-center gap-2">
                                 <span class="text-xs text-slate-400 font-mono">$</span>
-                                <input type="number" class="cat-budget-input w-28 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-mono font-bold text-right outline-none focus:border-blue-500" data-id="${c.id}" value="${c.monthly_budget || 0}">
+                                <input type="number" class="cat-budget-input w-28 bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold text-right outline-none focus:border-blue-500" data-id="${c.id}" value="${c.monthly_budget || 0}">
                             </div>
                         </div>
                     `).join('')}
@@ -423,9 +423,9 @@ const initWalletChart = () => {
             labels,
             datasets: [{
                 data: dataValues,
-                backgroundColor: categoriesWithSpend.length ? colors.slice(0, labels.length) : ['#e2e8f0'],
+                backgroundColor: categoriesWithSpend.length ? colors.slice(0, labels.length) : ['#334155'],
                 borderWidth: 2,
-                borderColor: '#ffffff'
+                borderColor: '#1e293b'
             }]
         },
         options: {
@@ -436,6 +436,7 @@ const initWalletChart = () => {
                     position: 'bottom',
                     labels: {
                         boxWidth: 10,
+                        color: '#cbd5e1',
                         font: { size: 10 }
                     }
                 }

@@ -21,10 +21,10 @@ export const renderInsights = () => {
     const weightRemaining = Math.max(0, latestWeight - targetWeight).toFixed(1);
 
     return `
-    <div class="flex h-screen w-full bg-background-light font-body text-text-primary overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#0F172A] font-body text-slate-100 overflow-hidden fade-in">
         ${renderSidebar('insights')}
 
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-background-light">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-[#0F172A]">
             ${renderMobileHeader('Métricas & Estadísticas')}
 
             <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-8">
@@ -33,44 +33,44 @@ export const renderInsights = () => {
                     <!-- Top Executive Summary Cards -->
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <!-- Obetide Dose -->
-                        <div class="white-card p-4 border-l-4 border-l-blue-500">
+                        <div class="white-card p-4 border border-slate-700/60 border-l-4 border-l-blue-500">
                             <span class="text-[10px] uppercase font-bold text-slate-400 block">Dosis Obetide</span>
-                            <p class="text-xl font-mono font-black text-blue-600 mt-0.5">
+                            <p class="text-xl font-mono font-black text-blue-400 mt-0.5">
                                 ${latestObetide ? `${latestObetide.dose_ml} ml` : '0.25 ml'}
                             </p>
-                            <span class="text-[10px] text-slate-500">${(state.obetideTreatments || []).length} aplicaciones</span>
+                            <span class="text-[10px] text-slate-400">${(state.obetideTreatments || []).length} aplicaciones</span>
                         </div>
 
                         <!-- Weight Loss -->
-                        <div class="white-card p-4 border-l-4 border-l-emerald-500">
+                        <div class="white-card p-4 border border-slate-700/60 border-l-4 border-l-emerald-500">
                             <span class="text-[10px] uppercase font-bold text-slate-400 block">Descenso Total</span>
-                            <p class="text-xl font-mono font-black text-emerald-600 mt-0.5">
+                            <p class="text-xl font-mono font-black text-emerald-400 mt-0.5">
                                 -${Math.max(0, weightLoss)} kg
                             </p>
-                            <span class="text-[10px] text-slate-500">Faltan ${weightRemaining} kg a meta</span>
+                            <span class="text-[10px] text-slate-400">Faltan ${weightRemaining} kg a meta</span>
                         </div>
 
                         <!-- TDEE Deficit -->
-                        <div class="white-card p-4 border-l-4 border-l-amber-500">
+                        <div class="white-card p-4 border border-slate-700/60 border-l-4 border-l-amber-500">
                             <span class="text-[10px] uppercase font-bold text-slate-400 block">Déficit Diario</span>
-                            <p class="text-xl font-mono font-black text-amber-600 mt-0.5">
+                            <p class="text-xl font-mono font-black text-amber-400 mt-0.5">
                                 ${tdeeData.recommendedDeficit} <span class="text-xs font-normal">kcal</span>
                             </p>
-                            <span class="text-[10px] text-slate-500">TDEE: ${tdeeData.maintenance} kcal</span>
+                            <span class="text-[10px] text-slate-400">TDEE: ${tdeeData.maintenance} kcal</span>
                         </div>
 
                         <!-- Financial Health Ratio -->
-                        <div class="white-card p-4 border-l-4 border-l-purple-500">
+                        <div class="white-card p-4 border border-slate-700/60 border-l-4 border-l-purple-500">
                             <span class="text-[10px] uppercase font-bold text-slate-400 block">Gasto Mensual</span>
-                            <p class="text-xl font-mono font-black text-purple-600 mt-0.5 truncate">
+                            <p class="text-xl font-mono font-black text-purple-400 mt-0.5 truncate">
                                 $${finSummary.totalSpent.toLocaleString('es-AR')}
                             </p>
-                            <span class="text-[10px] text-slate-500">${finSummary.byCategory.length} categorías</span>
+                            <span class="text-[10px] text-slate-400">${finSummary.byCategory.length} categorías</span>
                         </div>
                     </div>
 
                     <!-- AI Executive Performance Report Button & Card -->
-                    <div class="white-card p-6 bg-gradient-to-r from-emerald-900 to-teal-950 text-white border-0 shadow-emerald-lg">
+                    <div class="white-card p-6 bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white border border-emerald-500/30 shadow-2xl">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold mb-2">
@@ -95,13 +95,13 @@ export const renderInsights = () => {
                     </div>
 
                     <!-- Caloric Intake Chart Card -->
-                    <div class="white-card p-6">
+                    <div class="white-card p-6 border border-slate-700/60 shadow-xl">
                         <div class="flex justify-between items-center mb-4">
                             <div>
-                                <span class="badge-emerald mb-1">Nutrición Diaria</span>
-                                <h3 class="text-base font-display font-black text-text-primary uppercase">Ingesta Calórica (Últimos 7 Días)</h3>
+                                <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30 mb-1">Nutrición Diaria</span>
+                                <h3 class="text-base font-display font-black text-white uppercase">Ingesta Calórica (Últimos 7 Días)</h3>
                             </div>
-                            <span class="text-xs text-text-muted font-mono font-bold">kcal / día</span>
+                            <span class="text-xs text-slate-400 font-mono font-bold">kcal / día</span>
                         </div>
                         <div class="h-64 w-full relative">
                             <canvas id="caloricTrendChart"></canvas>
@@ -109,11 +109,11 @@ export const renderInsights = () => {
                     </div>
 
                     <!-- Financial & Treatment Analytics -->
-                    <div class="white-card p-6">
+                    <div class="white-card p-6 border border-slate-700/60 shadow-xl">
                         <div class="flex justify-between items-center mb-4">
                             <div>
-                                <span class="badge-emerald mb-1">Mi Billetera</span>
-                                <h3 class="text-base font-display font-black text-text-primary uppercase">Presupuesto vs Consumo Real (${currentMonth})</h3>
+                                <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30 mb-1">Mi Billetera</span>
+                                <h3 class="text-base font-display font-black text-white uppercase">Presupuesto vs Consumo Real (${currentMonth})</h3>
                             </div>
                         </div>
                         <div class="h-64 w-full relative">
@@ -166,8 +166,14 @@ export const attachInsightsEvents = () => {
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: { grid: { display: false } },
-                    y: { grid: { color: 'rgba(0,0,0,0.04)' } }
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8', font: { size: 10 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.06)' },
+                        ticks: { color: '#94a3b8' }
+                    }
                 }
             }
         });
@@ -192,7 +198,7 @@ export const attachInsightsEvents = () => {
                     {
                         label: 'Presupuesto Asignado',
                         data: budgets,
-                        backgroundColor: '#94a3b8',
+                        backgroundColor: '#475569',
                         borderRadius: 6
                     },
                     {
@@ -209,16 +215,17 @@ export const attachInsightsEvents = () => {
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 10 } }
+                        ticks: { color: '#94a3b8', font: { size: 10 } }
                     },
                     y: {
-                        grid: { color: 'rgba(0,0,0,0.04)' }
+                        grid: { color: 'rgba(255,255,255,0.06)' },
+                        ticks: { color: '#94a3b8' }
                     }
                 },
                 plugins: {
                     legend: {
                         position: 'top',
-                        labels: { boxWidth: 10, font: { size: 11, weight: 'bold' } }
+                        labels: { boxWidth: 10, color: '#f1f5f9', font: { size: 11, weight: 'bold' } }
                     }
                 }
             }

@@ -44,11 +44,11 @@ export const renderCalendar = () => {
     const measurementDates = new Set((state.measurements || []).map(m => m.date));
 
     return `
-    <div class="flex h-screen w-full bg-background-light font-body text-text-primary overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#0F172A] font-sans text-slate-100 overflow-hidden fade-in">
         ${renderSidebar('calendar')}
 
         <!-- Main Content -->
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-background-light">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-[#0F172A]">
             ${renderMobileHeader('Calendario')}
 
             <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-8">
@@ -58,7 +58,7 @@ export const renderCalendar = () => {
                     <div class="flex items-center justify-between">
                         <div>
                             <span class="badge-emerald mb-1">Histórico</span>
-                            <h2 class="text-3xl font-display font-black text-text-emerald uppercase tracking-tight">Calendario de Registros</h2>
+                            <h2 class="text-3xl font-bold text-white tracking-tight">Calendario de Registros</h2>
                         </div>
                         <button onclick="window.router.navigate('dashboard')" class="btn-emerald-soft px-4 py-2 text-xs font-bold">
                             <span class="material-symbols-outlined text-sm">arrow_back</span> Volver a Inicio
@@ -68,19 +68,19 @@ export const renderCalendar = () => {
                     <!-- Calendar Card -->
                     <div class="white-card overflow-hidden">
                         <!-- Controls -->
-                        <div class="p-6 border-b border-border-soft flex items-center justify-between bg-slate-50/50">
-                            <h3 class="text-xl font-display font-black text-text-emerald flex items-center gap-2">
-                                <span class="material-symbols-outlined text-primary">calendar_today</span>
-                                ${monthNames[month]} <span class="text-text-muted font-normal">${year}</span>
+                        <div class="p-6 border-b border-slate-700/60 flex items-center justify-between bg-slate-800/40">
+                            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                                <span class="material-symbols-outlined text-emerald-400">calendar_today</span>
+                                ${monthNames[month]} <span class="text-slate-400 font-normal">${year}</span>
                             </h3>
                             <div class="flex items-center gap-2">
-                                <button id="cal-prev-month" class="p-2 rounded-xl bg-white border border-slate-200 hover:bg-emerald-50 text-text-emerald transition-colors shadow-xs">
+                                <button id="cal-prev-month" class="p-2 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 transition-colors shadow-sm">
                                     <span class="material-symbols-outlined text-sm">chevron_left</span>
                                 </button>
                                 <button id="cal-today" class="btn-emerald-soft px-3 py-1.5 text-xs font-bold">
                                     Hoy
                                 </button>
-                                <button id="cal-next-month" class="p-2 rounded-xl bg-white border border-slate-200 hover:bg-emerald-50 text-text-emerald transition-colors shadow-xs">
+                                <button id="cal-next-month" class="p-2 rounded-xl bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 transition-colors shadow-sm">
                                     <span class="material-symbols-outlined text-sm">chevron_right</span>
                                 </button>
                             </div>
@@ -89,7 +89,7 @@ export const renderCalendar = () => {
                         <!-- Calendar Grid -->
                         <div class="p-4 md:p-6">
                             <!-- Weekdays -->
-                            <div class="grid grid-cols-7 mb-3 text-center text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                            <div class="grid grid-cols-7 mb-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                 <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
                             </div>
 
@@ -108,18 +108,18 @@ export const renderCalendar = () => {
                                         <button 
                                             class="calendar-day-btn relative aspect-square flex flex-col items-center justify-center rounded-2xl transition-all border ${
                                                 d.currentMonth 
-                                                    ? (isSelected ? 'bg-primary-light border-primary text-text-emerald font-black shadow-xs' : 'bg-slate-50/70 border-slate-200 hover:bg-emerald-50/50')
-                                                    : 'opacity-20 pointer-events-none'
+                                                    ? (isSelected ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold shadow-sm' : 'bg-slate-800/60 border-slate-700/60 text-slate-200 hover:bg-slate-700/50')
+                                                    : 'opacity-20 pointer-events-none text-slate-600'
                                             }"
                                             data-date="${dateStr}"
                                         >
-                                            <span class="text-xs ${isCurrentDay ? 'font-bold underline decoration-primary decoration-2' : ''}">${d.day}</span>
+                                            <span class="text-xs ${isCurrentDay ? 'font-bold underline decoration-emerald-400 decoration-2 text-white' : ''}">${d.day}</span>
                                             
                                             <!-- Indicators -->
                                             <div class="absolute bottom-1.5 flex gap-1">
-                                                ${hasMeals ? '<div class="size-1.5 rounded-full bg-emerald-500"></div>' : ''}
-                                                ${hasWorkouts ? '<div class="size-1.5 rounded-full bg-blue-500"></div>' : ''}
-                                                ${hasMeas ? '<div class="size-1.5 rounded-full bg-amber-500"></div>' : ''}
+                                                ${hasMeals ? '<div class="size-1.5 rounded-full bg-emerald-400"></div>' : ''}
+                                                ${hasWorkouts ? '<div class="size-1.5 rounded-full bg-blue-400"></div>' : ''}
+                                                ${hasMeas ? '<div class="size-1.5 rounded-full bg-amber-400"></div>' : ''}
                                             </div>
                                         </button>
                                     `;
@@ -128,18 +128,18 @@ export const renderCalendar = () => {
                         </div>
 
                         <!-- Legend -->
-                        <div class="p-4 border-t border-border-soft bg-slate-50 flex flex-wrap gap-6 items-center justify-center text-xs text-text-muted">
+                        <div class="p-4 border-t border-slate-700/60 bg-slate-800/40 flex flex-wrap gap-6 items-center justify-center text-xs text-slate-400">
                             <div class="flex items-center gap-1.5">
-                                <div class="size-2 rounded-full bg-emerald-500"></div>
-                                <span class="font-semibold">Comidas</span>
+                                <div class="size-2 rounded-full bg-emerald-400"></div>
+                                <span class="font-semibold text-slate-300">Comidas</span>
                             </div>
                             <div class="flex items-center gap-1.5">
-                                <div class="size-2 rounded-full bg-blue-500"></div>
-                                <span class="font-semibold">Entrenamientos</span>
+                                <div class="size-2 rounded-full bg-blue-400"></div>
+                                <span class="font-semibold text-slate-300">Entrenamientos</span>
                             </div>
                             <div class="flex items-center gap-1.5">
-                                <div class="size-2 rounded-full bg-amber-500"></div>
-                                <span class="font-semibold">Mediciones</span>
+                                <div class="size-2 rounded-full bg-amber-400"></div>
+                                <span class="font-semibold text-slate-300">Mediciones</span>
                             </div>
                         </div>
                     </div>
@@ -147,8 +147,8 @@ export const renderCalendar = () => {
                     <!-- Selected Day Summary -->
                     <div id="day-summary-card" class="white-card p-6 hidden">
                         <div class="flex flex-col gap-4">
-                            <div class="flex items-center justify-between pb-3 border-b border-border-soft">
-                                <h4 id="summary-date" class="text-xl font-display font-black text-text-emerald uppercase"></h4>
+                            <div class="flex items-center justify-between pb-3 border-b border-slate-700/60">
+                                <h4 id="summary-date" class="text-xl font-bold text-white uppercase"></h4>
                                 <button id="navigate-to-day" class="btn-emerald px-4 py-2 text-xs font-bold">
                                     Ir a este día en Inicio
                                 </button>
@@ -156,11 +156,11 @@ export const renderCalendar = () => {
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="flex flex-col gap-2">
-                                    <h5 class="text-[10px] font-bold text-emerald-700 uppercase">Comidas</h5>
+                                    <h5 class="text-[10px] font-bold text-emerald-400 uppercase">Comidas</h5>
                                     <div id="summary-meals" class="flex flex-col gap-2"></div>
                                 </div>
                                 <div class="flex flex-col gap-2">
-                                    <h5 class="text-[10px] font-bold text-blue-700 uppercase">Entrenamientos</h5>
+                                    <h5 class="text-[10px] font-bold text-blue-400 uppercase">Entrenamientos</h5>
                                     <div id="summary-workouts" class="flex flex-col gap-2"></div>
                                 </div>
                             </div>
@@ -197,21 +197,21 @@ export const attachCalendarEvents = () => {
 
         mealsEl.innerHTML = meals.length > 0
             ? meals.map(m => `
-                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-200">
-                    <span class="text-text-primary text-xs font-bold">${m.name}</span>
-                    <span class="text-emerald-700 text-xs font-mono font-bold">${m.calories} kcal</span>
+                <div class="flex justify-between items-center p-3 bg-slate-800/80 rounded-xl border border-slate-700/60">
+                    <span class="text-white text-xs font-bold">${m.name}</span>
+                    <span class="text-emerald-400 text-xs font-mono font-bold">${m.calories} kcal</span>
                 </div>
             `).join('')
-            : '<p class="text-text-muted text-xs italic">Sin registros de comidas</p>';
+            : '<p class="text-slate-400 text-xs italic">Sin registros de comidas</p>';
 
         workoutsEl.innerHTML = workouts.length > 0
             ? workouts.map(w => `
-                <div class="flex flex-col p-3 bg-blue-50/60 rounded-xl border border-blue-100">
-                    <span class="text-text-primary text-xs font-bold">${w.name || w.type}</span>
-                    <span class="text-blue-600 text-[10px] font-bold uppercase tracking-wider">${w.duration} min • ${w.calories} kcal</span>
+                <div class="flex flex-col p-3 bg-blue-950/40 rounded-xl border border-blue-900/50">
+                    <span class="text-white text-xs font-bold">${w.name || w.type}</span>
+                    <span class="text-blue-400 text-[10px] font-bold uppercase tracking-wider">${w.duration} min • ${w.calories} kcal</span>
                 </div>
             `).join('')
-            : '<p class="text-text-muted text-xs italic">Sin registros de entrenamientos</p>';
+            : '<p class="text-slate-400 text-xs italic">Sin registros de entrenamientos</p>';
 
         card.classList.remove('hidden');
         navBtn.onclick = () => {
@@ -225,8 +225,8 @@ export const attachCalendarEvents = () => {
     document.querySelectorAll('.calendar-day-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const date = e.currentTarget.dataset.date;
-            document.querySelectorAll('.calendar-day-btn').forEach(b => b.classList.remove('border-primary', 'bg-primary-light'));
-            e.currentTarget.classList.add('border-primary', 'bg-primary-light');
+            document.querySelectorAll('.calendar-day-btn').forEach(b => b.classList.remove('border-emerald-500', 'bg-emerald-500/20', 'text-emerald-300'));
+            e.currentTarget.classList.add('border-emerald-500', 'bg-emerald-500/20', 'text-emerald-300');
             updateSummary(date);
         });
     });

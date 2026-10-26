@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es" class="light">
+<html lang="es" class="dark">
 
 <head>
   <meta charset="UTF-8" />
@@ -7,16 +7,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0F172A" />
   <title>GrowFit - Nutrition & Fitness Tracker</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;1,700&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&family=Unbounded:wght@400;600;800&family=Inter:wght@400;500;600;700&display=swap"
-    rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-    rel="stylesheet">
+  <!-- Apple SF Pro + Inter + Space Mono -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
   
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- HTML5 QR & Barcode Scanner -->
@@ -28,30 +27,33 @@
       theme: {
         extend: {
           colors: {
-            "primary": "#10B981",        // Emerald 500
-            "primary-dark": "#047857",   // Emerald 700
-            "primary-deep": "#064E3B",   // Emerald 950
-            "primary-light": "#ECFDF5",  // Emerald 50
-            "primary-soft": "#D1FAE5",   // Emerald 100
-            "background-light": "#F8FAFC", // Clean Slate 50
-            "surface-white": "#FFFFFF",
-            "text-primary": "#0F172A",   // Slate 900
-            "text-emerald": "#065F46",   // Emerald 800
-            "text-muted": "#64748B",     // Slate 500
-            "border-soft": "#E2E8F0",    // Slate 200
-            "border-emerald": "#A7F3D0"  // Emerald 200
+            "primary": "#10B981",          // Emerald 500
+            "primary-dark": "#059669",     // Emerald 600
+            "primary-deep": "#064E3B",     // Emerald 950
+            "primary-light": "rgba(16, 185, 129, 0.15)",
+            "primary-soft": "rgba(16, 185, 129, 0.25)",
+            "background-light": "#0F172A", // Deep Slate 900 (not pitch black)
+            "background-dark": "#090E17",
+            "surface-white": "#1E293B",   // Slate 800 Card Container
+            "surface-card": "#1E293B",
+            "surface-hover": "#283548",
+            "text-primary": "#F8FAFC",     // Crisp White for readable headings
+            "text-emerald": "#34D399",     // Vibrant Emerald 400
+            "text-muted": "#94A3B8",       // Slate 400 for secondary text
+            "border-soft": "#334155",      // Slate 700
+            "border-emerald": "rgba(16, 185, 129, 0.35)"
           },
           fontFamily: {
-            "display": ["Barlow Condensed", "Outfit", "sans-serif"],
-            "body": ["Outfit", "Inter", "sans-serif"],
-            "mono": ["Space Mono", "monospace"],
-            "heading": ["Unbounded", "Outfit", "sans-serif"]
+            "display": ["-apple-system", "BlinkMacSystemFont", "SF Pro Display", "SF Pro Text", "Inter", "sans-serif"],
+            "body": ["-apple-system", "BlinkMacSystemFont", "SF Pro Text", "SF Pro Display", "Inter", "sans-serif"],
+            "mono": ["Space Mono", "SF Mono", "monospace"],
+            "heading": ["-apple-system", "BlinkMacSystemFont", "SF Pro Display", "Inter", "sans-serif"]
           },
           boxShadow: {
-            "emerald-sm": "0 2px 8px -1px rgba(16, 185, 129, 0.15)",
-            "emerald-md": "0 10px 25px -5px rgba(16, 185, 129, 0.2)",
-            "emerald-lg": "0 20px 35px -10px rgba(16, 185, 129, 0.3)",
-            "card-clean": "0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03)"
+            "emerald-sm": "0 2px 10px rgba(16, 185, 129, 0.2)",
+            "emerald-md": "0 10px 25px -5px rgba(16, 185, 129, 0.25)",
+            "emerald-lg": "0 20px 35px -10px rgba(16, 185, 129, 0.35)",
+            "card-clean": "0 4px 20px -2px rgba(0, 0, 0, 0.4), 0 2px 6px -1px rgba(0, 0, 0, 0.2)"
           }
         }
       }
@@ -64,12 +66,12 @@
   </style>
 </head>
 
-<body class="bg-background-light text-text-primary antialiased font-body selection:bg-emerald-100 selection:text-emerald-900">
+<body class="bg-[#0F172A] text-[#F8FAFC] antialiased font-body selection:bg-emerald-500/30 selection:text-emerald-200">
   <div id="app"></div>
   
   <!-- Global Notification Modal -->
   <div id="global-modal"
-    class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 transition-all duration-300">
+    class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4 transition-all duration-300">
     <div id="global-modal-content" class="w-full max-w-sm"></div>
   </div>
   
