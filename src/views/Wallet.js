@@ -427,6 +427,11 @@ export const renderWallet = () => {
                     </button>
                 </div>
 
+                <button id="open-new-cat-from-modal-btn" class="w-full mb-3 btn-emerald-soft py-2 px-3 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer">
+                    <span class="material-symbols-outlined text-sm">add_circle</span>
+                    + Crear Nueva Categoría
+                </button>
+
                 <div class="flex flex-col gap-2.5">
                     ${categories.map(c => `
                         <div class="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] gap-3">
@@ -439,14 +444,68 @@ export const renderWallet = () => {
                             <div class="flex items-center gap-2 shrink-0">
                                 <span class="text-xs text-slate-400 font-mono">$</span>
                                 <input type="number" class="cat-budget-input w-28 bg-black/40 border border-white/[0.1] text-white rounded-lg px-2 py-1 text-xs font-mono font-semibold text-right outline-none focus:border-[#10E775]" data-id="${c.id}" value="${c.monthly_budget || 0}">
+                                <button type="button" class="delete-cat-btn size-7 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors cursor-pointer" data-id="${c.id}" data-name="${c.name}" title="Eliminar categoría">
+                                    <span class="material-symbols-outlined text-sm">delete</span>
+                                </button>
                             </div>
                         </div>
                     `).join('')}
                 </div>
 
                 <button id="save-budgets-btn" class="w-full mt-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 py-2.5 rounded-xl font-semibold text-xs transition-all cursor-pointer">
-                    Guardar Cambios
+                    Guardar Cambios de Presupuesto
                 </button>
+            </div>
+        </div>
+
+        <!-- Create Category Modal -->
+        <div id="new-category-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+            <div class="white-card p-6 w-full max-w-sm relative animate-scale-up shadow-2xl border border-white/[0.1] my-6">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.08]">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[#10E775] text-lg">new_label</span>
+                        <h3 class="text-sm font-semibold text-white">Nueva Categoría</h3>
+                    </div>
+                    <button id="close-new-cat-modal" class="size-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+
+                <form id="new-category-form" class="flex flex-col gap-3.5">
+                    <div>
+                        <label class="text-[11px] font-medium text-slate-400">Nombre de la Categoría</label>
+                        <input type="text" id="new-cat-name" placeholder="ej. Ocio, Vehículo, Salud..." required class="w-full mt-1 bg-black/40 border border-white/[0.1] text-white rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[#10E775]">
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-medium text-slate-400 mb-1 block">Ícono / Emoji</label>
+                        <div class="flex items-center gap-2 mb-2">
+                            <div id="new-cat-icon-preview" class="size-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-lg shrink-0">
+                                🛒
+                            </div>
+                            <input type="text" id="new-cat-icon" value="🛒" maxlength="4" class="w-16 bg-black/40 border border-white/[0.1] text-white text-center rounded-xl px-2 py-1.5 text-sm font-bold outline-none focus:border-[#10E775]">
+                        </div>
+                        <div class="grid grid-cols-6 gap-1 p-2 bg-black/30 border border-white/5 rounded-xl">
+                            ${['🏠', '💳', '🛒', '💉', '🚗', '💡', '🎉', '🏋️', '👶', '💻', '🍕', '🧾'].map(emoji => `
+                                <button type="button" class="preset-emoji-btn size-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-sm transition-transform active:scale-90 cursor-pointer" data-emoji="${emoji}">
+                                    ${emoji}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-medium text-slate-400">Presupuesto Mensual ($)</label>
+                        <div class="relative mt-1">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-slate-400">$</span>
+                            <input type="number" id="new-cat-budget" placeholder="0" step="any" class="w-full bg-black/40 border border-white/[0.1] rounded-xl pl-6 pr-3 py-2 text-xs font-mono font-bold text-white outline-none focus:border-[#10E775]">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-emerald py-2.5 text-xs font-semibold rounded-xl mt-1 cursor-pointer shadow-md">
+                        Guardar Categoría
+                    </button>
+                </form>
             </div>
         </div>
 
@@ -558,6 +617,72 @@ export const attachWalletEvents = () => {
         categoriesModal?.classList.add('hidden');
         window.showAlert?.('¡Presupuestos Guardados!', 'Se actualizaron las metas por categoría.', 'success');
         window.router.navigate('wallet');
+    });
+
+    // New Category Modal Controls
+    const newCategoryModal = document.getElementById('new-category-modal');
+    const openNewCatBtn = document.getElementById('open-new-cat-from-modal-btn');
+    const closeNewCatBtn = document.getElementById('close-new-cat-modal');
+    const newCategoryForm = document.getElementById('new-category-form');
+
+    openNewCatBtn?.addEventListener('click', () => {
+        newCategoryModal?.classList.remove('hidden');
+        document.getElementById('new-cat-name')?.focus();
+    });
+
+    closeNewCatBtn?.addEventListener('click', () => {
+        newCategoryModal?.classList.add('hidden');
+    });
+
+    // Preset Emojis
+    document.querySelectorAll('.preset-emoji-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const emoji = btn.dataset.emoji;
+            const iconInput = document.getElementById('new-cat-icon');
+            const iconPreview = document.getElementById('new-cat-icon-preview');
+            if (iconInput) iconInput.value = emoji;
+            if (iconPreview) iconPreview.textContent = emoji;
+        });
+    });
+
+    // New Category Submit
+    newCategoryForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('new-cat-name').value.trim();
+        const icon = document.getElementById('new-cat-icon').value.trim() || '🏷️';
+        const monthly_budget = Number(document.getElementById('new-cat-budget').value) || 0;
+
+        if (!name) return;
+
+        await saveExpenseCategory({
+            name,
+            icon,
+            color: '#0A84FF',
+            monthly_budget
+        });
+
+        newCategoryModal?.classList.add('hidden');
+        newCategoryForm.reset();
+        window.showAlert?.('¡Categoría Creada!', `Se agregó "${name}".`, 'success');
+        window.router.navigate('wallet');
+    });
+
+    // Delete Category
+    document.querySelectorAll('.delete-cat-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = isNaN(Number(btn.dataset.id)) ? btn.dataset.id : Number(btn.dataset.id);
+            const name = btn.dataset.name || 'esta categoría';
+            window.showConfirm?.(
+                '¿Eliminar categoría?',
+                `¿Deseas eliminar "${name}"?`,
+                async () => {
+                    await deleteExpenseCategory(id);
+                    window.showAlert?.('Categoría Eliminada', `Se eliminó "${name}".`, 'info');
+                    window.router.navigate('wallet');
+                }
+            );
+        });
     });
 
     initWalletChart();
