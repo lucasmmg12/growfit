@@ -1,8 +1,9 @@
-import { getState, addExpense, deleteExpense, saveExpenseCategory, deleteExpenseCategory, getFinancialSummary, getArgentinaDate } from '../state';
+import { getState, addExpense, deleteExpense, saveExpenseCategory, deleteExpenseCategory, getFinancialSummary, setMonthlyIncome, getArgentinaDate } from '../state';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
 import Chart from 'chart.js/auto';
 
 let walletChartInstance = null;
+let expandedCategories = new Set(['vivienda-servicios', 'compromisos-cuotas', 'operativos-vida']);
 
 export const renderWallet = () => {
     const state = getState();
@@ -19,67 +20,130 @@ export const renderWallet = () => {
         }).format(val || 0);
     };
 
-    const percentUsed = summary.totalBudget > 0 
-        ? Math.min(100, Math.round((summary.totalSpent / summary.totalBudget) * 100)) 
-        : 0;
+    const monthlyIncome = summary.monthlyIncome || 2975000;
+    const totalSpent = summary.totalSpent || 0;
+    const netBalance = summary.netBalance;
+    const coveragePercent = totalSpent > 0 ? Math.min(100, Math.round((monthlyIncome / totalSpent) * 100)) : 100;
+    const isDeficit = netBalance < 0;
 
     return `
-    <div class="flex h-screen w-full bg-[#0F172A] font-body text-slate-100 overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#0D1117] font-sans text-[#F5F5F7] overflow-hidden fade-in">
         ${renderSidebar('wallet')}
 
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-[#0F172A]">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-[#0D1117]">
             ${renderMobileHeader('Mi Billetera')}
 
             <div class="flex-1 overflow-y-auto px-4 md:px-8 py-5 custom-scrollbar pb-28 lg:pb-8">
                 <div class="max-w-4xl mx-auto flex flex-col gap-6">
 
-                    <!-- Header Balance Card (Mi Billetera Style) -->
-                    <div class="white-card p-6 bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 text-white border border-blue-500/30 shadow-2xl relative overflow-hidden">
-                        <div class="absolute -right-6 -bottom-6 opacity-10 pointer-events-none">
-                            <span class="material-symbols-outlined text-[170px]">account_balance_wallet</span>
-                        </div>
-
-                        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div>
-                                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-bold mb-2">
-                                    <span class="material-symbols-outlined text-sm">payments</span>
-                                    Control Financiero · ${currentMonth}
-                                </div>
-                                <span class="text-[10px] uppercase font-bold text-slate-400 block">Total Gastado este Mes</span>
-                                <h2 class="text-3xl md:text-4xl font-display font-black tracking-tight text-white">${formatMoney(summary.totalSpent)}</h2>
+                    <!-- Apple Health / iOS 18 Hero Cashflow Card -->
+                    <div class="white-card p-6 md:p-8 bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/[0.08] shadow-2xl relative overflow-hidden">
+                        <!-- Top Metadata -->
+                        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+                            <div class="flex items-center gap-2">
+                                <span class="badge-emerald py-1 px-3 text-xs font-semibold">
+                                    <span class="size-1.5 rounded-full bg-[#10E775] animate-pulse"></span>
+                                    Flujo de Caja · Octubre 2026
+                                </span>
+                                <span class="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 text-[#0A84FF] font-medium flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-sm">domain</span>
+                                    ${summary.incomeSource}
+                                </span>
                             </div>
 
-                            <div class="flex items-center gap-3 bg-white/5 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10">
-                                <div class="size-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-xl">receipt_long</span>
+                            <button id="open-income-modal-btn" class="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer font-medium py-1 px-2.5 rounded-xl hover:bg-white/5">
+                                <span class="material-symbols-outlined text-sm">edit</span>
+                                Ajustar Sueldo
+                            </button>
+                        </div>
+
+                        <!-- 3 Hero KPIs (Apple Rings Grid) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+                            <!-- Income -->
+                            <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col justify-between">
+                                <span class="text-[11px] font-medium text-slate-400 flex items-center justify-between">
+                                    Ingresos Cobrados
+                                    <span class="material-symbols-outlined text-base text-[#10E775]">trending_up</span>
+                                </span>
+                                <div class="mt-2">
+                                    <h3 class="text-2xl md:text-2xl font-bold font-mono tracking-tight text-[#10E775]">
+                                        ${formatMoney(monthlyIncome)}
+                                    </h3>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Sueldo neto percibido</p>
                                 </div>
-                                <div>
-                                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Movimientos</span>
-                                    <p class="text-sm font-bold text-white">${(state.expenses || []).filter(e => e.date?.startsWith(currentMonth)).length} gastos registrados</p>
+                            </div>
+
+                            <!-- Expenses -->
+                            <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col justify-between">
+                                <span class="text-[11px] font-medium text-slate-400 flex items-center justify-between">
+                                    Gastos del Mes
+                                    <span class="material-symbols-outlined text-base text-slate-300">receipt_long</span>
+                                </span>
+                                <div class="mt-2">
+                                    <h3 class="text-2xl md:text-2xl font-bold font-mono tracking-tight text-white">
+                                        ${formatMoney(totalSpent)}
+                                    </h3>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">${(state.expenses || []).filter(e => e.date?.startsWith(currentMonth)).length} conceptos activos</p>
                                 </div>
+                            </div>
+
+                            <!-- Net Cash Balance / Gap -->
+                            <div class="p-4 rounded-2xl ${isDeficit ? 'bg-red-500/[0.06] border-red-500/20' : 'bg-emerald-500/[0.06] border-emerald-500/20'} border flex flex-col justify-between">
+                                <span class="text-[11px] font-medium ${isDeficit ? 'text-red-300' : 'text-emerald-300'} flex items-center justify-between">
+                                    ${isDeficit ? 'Brecha / Déficit' : 'Saldo Disponible'}
+                                    <span class="material-symbols-outlined text-base ${isDeficit ? 'text-[#FF453A]' : 'text-[#10E775]'}">
+                                        ${isDeficit ? 'error' : 'check_circle'}
+                                    </span>
+                                </span>
+                                <div class="mt-2">
+                                    <h3 class="text-2xl md:text-2xl font-bold font-mono tracking-tight ${isDeficit ? 'text-[#FF453A]' : 'text-[#10E775]'}">
+                                        ${formatMoney(netBalance)}
+                                    </h3>
+                                    <p class="text-[10px] ${isDeficit ? 'text-red-300/80' : 'text-emerald-300/80'} mt-0.5">
+                                        ${isDeficit ? 'Obligaciones superan el sueldo' : 'Superávit positivo'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cashflow Coverage Meter (Apple iOS Bar) -->
+                        <div class="mt-5 pt-4 border-t border-white/[0.06]">
+                            <div class="flex items-center justify-between text-xs mb-1.5 font-medium">
+                                <span class="text-slate-400">Cobertura con Ingreso Sanatorio</span>
+                                <span class="${isDeficit ? 'text-red-300' : 'text-[#10E775]'} font-mono font-semibold">
+                                    ${coveragePercent}% cubierto
+                                </span>
+                            </div>
+                            <div class="h-2 w-full bg-white/[0.06] rounded-full overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-700 ${isDeficit ? 'bg-gradient-to-r from-[#10E775] via-[#FF9F0A] to-[#FF453A]' : 'bg-[#10E775]'}" style="width: ${Math.min(100, coveragePercent)}%"></div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Action Bar -->
-                    <div class="flex gap-3 items-center justify-between">
-                        <button id="open-expense-modal-btn" class="flex-1 btn-emerald py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 font-display font-black text-sm uppercase tracking-wide shadow-emerald-md transition-all active:scale-98 cursor-pointer">
-                            <span class="material-symbols-outlined text-xl">add_card</span>
-                            Registrar Gasto
+                    <div class="flex flex-wrap sm:flex-nowrap gap-3 items-center justify-between">
+                        <button id="open-expense-modal-btn" class="flex-1 btn-emerald py-3 px-5 rounded-2xl flex items-center justify-center gap-2 font-semibold text-xs tracking-wide cursor-pointer shadow-md">
+                            <span class="material-symbols-outlined text-lg">add_card</span>
+                            Registrar Gasto Extra
                         </button>
-                        <button id="open-categories-modal-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer">
-                            <span class="material-symbols-outlined text-lg">category</span>
-                            Categorías & Metas
+                        <button id="open-categories-modal-btn" class="btn-ghost-light py-3 px-4 rounded-2xl flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer">
+                            <span class="material-symbols-outlined text-base">tune</span>
+                            Gestionar Categorías
                         </button>
                     </div>
 
-                    <!-- Chart & Distribution -->
+                    <!-- Chart & Health Impact (Bento 2.0) -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <!-- Chart -->
-                        <div class="white-card p-5 border border-slate-700/60 shadow-xl flex flex-col">
+                        <div class="white-card p-5 border border-white/[0.07] shadow-xl flex flex-col">
                             <div class="flex items-center justify-between mb-3">
-                                <h3 class="text-sm font-display font-black uppercase text-white">Distribución de Gastos</h3>
-                                <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[10px]">${currentMonth}</span>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-white">Distribución de Gastos</h3>
+                                    <p class="text-[11px] text-slate-400">Desglose porcentual mensual</p>
+                                </div>
+                                <span class="text-xs font-mono font-semibold text-[#10E775] bg-[#10E775]/10 px-2.5 py-0.5 rounded-full border border-[#10E775]/20">
+                                    ${formatMoney(totalSpent)}
+                                </span>
                             </div>
                             <div class="flex-1 min-h-[220px] relative flex items-center justify-center">
                                 <canvas id="wallet-breakdown-chart"></canvas>
@@ -87,27 +151,32 @@ export const renderWallet = () => {
                         </div>
 
                         <!-- Obetide & Health Financial Ratio -->
-                        <div class="white-card p-5 border border-slate-700/60 shadow-xl flex flex-col justify-between">
+                        <div class="white-card p-5 border border-white/[0.07] shadow-xl flex flex-col justify-between">
                             <div>
-                                <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30 mb-1">Impacto en Salud</span>
-                                <h3 class="text-sm font-display font-black uppercase text-white">Tratamiento & Bienestar</h3>
-                                <p class="text-xs text-slate-400 mt-1">
-                                    Control específico de inversión en salud, medicación Obetide, consultas y suplementos.
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-400/20 text-[#BF5AF2] font-semibold">
+                                        Tratamiento & Salud
+                                    </span>
+                                    <span class="text-xs text-slate-400 font-mono font-medium">GLP-1</span>
+                                </div>
+                                <h3 class="text-sm font-semibold text-white">Inversión en Bienestar</h3>
+                                <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                                    Control de compras de Obetide, consultas médicas y nutricionales en Sanatorio Argentino.
                                 </p>
                             </div>
 
-                            <div class="my-4 p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between">
+                            <div class="my-4 p-4 rounded-2xl bg-purple-500/[0.05] border border-purple-500/20 flex items-center justify-between">
                                 <div class="flex items-center gap-3">
-                                    <div class="size-11 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl">
+                                    <div class="size-11 rounded-2xl bg-purple-500/20 text-[#BF5AF2] flex items-center justify-center text-xl">
                                         💉
                                     </div>
                                     <div>
-                                        <p class="text-xs font-bold text-white">Salud & Obetide</p>
-                                        <span class="text-[10px] text-emerald-400">Gasto mensual acumulado</span>
+                                        <p class="text-xs font-semibold text-white">Tratamiento Obetide</p>
+                                        <span class="text-[10px] text-purple-300">Gasto mensual acumulado</span>
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <span class="font-mono font-black text-emerald-400 text-lg">
+                                    <span class="font-mono font-bold text-[#BF5AF2] text-lg">
                                         ${formatMoney(
                                             (state.expenses || [])
                                                 .filter(e => e.date?.startsWith(currentMonth) && (e.category_name?.toLowerCase().includes('obetide') || e.category_name?.toLowerCase().includes('salud')))
@@ -117,79 +186,125 @@ export const renderWallet = () => {
                                 </div>
                             </div>
 
-                            <p class="text-[11px] text-slate-400">
-                                💡 Tip: Considera el tratamiento con Obetide como una inversión preventiva en longevidad y salud cardiovascular.
+                            <p class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-amber-400 text-sm">lightbulb</span>
+                                Inversión prioritaria: promueve saciedad temprana y reduce gastos de comida impulsiva.
                             </p>
                         </div>
                     </div>
 
-                    <!-- Category Expenses List -->
-                    <div class="white-card p-5 border border-slate-700/60 shadow-xl">
-                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
-                            <div class="flex items-center gap-2">
-                                <h3 class="text-base font-display font-black text-white uppercase tracking-tight">Gastos por Categoría</h3>
-                                <span class="text-xs text-slate-400 font-mono font-bold">(${categories.length})</span>
+                    <!-- Real October Categories Breakdown with Detailed Concepts Accordion -->
+                    <div class="white-card p-5 md:p-6 border border-white/[0.07] shadow-xl">
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.06]">
+                            <div>
+                                <h3 class="text-base font-semibold text-white">Presupuesto por Categoría</h3>
+                                <p class="text-xs text-slate-400 mt-0.5">Toca una categoría para ver los conceptos detallados</p>
                             </div>
-                            <button id="open-new-cat-from-list-btn" class="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-500/30 transition-all cursor-pointer">
-                                <span class="material-symbols-outlined text-sm">add_circle</span>
-                                Nueva Categoría
-                            </button>
+                            <span class="text-xs font-mono font-medium text-slate-400">
+                                ${summary.byCategory.length} grupos
+                            </span>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="flex flex-col gap-3">
                             ${summary.byCategory.map(item => {
                                 const cat = item.category;
                                 const spentFormatted = formatMoney(item.spent);
+                                const isExpanded = expandedCategories.has(cat.id);
+                                const catExpenses = (state.expenses || []).filter(e => 
+                                    (e.date?.startsWith(currentMonth)) && 
+                                    (String(e.category_id) === String(cat.id) || e.category_name === cat.name)
+                                );
 
                                 return `
-                                <div class="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-700/60 flex items-center justify-between">
-                                    <div class="flex items-center gap-2.5">
-                                        <span class="text-xl">${cat.icon || '🏷️'}</span>
-                                        <div>
-                                            <h4 class="text-xs font-bold text-white">${cat.name}</h4>
-                                            <span class="text-[10px] text-slate-400 font-mono">${item.spent > 0 ? `${spentFormatted} gastado este mes` : 'Sin gastos este mes'}</span>
+                                <div class="rounded-2xl bg-white/[0.025] border border-white/[0.06] overflow-hidden transition-all hover:border-white/[0.12]">
+                                    <!-- Category Header (Click to expand) -->
+                                    <button class="toggle-cat-accordion-btn w-full p-4 flex items-center justify-between text-left cursor-pointer hover:bg-white/[0.02] transition-colors" data-catid="${cat.id}">
+                                        <div class="flex items-center gap-3 min-w-0">
+                                            <div class="size-10 rounded-2xl flex items-center justify-center text-xl shrink-0" style="background-color: ${cat.color || '#0A84FF'}15; border: 1px solid ${cat.color || '#0A84FF'}30;">
+                                                ${cat.icon || '🏷️'}
+                                            </div>
+                                            <div class="min-w-0">
+                                                <h4 class="text-sm font-semibold text-white truncate">${cat.name}</h4>
+                                                <p class="text-[11px] text-slate-400 font-mono mt-0.5">
+                                                    ${catExpenses.length} ${catExpenses.length === 1 ? 'concepto' : 'conceptos'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center gap-3 shrink-0">
+                                            <div class="text-right">
+                                                <span class="text-sm font-bold font-mono text-white block">
+                                                    ${spentFormatted}
+                                                </span>
+                                                <span class="text-[10px] text-slate-400 font-medium">
+                                                    ${item.percentOfTotal || 0}% del total
+                                                </span>
+                                            </div>
+                                            <span class="material-symbols-outlined text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}">
+                                                expand_more
+                                            </span>
+                                        </div>
+                                    </button>
+
+                                    <!-- Detailed Concepts List -->
+                                    <div class="${isExpanded ? 'block' : 'hidden'} px-4 pb-3 pt-1 border-t border-white/[0.04]">
+                                        <div class="divide-y divide-white/[0.04]">
+                                            ${catExpenses.length ? catExpenses.map(exp => `
+                                                <div class="py-2.5 flex items-center justify-between text-xs">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="size-1.5 rounded-full" style="background-color: ${cat.color || '#0A84FF'};"></span>
+                                                        <span class="text-slate-200 font-medium">${exp.name || exp.description}</span>
+                                                        ${exp.is_recurring ? '<span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-slate-400 font-mono">Fijo</span>' : ''}
+                                                    </div>
+                                                    <div class="flex items-center gap-3">
+                                                        <span class="font-mono font-semibold text-slate-100">${formatMoney(exp.amount)}</span>
+                                                        <button class="delete-expense-btn size-6 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors cursor-pointer" data-id="${exp.id}" title="Eliminar registro">
+                                                            <span class="material-symbols-outlined text-sm">close</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            `).join('') : `
+                                                <p class="py-3 text-xs text-slate-500 italic text-center">No hay gastos cargados en esta categoría para este mes.</p>
+                                            `}
                                         </div>
                                     </div>
-                                    <span class="text-xs font-mono font-bold ${item.spent > 0 ? 'text-emerald-400' : 'text-slate-500'}">
-                                        ${spentFormatted}
-                                    </span>
                                 </div>
                                 `;
                             }).join('')}
                         </div>
                     </div>
 
-                    <!-- Recent Expenses List -->
-                    <div class="white-card p-5 border border-slate-700/60 shadow-xl">
-                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
-                            <h3 class="text-base font-display font-black text-white uppercase tracking-tight">Movimientos Recientes</h3>
-                            <span class="text-xs text-slate-400 font-mono font-bold">${(state.expenses || []).length} totales</span>
+                    <!-- Recent Expenses Timeline -->
+                    <div class="white-card p-5 border border-white/[0.07] shadow-xl">
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.06]">
+                            <h3 class="text-base font-semibold text-white">Movimientos Recientes</h3>
+                            <span class="text-xs text-slate-400 font-mono">${(state.expenses || []).length} totales</span>
                         </div>
 
                         <div class="flex flex-col gap-2">
-                            ${(state.expenses || []).length ? (state.expenses || []).slice(0, 15).map(e => `
-                                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-700/60 hover:border-slate-600 transition-colors">
+                            ${(state.expenses || []).length ? (state.expenses || []).slice(0, 10).map(e => `
+                                <div class="flex items-center justify-between p-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] transition-colors">
                                     <div class="flex items-center gap-3">
-                                        <div class="size-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-lg shadow-2xs">
+                                        <div class="size-9 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-base">
                                             ${categories.find(c => String(c.id) === String(e.category_id) || c.name === e.category_name)?.icon || '💳'}
                                         </div>
                                         <div>
-                                            <h4 class="text-xs font-bold text-white">${e.description || e.category_name || 'Gasto'}</h4>
-                                            <p class="text-[10px] text-slate-400 font-mono mt-0.5">${e.date} · ${e.category_name || 'General'} · <span class="capitalize">${(e.payment_method || '').replace('_', ' ')}</span></p>
+                                            <h4 class="text-xs font-semibold text-white">${e.description || e.name || e.category_name || 'Gasto'}</h4>
+                                            <p class="text-[10px] text-slate-400 font-mono mt-0.5">${e.date} · ${e.category_name || 'General'}</p>
                                         </div>
                                     </div>
 
                                     <div class="flex items-center gap-3">
-                                        <span class="font-mono font-black text-sm text-slate-200">-${formatMoney(e.amount)}</span>
-                                        <button class="delete-expense-btn size-7 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors cursor-pointer" data-id="${e.id}">
-                                            <span class="material-symbols-outlined text-base">delete</span>
+                                        <span class="font-mono font-semibold text-xs text-slate-200">-${formatMoney(e.amount)}</span>
+                                        <button class="delete-expense-btn size-6 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors cursor-pointer" data-id="${e.id}">
+                                            <span class="material-symbols-outlined text-sm">delete</span>
                                         </button>
                                     </div>
                                 </div>
                             `).join('') : `
                                 <div class="text-center py-8 text-slate-500">
-                                    <span class="material-symbols-outlined text-4xl mb-1">payments</span>
-                                    <p class="text-xs font-bold">Sin gastos registrados este mes</p>
+                                    <span class="material-symbols-outlined text-3xl mb-1">payments</span>
+                                    <p class="text-xs">Sin gastos registrados este mes</p>
                                 </div>
                             `}
                         </div>
@@ -201,191 +316,137 @@ export const renderWallet = () => {
             ${renderBottomNav('wallet')}
         </main>
 
-        <!-- New Expense Modal -->
-        <div id="expense-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto">
-            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-2xl border border-slate-700/80 my-6">
-                <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-700/60">
+        <!-- Income Edit Modal -->
+        <div id="income-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+            <div class="white-card p-6 w-full max-w-sm relative animate-scale-up shadow-2xl border border-white/[0.1]">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.08]">
                     <div class="flex items-center gap-2">
-                        <div class="size-9 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-xl">add_card</span>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-display font-black text-white uppercase">Nuevo Gasto</h3>
-                            <p class="text-[11px] text-slate-400">Registro rápido para Mi Billetera</p>
+                        <span class="material-symbols-outlined text-[#10E775] text-xl">account_balance</span>
+                        <h3 class="text-sm font-semibold text-white">Ingresos Mensuales</h3>
+                    </div>
+                    <button id="close-income-modal" class="size-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+
+                <form id="income-form" class="flex flex-col gap-4">
+                    <div>
+                        <label class="text-[11px] font-medium text-slate-400">Sueldo / Ingreso Neto ($)</label>
+                        <div class="relative mt-1">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-sm text-slate-400">$</span>
+                            <input type="number" id="income-amount-input" value="${monthlyIncome}" required class="w-full bg-black/40 border border-white/[0.1] rounded-xl pl-7 pr-3 py-2.5 text-lg font-mono font-bold text-white outline-none focus:border-[#10E775]">
                         </div>
                     </div>
-                    <button id="close-expense-modal" class="size-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700 cursor-pointer">
-                        <span class="material-symbols-outlined text-base">close</span>
+
+                    <div>
+                        <label class="text-[11px] font-medium text-slate-400">Fuente / Empleador</label>
+                        <input type="text" id="income-source-input" value="${summary.incomeSource}" required class="w-full mt-1 bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2 text-xs font-medium text-white outline-none focus:border-[#10E775]">
+                    </div>
+
+                    <button type="submit" class="btn-emerald py-2.5 text-xs font-semibold rounded-xl mt-2 cursor-pointer shadow-md">
+                        Guardar Ingreso
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- New Expense Modal -->
+        <div id="expense-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 overflow-y-auto">
+            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-2xl border border-white/[0.1] my-6">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.08]">
+                    <div class="flex items-center gap-2">
+                        <div class="size-8 rounded-xl bg-[#10E775]/10 text-[#10E775] border border-[#10E775]/20 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-lg">add_card</span>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-white">Nuevo Gasto</h3>
+                            <p class="text-[11px] text-slate-400">Registro rápido para tu billetera</p>
+                        </div>
+                    </div>
+                    <button id="close-expense-modal" class="size-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">close</span>
                     </button>
                 </div>
 
                 <form id="expense-form" class="flex flex-col gap-4">
-                    <!-- Amount (Big input for mobile thumb) -->
                     <div>
-                        <label class="text-[11px] font-bold text-slate-400 uppercase">Monto ($)</label>
+                        <label class="text-[11px] font-medium text-slate-400">Monto ($)</label>
                         <div class="relative mt-1">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-lg text-slate-400">$</span>
-                            <input type="number" id="expense-amount" placeholder="0" required autofocus step="any" class="w-full bg-slate-900 border border-slate-700 rounded-2xl pl-8 pr-4 py-3 text-2xl font-mono font-black text-white outline-none focus:border-emerald-500">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-base text-slate-400">$</span>
+                            <input type="number" id="expense-amount" placeholder="0" required autofocus step="any" class="w-full bg-black/40 border border-white/[0.1] rounded-2xl pl-8 pr-4 py-3 text-2xl font-mono font-bold text-white outline-none focus:border-[#10E775]">
                         </div>
                     </div>
 
-                    <!-- Category Selector with Quick Add -->
                     <div>
-                        <div class="flex items-center justify-between mb-1">
-                            <label class="text-[11px] font-bold text-slate-400 uppercase">Categoría</label>
-                            <button type="button" id="open-new-cat-from-expense-btn" class="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 transition-colors cursor-pointer">
-                                <span class="material-symbols-outlined text-sm">add_circle</span>
-                                Nueva Categoría
-                            </button>
-                        </div>
-                        <select id="expense-category" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-200 outline-none focus:border-emerald-500 transition-colors cursor-pointer">
+                        <label class="text-[11px] font-medium text-slate-400 mb-1 block">Categoría</label>
+                        <select id="expense-category" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-200 outline-none focus:border-[#10E775] cursor-pointer">
                             ${categories.map(c => `
                                 <option value="${c.id}" data-name="${c.name}">${c.icon} ${c.name}</option>
                             `).join('')}
-                            <option value="__create_new__" class="font-bold text-emerald-400 bg-slate-800">✨ + Crear nueva categoría...</option>
                         </select>
                     </div>
 
-                    <!-- Description -->
                     <div>
-                        <label class="text-[11px] font-bold text-slate-400 uppercase">Descripción / Comercio</label>
-                        <input type="text" id="expense-description" placeholder="ej. Farmacia (Obetide), Supermercado Vea, etc." class="w-full mt-1 bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-xs font-medium outline-none focus:border-emerald-500">
+                        <label class="text-[11px] font-medium text-slate-400">Concepto / Comercio</label>
+                        <input type="text" id="expense-description" placeholder="ej. Supermercado, Farmacia, Combustible" class="w-full mt-1 bg-black/40 border border-white/[0.1] text-white rounded-xl px-3 py-2.5 text-xs font-medium outline-none focus:border-[#10E775]">
                     </div>
 
-                    <!-- Date & Payment Method -->
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="text-[11px] font-bold text-slate-400 uppercase">Fecha</label>
-                            <input type="date" id="expense-date" value="${getArgentinaDate()}" class="w-full mt-1 bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-emerald-500">
+                            <label class="text-[11px] font-medium text-slate-400">Fecha</label>
+                            <input type="date" id="expense-date" value="${getArgentinaDate()}" class="w-full mt-1 bg-black/40 border border-white/[0.1] text-white rounded-xl px-3 py-2 text-xs font-medium outline-none focus:border-[#10E775]">
                         </div>
                         <div>
-                            <label class="text-[11px] font-bold text-slate-400 uppercase">Método</label>
-                            <select id="expense-payment-method" class="w-full mt-1 bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-emerald-500 cursor-pointer">
+                            <label class="text-[11px] font-medium text-slate-400">Método de Pago</label>
+                            <select id="expense-payment-method" class="w-full mt-1 bg-black/40 border border-white/[0.1] text-slate-200 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:border-[#10E775] cursor-pointer">
+                                <option value="transferencia">Transferencia</option>
                                 <option value="tarjeta_debito">Débito</option>
                                 <option value="efectivo">Efectivo</option>
-                                <option value="transferencia">Transferencia</option>
                                 <option value="tarjeta_credito">Crédito</option>
                             </select>
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl font-display font-black text-sm uppercase tracking-wide mt-2 shadow-emerald-md active:scale-98 transition-all cursor-pointer">
+                    <button type="submit" class="btn-emerald py-3 rounded-xl font-semibold text-xs tracking-wide mt-2 shadow-md cursor-pointer">
                         Guardar Gasto
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- Categories & Budgets Configuration Modal -->
-        <div id="categories-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto">
-            <div class="white-card p-6 w-full max-w-lg relative animate-scale-up shadow-2xl border border-slate-700/80 my-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
-                <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-700/60">
+        <!-- Categories Configuration Modal -->
+        <div id="categories-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 overflow-y-auto">
+            <div class="white-card p-6 w-full max-w-lg relative animate-scale-up shadow-2xl border border-white/[0.1] my-6 max-h-[85vh] overflow-y-auto custom-scrollbar">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.08]">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-emerald-400 text-xl">tune</span>
-                        <h3 class="text-base font-display font-black text-white uppercase">Categorías & Presupuestos</h3>
+                        <span class="material-symbols-outlined text-[#10E775] text-lg">tune</span>
+                        <h3 class="text-sm font-semibold text-white">Gestión de Categorías</h3>
                     </div>
-                    <button id="close-categories-modal" class="size-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700 cursor-pointer">
-                        <span class="material-symbols-outlined text-base">close</span>
+                    <button id="close-categories-modal" class="size-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">close</span>
                     </button>
                 </div>
 
-                <!-- Add New Category CTA -->
-                <button id="open-new-cat-from-modal-btn" class="w-full mb-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white py-3 px-4 rounded-xl font-display font-black text-xs uppercase tracking-wide flex items-center justify-center gap-2 shadow-emerald-md transition-all active:scale-98 cursor-pointer">
-                    <span class="material-symbols-outlined text-base">add_circle</span>
-                    Crear Nueva Categoría
-                </button>
-
                 <div class="flex flex-col gap-2.5">
                     ${categories.map(c => `
-                        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-700/80 gap-3 group hover:border-slate-600 transition-all">
+                        <div class="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] gap-3">
                             <div class="flex items-center gap-2.5 min-w-0">
-                                <div class="size-8 rounded-lg flex items-center justify-center text-lg shrink-0" style="background-color: ${c.color || '#3b82f6'}20; border: 1px solid ${c.color || '#3b82f6'}40;">
+                                <div class="size-8 rounded-lg flex items-center justify-center text-lg shrink-0" style="background-color: ${c.color || '#0A84FF'}20;">
                                     ${c.icon}
                                 </div>
-                                <span class="text-xs font-bold text-white truncate">${c.name}</span>
+                                <span class="text-xs font-medium text-white truncate">${c.name}</span>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
-                                <span class="text-xs text-slate-400 font-mono font-bold">$</span>
-                                <input type="number" class="cat-budget-input w-28 bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold text-right outline-none focus:border-emerald-500" data-id="${c.id}" value="${c.monthly_budget || 0}">
-                                <button type="button" class="delete-cat-btn size-7 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors cursor-pointer" data-id="${c.id}" data-name="${c.name}" title="Eliminar categoría">
-                                    <span class="material-symbols-outlined text-base">delete</span>
-                                </button>
+                                <span class="text-xs text-slate-400 font-mono">$</span>
+                                <input type="number" class="cat-budget-input w-28 bg-black/40 border border-white/[0.1] text-white rounded-lg px-2 py-1 text-xs font-mono font-semibold text-right outline-none focus:border-[#10E775]" data-id="${c.id}" value="${c.monthly_budget || 0}">
                             </div>
                         </div>
                     `).join('')}
                 </div>
 
-                <button id="save-budgets-btn" class="w-full mt-4 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 py-3 rounded-xl font-display font-black text-xs uppercase tracking-wide transition-all active:scale-98 cursor-pointer">
-                    Guardar Cambios de Presupuesto
+                <button id="save-budgets-btn" class="w-full mt-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 py-2.5 rounded-xl font-semibold text-xs transition-all cursor-pointer">
+                    Guardar Cambios
                 </button>
-            </div>
-        </div>
-
-        <!-- Dedicated Create Category Modal -->
-        <div id="new-category-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 overflow-y-auto">
-            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-2xl border border-slate-700/80 my-6">
-                <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-700/60">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-emerald-400 text-xl">new_label</span>
-                        <h3 class="text-base font-display font-black text-white uppercase">Nueva Categoría</h3>
-                    </div>
-                    <button id="close-new-cat-modal" class="size-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700 cursor-pointer">
-                        <span class="material-symbols-outlined text-base">close</span>
-                    </button>
-                </div>
-
-                <form id="new-category-form" class="flex flex-col gap-4">
-                    <!-- Name -->
-                    <div>
-                        <label class="text-[11px] font-bold text-slate-400 uppercase">Nombre de la Categoría</label>
-                        <input type="text" id="new-cat-name" placeholder="ej. Mascotas, Inversiones, Ropa..." required class="w-full mt-1 bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-emerald-500">
-                    </div>
-
-                    <!-- Emoji / Icon Picker -->
-                    <div>
-                        <label class="text-[11px] font-bold text-slate-400 uppercase mb-1.5 block">Ícono / Emoji</label>
-                        <div class="flex items-center gap-2 mb-2">
-                            <div id="new-cat-icon-preview" class="size-11 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-2xl shrink-0 shadow-inner">
-                                🛒
-                            </div>
-                            <input type="text" id="new-cat-icon" value="🛒" maxlength="4" class="w-20 bg-slate-900 border border-slate-700 text-white text-center rounded-xl px-2 py-2 text-base font-bold outline-none focus:border-emerald-500">
-                            <span class="text-[11px] text-slate-400">Elegí uno rápido o escribí un emoji</span>
-                        </div>
-                        <div class="grid grid-cols-8 gap-1.5 p-2 bg-slate-900/60 border border-slate-800 rounded-xl">
-                            ${['🛒', '💉', '🏋️', '🚗', '💡', '🎉', '🐾', '📚', '🎬', '💼', '⚡', '✈️', '🍕', '👕', '🏠', '💊', '👶', '💻', '☕', '🎁', '🎾', '🔧', '🍔', '🧾'].map(emoji => `
-                                <button type="button" class="preset-emoji-btn size-8 rounded-lg hover:bg-slate-800 flex items-center justify-center text-base transition-transform active:scale-90 cursor-pointer" data-emoji="${emoji}">
-                                    ${emoji}
-                                </button>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <!-- Color Picker -->
-                    <div>
-                        <label class="text-[11px] font-bold text-slate-400 uppercase mb-1.5 block">Color de Identificación</label>
-                        <div class="flex items-center gap-2.5">
-                            ${['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#ef4444', '#14b8a6'].map((color, idx) => `
-                                <button type="button" class="color-preset-btn size-7 rounded-full transition-transform hover:scale-110 flex items-center justify-center cursor-pointer ${idx === 0 ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : ''}" style="background-color: ${color};" data-color="${color}">
-                                </button>
-                            `).join('')}
-                            <input type="hidden" id="new-cat-color" value="#10b981">
-                        </div>
-                    </div>
-
-                    <!-- Monthly Budget -->
-                    <div>
-                        <label class="text-[11px] font-bold text-slate-400 uppercase">Presupuesto Mensual Estimado ($)</label>
-                        <div class="relative mt-1">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-xs text-slate-400">$</span>
-                            <input type="number" id="new-cat-budget" placeholder="0" step="any" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-7 pr-3 py-2 text-xs font-mono font-bold text-white outline-none focus:border-emerald-500">
-                        </div>
-                        <span class="text-[10px] text-slate-500 mt-1 block">Podés dejarlo en $0 si no querés un tope fijo.</span>
-                    </div>
-
-                    <button type="submit" class="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-display font-black text-xs uppercase tracking-wide shadow-emerald-md transition-all active:scale-98 cursor-pointer">
-                        Guardar Categoría
-                    </button>
-                </form>
             </div>
         </div>
 
@@ -396,20 +457,18 @@ export const renderWallet = () => {
 export const attachWalletEvents = () => {
     const expenseModal = document.getElementById('expense-modal');
     const categoriesModal = document.getElementById('categories-modal');
-    const newCategoryModal = document.getElementById('new-category-modal');
+    const incomeModal = document.getElementById('income-modal');
+
     const openExpenseBtn = document.getElementById('open-expense-modal-btn');
     const closeExpenseBtn = document.getElementById('close-expense-modal');
     const openCategoriesBtn = document.getElementById('open-categories-modal-btn');
     const closeCategoriesBtn = document.getElementById('close-categories-modal');
-    const closeNewCatBtn = document.getElementById('close-new-cat-modal');
-    const expenseForm = document.getElementById('expense-form');
-    const newCategoryForm = document.getElementById('new-category-form');
-    const saveBudgetsBtn = document.getElementById('save-budgets-btn');
+    const openIncomeBtn = document.getElementById('open-income-modal-btn');
+    const closeIncomeBtn = document.getElementById('close-income-modal');
 
-    const openNewCatFromExpenseBtn = document.getElementById('open-new-cat-from-expense-btn');
-    const openNewCatFromListBtn = document.getElementById('open-new-cat-from-list-btn');
-    const openNewCatFromModalBtn = document.getElementById('open-new-cat-from-modal-btn');
-    const catSelect = document.getElementById('expense-category');
+    const expenseForm = document.getElementById('expense-form');
+    const incomeForm = document.getElementById('income-form');
+    const saveBudgetsBtn = document.getElementById('save-budgets-btn');
 
     openExpenseBtn?.addEventListener('click', () => expenseModal?.classList.remove('hidden'));
     closeExpenseBtn?.addEventListener('click', () => expenseModal?.classList.add('hidden'));
@@ -417,51 +476,31 @@ export const attachWalletEvents = () => {
     openCategoriesBtn?.addEventListener('click', () => categoriesModal?.classList.remove('hidden'));
     closeCategoriesBtn?.addEventListener('click', () => categoriesModal?.classList.add('hidden'));
 
-    const openNewCategoryModal = () => {
-        newCategoryModal?.classList.remove('hidden');
-        setTimeout(() => document.getElementById('new-cat-name')?.focus(), 50);
-    };
+    openIncomeBtn?.addEventListener('click', () => incomeModal?.classList.remove('hidden'));
+    closeIncomeBtn?.addEventListener('click', () => incomeModal?.classList.add('hidden'));
 
-    openNewCatFromExpenseBtn?.addEventListener('click', openNewCategoryModal);
-    openNewCatFromListBtn?.addEventListener('click', openNewCategoryModal);
-    openNewCatFromModalBtn?.addEventListener('click', openNewCategoryModal);
-
-    catSelect?.addEventListener('change', (e) => {
-        if (e.target.value === '__create_new__') {
-            const firstValidOption = e.target.querySelector('option:not([value="__create_new__"])');
-            if (firstValidOption) e.target.value = firstValidOption.value;
-            openNewCategoryModal();
-        }
-    });
-
-    closeNewCatBtn?.addEventListener('click', () => {
-        newCategoryModal?.classList.add('hidden');
-    });
-
-    // Preset Emojis
-    document.querySelectorAll('.preset-emoji-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const emoji = btn.dataset.emoji;
-            const iconInput = document.getElementById('new-cat-icon');
-            const iconPreview = document.getElementById('new-cat-icon-preview');
-            if (iconInput) iconInput.value = emoji;
-            if (iconPreview) iconPreview.textContent = emoji;
+    // Accordion Toggle for Category Detailed Concepts
+    document.querySelectorAll('.toggle-cat-accordion-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const catId = btn.dataset.catid;
+            if (expandedCategories.has(catId)) {
+                expandedCategories.delete(catId);
+            } else {
+                expandedCategories.add(catId);
+            }
+            window.router.navigate('wallet');
         });
     });
 
-    document.getElementById('new-cat-icon')?.addEventListener('input', (e) => {
-        const iconPreview = document.getElementById('new-cat-icon-preview');
-        if (iconPreview) iconPreview.textContent = e.target.value || '🏷️';
-    });
-
-    // Color Presets
-    document.querySelectorAll('.color-preset-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.color-preset-btn').forEach(b => b.classList.remove('ring-2', 'ring-white', 'ring-offset-2', 'ring-offset-slate-900'));
-            btn.classList.add('ring-2', 'ring-white', 'ring-offset-2', 'ring-offset-slate-900');
-            const colorInput = document.getElementById('new-cat-color');
-            if (colorInput) colorInput.value = btn.dataset.color;
-        });
+    // Handle Income Form Submit
+    incomeForm?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const amount = Number(document.getElementById('income-amount-input').value) || 0;
+        const source = document.getElementById('income-source-input').value.trim() || 'Sanatorio Argentino';
+        setMonthlyIncome(amount, source);
+        incomeModal?.classList.add('hidden');
+        window.showAlert?.('¡Ingreso Actualizado!', `Sueldo fijado en $${amount.toLocaleString('es-AR')}.`, 'success');
+        window.router.navigate('wallet');
     });
 
     // Handle Add Expense Submit
@@ -470,13 +509,14 @@ export const attachWalletEvents = () => {
         const amount = Number(document.getElementById('expense-amount').value);
         const sel = document.getElementById('expense-category');
         const rawVal = sel.value;
-        const category_id = (!rawVal || rawVal === '__create_new__') ? null : (isNaN(Number(rawVal)) ? rawVal : Number(rawVal));
+        const category_id = rawVal || 'operativos-vida';
         const category_name = sel.options[sel.selectedIndex]?.dataset.name || 'General';
-        const description = document.getElementById('expense-description').value;
+        const description = document.getElementById('expense-description').value.trim() || category_name;
         const date = document.getElementById('expense-date').value;
         const payment_method = document.getElementById('expense-payment-method').value;
 
         await addExpense({
+            name: description,
             amount,
             category_id,
             category_name,
@@ -486,78 +526,16 @@ export const attachWalletEvents = () => {
         });
 
         expenseModal?.classList.add('hidden');
-        window.showAlert?.('¡Gasto Registrado!', `Se guardó $${amount} en ${category_name}.`, 'success');
+        window.showAlert?.('¡Gasto Registrado!', `Se guardó $${amount.toLocaleString('es-AR')} en ${category_name}.`, 'success');
         window.router.navigate('wallet');
-    });
-
-    // New Category Form Submit
-    newCategoryForm?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name = document.getElementById('new-cat-name').value.trim();
-        const icon = document.getElementById('new-cat-icon').value.trim() || '🏷️';
-        const color = document.getElementById('new-cat-color').value || '#10b981';
-        const monthly_budget = Number(document.getElementById('new-cat-budget').value) || 0;
-
-        if (!name) return;
-
-        const newCat = await saveExpenseCategory({
-            name,
-            icon,
-            color,
-            monthly_budget
-        });
-
-        newCategoryModal?.classList.add('hidden');
-        newCategoryForm.reset();
-        const iconPreview = document.getElementById('new-cat-icon-preview');
-        if (iconPreview) iconPreview.textContent = '🛒';
-        const iconInput = document.getElementById('new-cat-icon');
-        if (iconInput) iconInput.value = '🛒';
-
-        window.showAlert?.('¡Categoría Creada!', `Se agregó "${name}" correctamente.`, 'success');
-
-        // If the expense modal was open, dynamically add option and select it!
-        const expSelect = document.getElementById('expense-category');
-        if (expSelect && expenseModal && !expenseModal.classList.contains('hidden')) {
-            const opt = document.createElement('option');
-            opt.value = newCat.id;
-            opt.dataset.name = newCat.name;
-            opt.textContent = `${newCat.icon} ${newCat.name}`;
-            const createOpt = expSelect.querySelector('option[value="__create_new__"]');
-            if (createOpt) {
-                expSelect.insertBefore(opt, createOpt);
-            } else {
-                expSelect.appendChild(opt);
-            }
-            expSelect.value = String(newCat.id);
-        } else {
-            window.router.navigate('wallet');
-        }
-    });
-
-    // Delete Category
-    document.querySelectorAll('.delete-cat-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const id = isNaN(Number(btn.dataset.id)) ? btn.dataset.id : Number(btn.dataset.id);
-            const name = btn.dataset.name || 'esta categoría';
-            window.showConfirm?.(
-                '¿Eliminar categoría?',
-                `¿Deseas eliminar la categoría "${name}"? Los gastos históricos se mantendrán.`,
-                async () => {
-                    await deleteExpenseCategory(id);
-                    window.showAlert?.('Categoría Eliminada', `Se eliminó "${name}".`, 'info');
-                    window.router.navigate('wallet');
-                }
-            );
-        });
     });
 
     // Delete Expense
     document.querySelectorAll('.delete-expense-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const id = Number(e.currentTarget.dataset.id);
-            window.showConfirm?.('¿Eliminar gasto?', 'Se reintegrará al saldo del presupuesto.', async () => {
+            e.stopPropagation();
+            const id = isNaN(Number(btn.dataset.id)) ? btn.dataset.id : Number(btn.dataset.id);
+            window.showConfirm?.('¿Eliminar gasto?', 'Se eliminará este concepto de la lista.', async () => {
                 await deleteExpense(id);
                 window.router.navigate('wallet');
             });
@@ -578,7 +556,7 @@ export const attachWalletEvents = () => {
             }
         }
         categoriesModal?.classList.add('hidden');
-        window.showAlert?.('¡Presupuestos Actualizados!', 'Se han guardado las nuevas metas por categoría.', 'success');
+        window.showAlert?.('¡Presupuestos Guardados!', 'Se actualizaron las metas por categoría.', 'success');
         window.router.navigate('wallet');
     });
 
@@ -600,9 +578,7 @@ const initWalletChart = () => {
     const categoriesWithSpend = summary.byCategory.filter(c => c.spent > 0);
     const labels = categoriesWithSpend.length ? categoriesWithSpend.map(c => c.category.name) : ['Sin gastos'];
     const dataValues = categoriesWithSpend.length ? categoriesWithSpend.map(c => c.spent) : [1];
-    const colors = [
-        '#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#6366f1', '#14b8a6', '#f97316'
-    ];
+    const colors = categoriesWithSpend.length ? categoriesWithSpend.map(c => c.category.color || '#0A84FF') : ['rgba(255,255,255,0.1)'];
 
     walletChartInstance = new Chart(canvas, {
         type: 'doughnut',
@@ -610,9 +586,10 @@ const initWalletChart = () => {
             labels,
             datasets: [{
                 data: dataValues,
-                backgroundColor: categoriesWithSpend.length ? colors.slice(0, labels.length) : ['#334155'],
-                borderWidth: 2,
-                borderColor: '#1e293b'
+                backgroundColor: colors,
+                borderWidth: 3,
+                borderColor: '#0D1117',
+                hoverOffset: 4
             }]
         },
         options: {
@@ -622,13 +599,36 @@ const initWalletChart = () => {
                 legend: {
                     position: 'bottom',
                     labels: {
-                        boxWidth: 10,
-                        color: '#cbd5e1',
-                        font: { size: 10 }
+                        boxWidth: 8,
+                        boxHeight: 8,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        color: '#86868B',
+                        font: { 
+                            size: 11,
+                            family: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif'
+                        },
+                        padding: 12
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(18, 20, 24, 0.95)',
+                    titleColor: '#F5F5F7',
+                    bodyColor: '#10E775',
+                    bodyFont: {
+                        family: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+                        weight: 'bold'
+                    },
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    cornerRadius: 12,
+                    padding: 10,
+                    callbacks: {
+                        label: (ctx) => ` $ ${Number(ctx.raw || 0).toLocaleString('es-AR')}`
                     }
                 }
             },
-            cutout: '65%'
+            cutout: '72%'
         }
     });
 };

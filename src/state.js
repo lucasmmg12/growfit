@@ -65,15 +65,79 @@ const defaultState = {
     habitLog: {},
     dailyTip: { date: null, content: null },
     obetideTreatments: [],
+    monthlyIncome: 2975000,
+    incomeSource: 'Sanatorio Argentino',
     expenseCategories: [
-        { id: 1, name: 'Alimentación & Supermercado', icon: '🛒', color: '#10b981', monthly_budget: 0 },
-        { id: 2, name: 'Salud & Obetide', icon: '💉', color: '#3b82f6', monthly_budget: 0 },
-        { id: 3, name: 'Fitness & Gimnasio', icon: '🏋️', color: '#8b5cf6', monthly_budget: 0 },
-        { id: 4, name: 'Transporte', icon: '🚗', color: '#f59e0b', monthly_budget: 0 },
-        { id: 5, name: 'Servicios del Hogar', icon: '💡', color: '#6366f1', monthly_budget: 0 },
-        { id: 6, name: 'Ocio & Salidas', icon: '🎉', color: '#ec4899', monthly_budget: 0 }
+        {
+            id: 'vivienda-servicios',
+            name: 'Vivienda y Servicios',
+            icon: '🏠',
+            color: '#0A84FF',
+            monthly_budget: 1401000,
+            items: [
+                { name: 'Alquiler casa actual', amount: 1056000 },
+                { name: 'Luz', amount: 120000 },
+                { name: 'Gas', amount: 80000 },
+                { name: 'Conectividad / Internet', amount: 75000 },
+                { name: 'Agua', amount: 40000 },
+                { name: 'Municipalidad', amount: 30000 }
+            ]
+        },
+        {
+            id: 'compromisos-cuotas',
+            name: 'Compromisos y Cuotas',
+            icon: '💳',
+            color: '#FF9F0A',
+            monthly_budget: 1855000,
+            items: [
+                { name: 'Cuota Florencia', amount: 500000 },
+                { name: 'Cuota Auto', amount: 500000 },
+                { name: 'Préstamo Ángel', amount: 350000 },
+                { name: 'Refinanciación Banco Nación', amount: 350000 },
+                { name: 'Cuota Majo', amount: 155000 }
+            ]
+        },
+        {
+            id: 'operativos-vida',
+            name: 'Operativos y Vida Diaria',
+            icon: '🛒',
+            color: '#10E775',
+            monthly_budget: 605000,
+            items: [
+                { name: 'Niñera', amount: 200000 },
+                { name: 'Combustible', amount: 150000 },
+                { name: 'Almuerzos', amount: 125000 },
+                { name: 'Transporte de los niños', amount: 90000 },
+                { name: 'Gimnasio', amount: 40000 }
+            ]
+        },
+        {
+            id: 'salud-obetide',
+            name: 'Salud & Obetide',
+            icon: '💉',
+            color: '#BF5AF2',
+            monthly_budget: 0,
+            items: []
+        }
     ],
-    expenses: [],
+    expenses: [
+        { id: 'exp-1', name: 'Alquiler casa actual', amount: 1056000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-05', is_recurring: true },
+        { id: 'exp-2', name: 'Luz', amount: 120000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-10', is_recurring: true },
+        { id: 'exp-3', name: 'Gas', amount: 80000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-12', is_recurring: true },
+        { id: 'exp-4', name: 'Conectividad / Internet', amount: 75000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-08', is_recurring: true },
+        { id: 'exp-5', name: 'Agua', amount: 40000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-14', is_recurring: true },
+        { id: 'exp-6', name: 'Municipalidad', amount: 30000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-15', is_recurring: true },
+        { id: 'exp-7', name: 'Cuota Florencia', amount: 500000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-06', is_recurring: true },
+        { id: 'exp-8', name: 'Cuota Auto', amount: 500000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-07', is_recurring: true },
+        { id: 'exp-9', name: 'Préstamo Ángel', amount: 350000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-08', is_recurring: true },
+        { id: 'exp-10', name: 'Refinanciación Banco Nación', amount: 350000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-09', is_recurring: true },
+        { id: 'exp-11', name: 'Cuota Majo', amount: 155000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-11', is_recurring: true },
+        { id: 'exp-12', name: 'Niñera', amount: 200000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-01', is_recurring: true },
+        { id: 'exp-13', name: 'Combustible', amount: 150000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-16', is_recurring: true },
+        { id: 'exp-14', name: 'Almuerzos', amount: 125000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-18', is_recurring: false },
+        { id: 'exp-15', name: 'Transporte de los niños', amount: 90000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-02', is_recurring: true },
+        { id: 'exp-16', name: 'Gimnasio', amount: 40000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-03', is_recurring: true }
+    ],
     aiMealPlans: [],
     currentView: 'dashboard',
     selectedDate: getArgentinaDate()
@@ -107,13 +171,16 @@ export const getState = () => {
     if (!state.gymSessions) {
         state.gymSessions = [];
     }
-    // Clean up old hardcoded mock budget (410.000) if present in user's localStorage
-    if (state.expenseCategories && Array.isArray(state.expenseCategories)) {
-        const total = state.expenseCategories.reduce((sum, c) => sum + (Number(c.monthly_budget) || 0), 0);
-        if (total === 410000) {
-            state.expenseCategories.forEach(c => { c.monthly_budget = 0; });
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        }
+    if (!state.monthlyIncome) {
+        state.monthlyIncome = defaultState.monthlyIncome;
+        state.incomeSource = defaultState.incomeSource;
+    }
+    // Upgrade to real categories if old mock categories are stored in localStorage
+    const hasOldCategories = !state.expenseCategories || state.expenseCategories.some(c => c.name?.includes('Supermercado') || c.id === 1);
+    if (hasOldCategories) {
+        state.expenseCategories = defaultState.expenseCategories;
+        state.expenses = defaultState.expenses;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
     return state;
 };
@@ -752,16 +819,26 @@ export const deleteExpenseCategory = async (id) => {
     await deleteExpenseCategoryDB(id);
 };
 
+export const setMonthlyIncome = (amount, source = 'Sanatorio Argentino') => {
+    const state = getState();
+    state.monthlyIncome = Number(amount) || 0;
+    state.incomeSource = source;
+    saveState(state);
+};
+
 export const getFinancialSummary = (monthStr = null) => {
     const state = getState();
     const expenses = state.expenses || [];
     const categories = state.expenseCategories || [];
+    const monthlyIncome = Number(state.monthlyIncome || 2975000);
+    const incomeSource = state.incomeSource || 'Sanatorio Argentino';
 
     const targetMonth = monthStr || getArgentinaDate().substring(0, 7); // 'YYYY-MM'
     const monthExpenses = expenses.filter(e => e.date && e.date.startsWith(targetMonth));
 
     const totalSpent = monthExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
     const totalBudget = categories.reduce((sum, c) => sum + Number(c.monthly_budget || 0), 0);
+    const netBalance = monthlyIncome - totalSpent;
 
     // Spend by category
     const byCategory = {};
@@ -770,6 +847,7 @@ export const getFinancialSummary = (monthStr = null) => {
             category: c,
             spent: 0,
             budget: Number(c.monthly_budget || 0),
+            items: c.items || [],
             percent: 0
         };
     });
@@ -781,6 +859,7 @@ export const getFinancialSummary = (monthStr = null) => {
                 category: { name: e.category_name, icon: '🏷️', color: '#94a3b8', monthly_budget: 0 },
                 spent: 0,
                 budget: 0,
+                items: [],
                 percent: 0
             };
         }
@@ -797,8 +876,11 @@ export const getFinancialSummary = (monthStr = null) => {
 
     return {
         month: targetMonth,
+        monthlyIncome,
+        incomeSource,
         totalSpent,
         totalBudget,
+        netBalance,
         remainingBudget: Math.max(0, totalBudget - totalSpent),
         byCategory: Object.values(byCategory),
         recentExpenses: monthExpenses.slice(0, 10)
