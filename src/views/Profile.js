@@ -121,15 +121,7 @@ export const renderProfile = () => {
                                 <label class="text-xs font-bold text-slate-400 uppercase">Edad</label>
                                 <input id="profile-age" type="number" value="${profile.age || 30}" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500 mt-1">
                             </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-400 uppercase">Protocolo de Ayuno</label>
-                                <select id="profile-fasting-protocol" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-emerald-500 mt-1">
-                                    <option value="16:8" ${(state.fasting?.protocol === '16:8') ? 'selected' : ''}>16:8 (Clásico - 16h ayuno)</option>
-                                    <option value="18:6" ${(state.fasting?.protocol === '18:6') ? 'selected' : ''}>18:6 (Intermedio - 18h ayuno)</option>
-                                    <option value="20:4" ${(state.fasting?.protocol === '20:4') ? 'selected' : ''}>20:4 (Warrior - 20h ayuno)</option>
-                                    <option value="OMAD" ${(state.fasting?.protocol === 'OMAD') ? 'selected' : ''}>OMAD (1 comida al día)</option>
-                                </select>
-                            </div>
+                            
                         </div>
 
                         <button id="save-profile-btn" class="w-full btn-emerald py-3 text-xs font-bold mt-5 shadow-emerald-sm">
@@ -179,11 +171,6 @@ export const attachProfileEvents = () => {
         state.profile.fatGoal = parseInt(document.getElementById('profile-f-goal').value) || 65;
         state.profile.height = parseInt(document.getElementById('profile-height').value) || 175;
         state.profile.age = parseInt(document.getElementById('profile-age').value) || 30;
-
-        const protocol = document.getElementById('profile-fasting-protocol').value;
-        const targetHours = protocol === 'OMAD' ? 23 : parseInt(protocol.split(':')[0]) || 16;
-        state.fasting.protocol = protocol;
-        state.fasting.targetHours = targetHours;
 
         saveState(state);
         window.showAlert?.('Ajustes Guardados', 'Tu perfil y metas se actualizaron correctamente.', 'success');
