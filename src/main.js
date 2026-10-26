@@ -3,6 +3,7 @@ import { initializeState, addMeasurement, addMeal, getArgentinaDate, getState } 
 import { analyzeFood } from './services/openai';
 import { supabase } from './supabase-client';
 import { setLocalUserId } from './services/db';
+import { getCurrentUser, logout } from './services/auth';
 
 import { renderDashboard, attachDashboardEvents } from './views/Dashboard';
 import { renderTracker, attachTrackerEvents } from './views/Tracker';
@@ -47,11 +48,13 @@ const routes = {
 
 window.router = {
   navigate: (path) => {
-    const route = routes[path] || routes['dashboard'];
+    const currentUser = getCurrentUser();
+    const targetPath = (!currentUser && path !== 'auth') ? 'auth' : path;
+    const route = routes[targetPath] || (currentUser ? routes['dashboard'] : routes['auth']);
     if (route) {
       app.innerHTML = route.render();
       if (route.attach) route.attach();
-      if (path !== 'auth') initChat();
+      if (targetPath !== 'auth') initChat();
       window.scrollTo(0, 0);
     }
   }
@@ -297,7 +300,25 @@ window.openQuickActionsModal = () => {
   });
 };
 
+// --- GLOBAL LOGOUT HANDLER ---
+window.handleGlobalLogout = () => {
+  window.showConfirm?.(
+    '¿Cerrar Sesión?',
+    'Saldrás de tu cuenta actual y volverás a la pantalla de acceso. Tu información personal permanecerá aislada y segura.',
+    async () => {
+      await logout();
+      window.router.navigate('auth');
+    }
+  );
+};
+
 // --- AUTH STATE LISTENER (MULTI-TENANT) ---
+window.addEventListener('auth-changed', async (e) => {
+  if (e.detail) {
+    await initializeState();
+  }
+});
+
 supabase.auth.onAuthStateChange(async (event, session) => {
   console.log(`[Supabase Auth] Event: ${event}, User: ${session?.user?.id || 'none'}`);
   if (session?.user) {
@@ -307,8 +328,13 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 
 // --- APP STARTUP ---
 const startApp = async () => {
-  await initializeState();
-  window.router.navigate('dashboard');
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    window.router.navigate('auth');
+  } else {
+    await initializeState();
+    window.router.navigate('dashboard');
+  }
 };
 
 startApp();

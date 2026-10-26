@@ -16,6 +16,7 @@ import {
     deleteExpenseDB,
     saveAiMealPlanDB
 } from './services/db';
+import { getActiveStorageKey, getCurrentUser } from './services/auth';
 
 const STORAGE_KEY = 'growfit_state_v1';
 
@@ -205,59 +206,117 @@ const addXP = (state, amount) => {
 // --- CORE STATE ---
 
 export const getState = () => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const state = stored ? { ...defaultState, ...JSON.parse(stored) } : defaultState;
-    if (!state.fasting) {
-        state.fasting = defaultState.fasting;
-    }
-    if (!state.gymSessions) {
-        state.gymSessions = [];
-    }
-    if (!state.monthlyIncome) {
-        state.monthlyIncome = defaultState.monthlyIncome;
-        state.incomeSource = defaultState.incomeSource;
-    }
-    // Upgrade to real categories if old mock categories are stored in localStorage
-    const hasOldCategories = !state.expenseCategories || state.expenseCategories.some(c => c.name?.includes('Supermercado') || c.id === 1);
-    if (hasOldCategories) {
-        state.expenseCategories = defaultState.expenseCategories;
-        state.expenses = defaultState.expenses;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const key = getActiveStorageKey();
+    const stored = localStorage.getItem(key);
+    const currentUser = getCurrentUser();
+    const isLmarinero = !currentUser || currentUser.username.toLowerCase() === 'lmarinero';
+
+    let state;
+    if (stored) {
+        state = { ...defaultState, ...JSON.parse(stored) };
+    } else if (isLmarinero) {
+        // Fallback to legacy or defaultState for lmarinero
+        const legacy = localStorage.getItem(STORAGE_KEY);
+        state = legacy ? { ...defaultState, ...JSON.parse(legacy) } : { ...defaultState };
+        localStorage.setItem(key, JSON.stringify(state));
     } else {
-        // Ensure Salud & Medicación has Dutide and Levotiroxina
-        const saludCat = state.expenseCategories?.find(c => c.id === 'salud-obetide');
-        if (saludCat && (saludCat.monthly_budget !== 115000 || !saludCat.items?.some(i => i.name === 'Dutide'))) {
-            saludCat.name = 'Salud & Medicación';
-            saludCat.monthly_budget = 115000;
-            saludCat.items = [
-                { name: 'Dutide', amount: 100000 },
-                { name: 'Levotiroxina', amount: 15000 }
-            ];
-            if (!state.expenses.some(e => e.name === 'Dutide')) {
-                state.expenses.push(
-                    { id: 'exp-17', name: 'Dutide', amount: 100000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-20', is_recurring: true }
-                );
+        // Return fresh clean isolated state for any new user
+        state = {
+            profile: {
+                name: currentUser?.displayName || currentUser?.username || 'Usuario',
+                age: 30,
+                calorieGoal: 2000,
+                proteinGoal: 150,
+                carbsGoal: 200,
+                fatGoal: 65,
+                height: 175,
+                gender: 'male',
+                startingWeight: 80,
+                targetWeight: 72,
+                currency: 'ARS',
+                health: { conditions: '', medications: '', metabolism: 'normal' },
+                aiSummary: null,
+                xp: 0,
+                level: 1
+            },
+            monthlyIncome: 0,
+            incomeSource: 'Ingreso Principal',
+            expenseCategories: [
+                { id: 'vivienda-servicios', name: 'Vivienda y Servicios', icon: 'home', color: '#0A84FF', monthly_budget: 0, items: [] },
+                { id: 'compromisos-cuotas', name: 'Compromisos y Cuotas', icon: 'credit_card', color: '#FF9F0A', monthly_budget: 0, items: [] },
+                { id: 'operativos-vida', name: 'Operativos y Vida Diaria', icon: 'shopping_bag', color: '#30D158', monthly_budget: 0, items: [] },
+                { id: 'salud-meds', name: 'Salud & Medicación', icon: 'health_and_safety', color: '#BF5AF2', monthly_budget: 0, items: [] }
+            ],
+            expenses: [],
+            dailyLog: [],
+            days: {},
+            measurements: [],
+            workouts: [],
+            gymSessions: [],
+            fasting: { isActive: false, startTime: null, protocol: '16:8', targetHours: 16 },
+            habits: [
+                { id: 'water', name: '2L de Agua', icon: 'water_drop', target: 2000, current: 0, unit: 'ml', completed: false },
+                { id: 'sleep', name: '7-8h Sueño', icon: 'bedtime', target: 8, current: 0, unit: 'horas', completed: false },
+                { id: 'steps', name: '8k Pasos', icon: 'directions_walk', target: 8000, current: 0, unit: 'pasos', completed: false }
+            ],
+            obetideTreatments: [],
+            aiMealPlans: []
+        };
+        localStorage.setItem(key, JSON.stringify(state));
+    }
+
+    if (!state.fasting) state.fasting = defaultState.fasting;
+    if (!state.gymSessions) state.gymSessions = [];
+    if (!state.expenseCategories) state.expenseCategories = [];
+    if (!state.expenses) state.expenses = [];
+    if (!state.dailyLog) state.dailyLog = [];
+
+    // Specific preset maintenance exclusively for lmarinero
+    if (isLmarinero) {
+        if (!state.monthlyIncome) {
+            state.monthlyIncome = defaultState.monthlyIncome;
+            state.incomeSource = defaultState.incomeSource;
+        }
+        const hasOldCategories = !state.expenseCategories || state.expenseCategories.some(c => c.name?.includes('Supermercado') || c.id === 1);
+        if (hasOldCategories) {
+            state.expenseCategories = defaultState.expenseCategories;
+            state.expenses = defaultState.expenses;
+            localStorage.setItem(key, JSON.stringify(state));
+        } else {
+            const saludCat = state.expenseCategories?.find(c => c.id === 'salud-obetide');
+            if (saludCat && (saludCat.monthly_budget !== 115000 || !saludCat.items?.some(i => i.name === 'Dutide'))) {
+                saludCat.name = 'Salud & Medicación';
+                saludCat.monthly_budget = 115000;
+                saludCat.items = [
+                    { name: 'Dutide', amount: 100000 },
+                    { name: 'Levotiroxina', amount: 15000 }
+                ];
+                if (!state.expenses.some(e => e.name === 'Dutide')) {
+                    state.expenses.push(
+                        { id: 'exp-17', name: 'Dutide', amount: 100000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-20', is_recurring: true }
+                    );
+                }
+                if (!state.expenses.some(e => e.name === 'Levotiroxina')) {
+                    state.expenses.push(
+                        { id: 'exp-18', name: 'Levotiroxina', amount: 15000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-21', is_recurring: true }
+                    );
+                }
+                localStorage.setItem(key, JSON.stringify(state));
             }
-            if (!state.expenses.some(e => e.name === 'Levotiroxina')) {
-                state.expenses.push(
-                    { id: 'exp-18', name: 'Levotiroxina', amount: 15000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-21', is_recurring: true }
-                );
-            }
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+        if (state.dailyLog.length === 0) {
+            state.dailyLog = defaultState.dailyLog;
+            localStorage.setItem(key, JSON.stringify(state));
         }
     }
 
-    // Initialize demonstration dailyLog if empty
-    if (!state.dailyLog || state.dailyLog.length === 0) {
-        state.dailyLog = defaultState.dailyLog;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
     return state;
 };
 
-// GLOBAL SAVE (Primarily for Profile & UI State)
+// GLOBAL SAVE (Isolated by active user)
 export const saveState = (newState) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+    const key = getActiveStorageKey();
+    localStorage.setItem(key, JSON.stringify(newState));
     saveProfileDB(newState);
     window.dispatchEvent(new CustomEvent('state-changed', { detail: newState }));
 };

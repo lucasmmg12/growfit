@@ -177,10 +177,7 @@ export const attachProfileEvents = () => {
         window.router.navigate('profile');
     });
 
-    document.getElementById('logout-btn')?.addEventListener('click', async () => {
-        window.showConfirm?.('¿Cerrar Sesión?', 'Podrás ingresar con tu email o con otra cuenta.', async () => {
-            await supabase.auth.signOut();
-            window.router.navigate('auth');
-        });
+    document.getElementById('logout-btn')?.addEventListener('click', () => {
+        window.handleGlobalLogout?.();
     });
 };

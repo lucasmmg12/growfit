@@ -1,8 +1,10 @@
 import { getState } from '../state';
+import { getCurrentUser } from '../services/auth';
 
 export const renderSidebar = (activeRoute = 'dashboard') => {
     const state = getState();
     const { profile } = state;
+    const currentUser = getCurrentUser();
     const level = profile.level || 1;
     const xp = profile.xp || 0;
 
@@ -24,19 +26,19 @@ export const renderSidebar = (activeRoute = 'dashboard') => {
             <!-- Brand & User Profile -->
             <div class="flex items-center gap-3.5 px-2">
                 <div class="size-11 rounded-2xl bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-300 font-bold text-lg shadow-sm">
-                    ${(profile.name || 'U').charAt(0).toUpperCase()}
+                    ${(profile.name || currentUser?.username || 'U').charAt(0).toUpperCase()}
                 </div>
                 <div class="flex flex-col overflow-hidden">
                     <div class="flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-emerald-400 text-base">eco</span>
                         <h1 class="text-white font-display text-xl font-bold tracking-tight">GrowFit</h1>
                     </div>
-                    <p class="text-slate-400 text-xs font-medium truncate">${profile.name || 'Mi Perfil'}</p>
+                    <p class="text-slate-400 text-xs font-medium truncate">${profile.name || currentUser?.displayName || 'Mi Perfil'}</p>
                 </div>
             </div>
             
             <!-- Navigation Links -->
-            <nav class="flex flex-col gap-1.5 overflow-y-auto max-h-[calc(100vh-250px)] custom-scrollbar pr-1">
+            <nav class="flex flex-col gap-1.5 overflow-y-auto max-h-[calc(100vh-320px)] custom-scrollbar pr-1">
                 ${navItems.map(item => {
                     const isActive = activeRoute === item.id;
                     return `
@@ -56,16 +58,33 @@ export const renderSidebar = (activeRoute = 'dashboard') => {
             </nav>
         </div>
 
-        <!-- Level & XP Widget -->
-        <div class="white-card p-4 bg-gradient-to-br from-[#1E293B] to-[#162032] border border-slate-700">
-            <div class="flex justify-between items-center mb-2">
-                <span class="badge-emerald text-[10px]">Nivel ${level}</span>
-                <span class="text-xs font-mono font-bold text-emerald-400">${xp} XP</span>
+        <div class="flex flex-col gap-3">
+            <!-- Level & XP Widget -->
+            <div class="white-card p-4 bg-gradient-to-br from-[#1E293B] to-[#162032] border border-slate-700">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="badge-emerald text-[10px]">Nivel ${level}</span>
+                    <span class="text-xs font-mono font-bold text-emerald-400">${xp} XP</span>
+                </div>
+                <div class="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+                    <div class="h-full bg-emerald-500 rounded-full transition-all duration-500 shadow-emerald-sm" style="width: ${Math.min(100, (xp % 100))}%"></div>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-1.5 text-center font-medium">${100 - (xp % 100)} XP para siguiente nivel</p>
             </div>
-            <div class="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
-                <div class="h-full bg-emerald-500 rounded-full transition-all duration-500 shadow-emerald-sm" style="width: ${Math.min(100, (xp % 100))}%"></div>
+
+            <!-- User Session & Logout Widget -->
+            <div class="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-1.5 overflow-hidden">
+                        <span class="size-2 rounded-full bg-emerald-400"></span>
+                        <span class="text-[11px] font-mono font-bold text-white truncate">@${currentUser?.username || 'lmarinero'}</span>
+                    </div>
+                    <span class="text-[9px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md uppercase">Sesión</span>
+                </div>
+                <button onclick="window.handleGlobalLogout()" class="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 border border-rose-500/25 transition-all text-xs font-bold cursor-pointer active:scale-95">
+                    <span class="material-symbols-outlined text-sm">logout</span>
+                    <span>Cerrar Sesión</span>
+                </button>
             </div>
-            <p class="text-[10px] text-slate-400 mt-1.5 text-center font-medium">${100 - (xp % 100)} XP para siguiente nivel</p>
         </div>
     </aside>
     `;
@@ -73,6 +92,7 @@ export const renderSidebar = (activeRoute = 'dashboard') => {
 
 export const renderMobileHeader = (title = 'GrowFit') => {
     const state = getState();
+    const currentUser = getCurrentUser();
     return `
     <header class="lg:hidden flex items-center justify-between px-4 py-3 bg-[#0F172A]/90 backdrop-blur-md border-b border-slate-700/80 sticky top-0 z-30 shadow-md">
         <div class="flex items-center gap-2.5" onclick="window.router.navigate('dashboard')">
@@ -81,15 +101,15 @@ export const renderMobileHeader = (title = 'GrowFit') => {
             </div>
             <div>
                 <h1 class="text-white font-display text-base font-bold tracking-tight leading-none">${title}</h1>
-                <p class="text-[10px] text-slate-400 font-medium">${state.profile.name || 'GrowFit'}</p>
+                <p class="text-[10px] text-slate-400 font-medium">@${currentUser?.username || 'lmarinero'} · ${state.profile.name || 'GrowFit'}</p>
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <button onclick="window.openQuickActionsModal()" class="size-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-emerald-sm active:scale-95 transition-transform">
+            <button onclick="window.openQuickActionsModal()" class="size-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-emerald-sm active:scale-95 transition-transform" title="Acción Rápida">
                 <span class="material-symbols-outlined text-lg">add</span>
             </button>
-            <button onclick="window.router.navigate('profile')" class="size-8 rounded-full border border-slate-700 bg-slate-800 flex items-center justify-center text-emerald-400 font-bold text-xs">
-                ${(state.profile.name || 'U').charAt(0).toUpperCase()}
+            <button onclick="window.handleGlobalLogout()" class="size-8 rounded-full border border-rose-500/30 bg-rose-500/15 flex items-center justify-center text-rose-300 font-bold text-xs cursor-pointer active:scale-95" title="Cerrar Sesión">
+                <span class="material-symbols-outlined text-sm">logout</span>
             </button>
         </div>
     </header>

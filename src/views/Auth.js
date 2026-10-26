@@ -1,84 +1,220 @@
-import { supabase } from '../supabase-client';
+import { login, register, getCurrentUser } from '../services/auth';
 
 export const renderAuth = () => {
-    return `
-    <div class="min-h-screen w-full flex items-center justify-center bg-[#0F172A] relative overflow-hidden font-sans">
-         <!-- Background Effects -->
-         <div class="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#0F172A] to-[#0F172A]"></div>
-         <div class="absolute bottom-0 right-0 w-[500px] h-[500px] bg-emerald-500/5 blur-[100px] rounded-full"></div>
+    const currentUser = getCurrentUser();
 
-         <div class="relative z-10 w-full max-w-md p-6">
-            <div class="bg-slate-900/90 backdrop-blur-xl border border-slate-700/70 rounded-3xl p-8 shadow-2xl animate-scale-up">
-                <div class="flex flex-col items-center mb-8">
-                    <img src="/logogrow.png" alt="GrowFit" class="h-10 mb-2">
-                    <h2 class="text-2xl font-bold text-white">Bienvenido de nuevo</h2>
-                    <p class="text-slate-400 text-sm">Ingresa para continuar tu viaje.</p>
+    return `
+    <div class="min-h-screen w-full flex items-center justify-center bg-[#0D1117] text-[#F5F5F7] p-4 relative overflow-hidden font-sans">
+        <!-- iOS 18 Ambient Gradients -->
+        <div class="absolute -top-40 -left-40 size-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-40 -right-40 size-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 w-full max-w-md animate-scale-up">
+            <!-- App Logo & Branding -->
+            <div class="flex flex-col items-center text-center mb-6">
+                <div class="size-14 rounded-3xl bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-3xl shadow-[0_0_20px_rgba(16,231,117,0.2)] mb-3">
+                    🌱
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight text-white">GrowFit</h1>
+                <p class="text-xs text-slate-400 mt-1">Plataforma Médica, Nutricional y Financiera</p>
+                ${currentUser ? `
+                    <div class="mt-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[11px] font-semibold text-emerald-300">
+                        Sesión activa: @${currentUser.username}
+                    </div>
+                ` : ''}
+            </div>
+
+            <!-- Card Container -->
+            <div class="white-card p-6 md:p-8 bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/[0.08] shadow-2xl rounded-3xl backdrop-blur-2xl">
+                
+                <!-- Auth Tabs (Login vs Register) -->
+                <div class="flex p-1 bg-white/[0.04] border border-white/[0.06] rounded-2xl mb-6">
+                    <button id="tab-login-btn" class="flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer bg-white/[0.1] text-white shadow-sm">
+                        Iniciar Sesión
+                    </button>
+                    <button id="tab-register-btn" class="flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer text-slate-400 hover:text-white">
+                        Crear Cuenta
+                    </button>
                 </div>
 
-                <div class="flex flex-col gap-4">
-                    <button id="google-login" class="flex items-center justify-center gap-3 w-full bg-white text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-100 transition-colors shadow-sm">
-                        <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5">
-                        Continuar con Google
-                    </button>
-                    
-                    <div class="flex items-center gap-2 my-2">
-                        <div class="h-px flex-1 bg-slate-700"></div>
-                        <span class="text-xs text-slate-400">O usa tu email</span>
-                        <div class="h-px flex-1 bg-slate-700"></div>
+                <!-- Form 1: LOGIN -->
+                <form id="login-form" class="flex flex-col gap-4">
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">Usuario o Email</label>
+                        <div class="flex items-center bg-white/[0.03] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 focus-within:border-[#10E775] transition-all">
+                            <span class="material-symbols-outlined text-slate-400 text-lg mr-2.5">account_circle</span>
+                            <input id="login-username" type="text" placeholder="Ej: lmarinero" value="lmarinero" required class="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-slate-600" />
+                        </div>
                     </div>
 
-                    <form id="email-form" class="flex flex-col gap-4">
-                        <div>
-                            <input type="email" id="email" placeholder="Tu Email" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 outline-none transition-colors">
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">Contraseña</label>
+                        <div class="flex items-center bg-white/[0.03] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 focus-within:border-[#10E775] transition-all">
+                            <span class="material-symbols-outlined text-slate-400 text-lg mr-2.5">lock</span>
+                            <input id="login-password" type="password" placeholder="Tu contraseña" value="123456" required class="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-slate-600" />
                         </div>
-                        <div>
-                             <input type="password" id="password" placeholder="Tu Contraseña" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 outline-none transition-colors">
+                    </div>
+
+                    <!-- Quick access chip for lmarinero -->
+                    <div id="quick-fill-lmarinero" class="p-2.5 rounded-2xl bg-[#10E775]/10 border border-[#10E775]/25 flex items-center justify-between cursor-pointer hover:bg-[#10E775]/15 transition-all">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">🔐</span>
+                            <div class="text-left">
+                                <p class="text-xs font-bold text-white leading-tight">Cuenta Principal: lmarinero</p>
+                                <span class="text-[10px] text-emerald-300/80">Acceso a perfil con Dutide y gastos de Octubre</span>
+                            </div>
                         </div>
-                        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl transition-colors shadow-emerald-sm">
-                            Ingresar / Registrarse
-                        </button>
-                    </form>
-                    <p id="auth-msg" class="text-center text-xs text-red-400 mt-2 h-4"></p>
-                </div>
+                        <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-lg">123456</span>
+                    </div>
+
+                    <button type="submit" id="login-submit-btn" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-emerald-sm flex items-center justify-center gap-2 cursor-pointer active:scale-95 mt-1">
+                        <span class="material-symbols-outlined text-base">login</span>
+                        <span>Ingresar a GrowFit</span>
+                    </button>
+                </form>
+
+                <!-- Form 2: REGISTER -->
+                <form id="register-form" class="hidden flex flex-col gap-4">
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">Nombre Completo</label>
+                        <div class="flex items-center bg-white/[0.03] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 focus-within:border-[#0A84FF] transition-all">
+                            <span class="material-symbols-outlined text-slate-400 text-lg mr-2.5">badge</span>
+                            <input id="reg-name" type="text" placeholder="Ej: Dra. María Gómez" required class="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-slate-600" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">Nombre de Usuario (Único)</label>
+                        <div class="flex items-center bg-white/[0.03] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 focus-within:border-[#0A84FF] transition-all">
+                            <span class="material-symbols-outlined text-slate-400 text-lg mr-2.5">alternate_email</span>
+                            <input id="reg-username" type="text" placeholder="Ej: mgomez" required class="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-slate-600" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">Contraseña</label>
+                        <div class="flex items-center bg-white/[0.03] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 focus-within:border-[#0A84FF] transition-all">
+                            <span class="material-symbols-outlined text-slate-400 text-lg mr-2.5">lock</span>
+                            <input id="reg-password" type="password" placeholder="Mínimo 4 caracteres" required class="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-slate-600" />
+                        </div>
+                    </div>
+
+                    <div class="p-2.5 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex items-start gap-2 text-xs text-blue-200">
+                        <span class="material-symbols-outlined text-base text-blue-400 mt-0.5">shield</span>
+                        <span>Tus métricas, comidas y presupuesto se guardarán en un espacio 100% independiente sin mezclarse con otros perfiles.</span>
+                    </div>
+
+                    <button type="submit" id="register-submit-btn" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 mt-1">
+                        <span class="material-symbols-outlined text-base">person_add</span>
+                        <span>Crear mi Cuenta Independiente</span>
+                    </button>
+                </form>
+
+                <!-- Feedback / Error Message -->
+                <p id="auth-msg" class="text-center text-xs text-red-400 mt-4 min-h-[1.25rem] font-medium"></p>
             </div>
-         </div>
+            
+            <p class="text-center text-[11px] text-slate-500 mt-6">
+                Grow Labs · Sanatorio Argentino &copy; 2026
+            </p>
+        </div>
     </div>
     `;
 };
 
 export const attachAuthEvents = () => {
-    // Google Login
-    document.getElementById('google-login')?.addEventListener('click', async () => {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-        });
-        if (error) console.error(error);
+    const tabLogin = document.getElementById('tab-login-btn');
+    const tabRegister = document.getElementById('tab-register-btn');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const msg = document.getElementById('auth-msg');
+
+    const showMsg = (text, isError = true) => {
+        if (!msg) return;
+        msg.textContent = text;
+        msg.className = `text-center text-xs mt-4 min-h-[1.25rem] font-medium ${isError ? 'text-red-400' : 'text-emerald-400'}`;
+    };
+
+    // Tab Switching
+    tabLogin?.addEventListener('click', () => {
+        tabLogin.className = 'flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer bg-white/[0.1] text-white shadow-sm';
+        tabRegister.className = 'flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer text-slate-400 hover:text-white';
+        loginForm?.classList.remove('hidden');
+        registerForm?.classList.add('hidden');
+        showMsg('');
     });
 
-    // Email Login
-    document.getElementById('email-form')?.addEventListener('submit', async (e) => {
+    tabRegister?.addEventListener('click', () => {
+        tabRegister.className = 'flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer bg-white/[0.1] text-white shadow-sm';
+        tabLogin.className = 'flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer text-slate-400 hover:text-white';
+        registerForm?.classList.remove('hidden');
+        loginForm?.classList.add('hidden');
+        showMsg('');
+    });
+
+    // Quick fill lmarinero
+    document.getElementById('quick-fill-lmarinero')?.addEventListener('click', () => {
+        const u = document.getElementById('login-username');
+        const p = document.getElementById('login-password');
+        if (u) u.value = 'lmarinero';
+        if (p) p.value = '123456';
+        showMsg('Credenciales de lmarinero cargadas.', false);
+    });
+
+    // Login Submission
+    loginForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const msg = document.getElementById('auth-msg');
+        const username = document.getElementById('login-username')?.value;
+        const password = document.getElementById('login-password')?.value;
+        const btn = document.getElementById('login-submit-btn');
 
-        msg.textContent = 'Procesando...';
+        if (btn) btn.disabled = true;
+        showMsg('Verificando credenciales...', false);
 
-        // Try Login
-        let { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-        if (error) {
-            // Try Signup if login failed (Simple Logic for MVP)
-            msg.textContent = 'Creando cuenta...';
-            const { data: upData, error: upError } = await supabase.auth.signUp({ email, password });
-            if (upError) {
-                msg.textContent = "Error: " + upError.message;
+        try {
+            const res = await login(username, password);
+            if (!res.success) {
+                showMsg(res.error, true);
+                if (btn) btn.disabled = false;
             } else {
-                msg.textContent = "¡Cuenta creada! Revisa tu email para confirmar.";
-                // Or immediate login if auto-confirm is enabled in Supabase
+                showMsg(`¡Bienvenido, ${res.user.displayName}! Cargando tu perfil...`, false);
+                setTimeout(() => {
+                    window.location.hash = '#dashboard';
+                    window.router.navigate('dashboard');
+                }, 400);
             }
-        } else {
-            // Success - Redirect handled by onAuthStateChange in main
+        } catch (err) {
+            showMsg(err.message || 'Error al iniciar sesión.', true);
+            if (btn) btn.disabled = false;
+        }
+    });
+
+    // Register Submission
+    registerForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const displayName = document.getElementById('reg-name')?.value;
+        const username = document.getElementById('reg-username')?.value;
+        const password = document.getElementById('reg-password')?.value;
+        const btn = document.getElementById('register-submit-btn');
+
+        if (btn) btn.disabled = true;
+        showMsg('Creando tu espacio independiente...', false);
+
+        try {
+            const res = await register({ username, password, displayName });
+            if (!res.success) {
+                showMsg(res.error, true);
+                if (btn) btn.disabled = false;
+            } else {
+                showMsg(`¡Cuenta @${res.user.username} creada con éxito! Entrando...`, false);
+                setTimeout(() => {
+                    window.location.hash = '#dashboard';
+                    window.router.navigate('dashboard');
+                }, 500);
+            }
+        } catch (err) {
+            showMsg(err.message || 'Error al registrar la cuenta.', true);
+            if (btn) btn.disabled = false;
         }
     });
 };
