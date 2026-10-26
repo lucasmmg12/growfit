@@ -43,7 +43,7 @@ export const renderAuth = () => {
                         <label class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">Usuario o Email</label>
                         <div class="flex items-center bg-white/[0.03] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 focus-within:border-[#10E775] transition-all">
                             <span class="material-symbols-outlined text-slate-400 text-lg mr-2.5">account_circle</span>
-                            <input id="login-username" type="text" placeholder="Ej: lmarinero" value="lmarinero" required class="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-slate-600" />
+                            <input id="login-username" type="text" placeholder="Tu usuario o email" required class="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-slate-600" />
                         </div>
                     </div>
 
@@ -51,23 +51,11 @@ export const renderAuth = () => {
                         <label class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider block mb-1.5">Contraseña</label>
                         <div class="flex items-center bg-white/[0.03] border border-white/[0.08] rounded-2xl px-3.5 py-2.5 focus-within:border-[#10E775] transition-all">
                             <span class="material-symbols-outlined text-slate-400 text-lg mr-2.5">lock</span>
-                            <input id="login-password" type="password" placeholder="Tu contraseña" value="123456" required class="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-slate-600" />
+                            <input id="login-password" type="password" placeholder="Tu contraseña" required class="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-slate-600" />
                         </div>
                     </div>
 
-                    <!-- Quick access chip for lmarinero -->
-                    <div id="quick-fill-lmarinero" class="p-2.5 rounded-2xl bg-[#10E775]/10 border border-[#10E775]/25 flex items-center justify-between cursor-pointer hover:bg-[#10E775]/15 transition-all">
-                        <div class="flex items-center gap-2">
-                            <span class="text-base">🔐</span>
-                            <div class="text-left">
-                                <p class="text-xs font-bold text-white leading-tight">Cuenta Principal: lmarinero</p>
-                                <span class="text-[10px] text-emerald-300/80">Acceso a perfil con Dutide y gastos de Octubre</span>
-                            </div>
-                        </div>
-                        <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-lg">123456</span>
-                    </div>
-
-                    <button type="submit" id="login-submit-btn" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-emerald-sm flex items-center justify-center gap-2 cursor-pointer active:scale-95 mt-1">
+                    <button type="submit" id="login-submit-btn" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-emerald-sm flex items-center justify-center gap-2 cursor-pointer active:scale-95 mt-2">
                         <span class="material-symbols-outlined text-base">login</span>
                         <span>Ingresar a GrowFit</span>
                     </button>
@@ -150,15 +138,6 @@ export const attachAuthEvents = () => {
         registerForm?.classList.remove('hidden');
         loginForm?.classList.add('hidden');
         showMsg('');
-    });
-
-    // Quick fill lmarinero
-    document.getElementById('quick-fill-lmarinero')?.addEventListener('click', () => {
-        const u = document.getElementById('login-username');
-        const p = document.getElementById('login-password');
-        if (u) u.value = 'lmarinero';
-        if (p) p.value = '123456';
-        showMsg('Credenciales de lmarinero cargadas.', false);
     });
 
     // Login Submission
