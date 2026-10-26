@@ -33,7 +33,7 @@ export const renderWallet = () => {
             <div class="flex-1 overflow-y-auto px-4 md:px-8 py-5 custom-scrollbar pb-28 lg:pb-8">
                 <div class="max-w-4xl mx-auto flex flex-col gap-6">
 
-                    <!-- Header Balance & Budget Card (Mi Billetera Style) -->
+                    <!-- Header Balance Card (Mi Billetera Style) -->
                     <div class="white-card p-6 bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 text-white border border-blue-500/30 shadow-2xl relative overflow-hidden">
                         <div class="absolute -right-6 -bottom-6 opacity-10 pointer-events-none">
                             <span class="material-symbols-outlined text-[170px]">account_balance_wallet</span>
@@ -42,40 +42,21 @@ export const renderWallet = () => {
                         <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
                                 <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-bold mb-2">
-                                    <span class="material-symbols-outlined text-sm">savings</span>
-                                    Presupuesto Mensual · ${currentMonth}
+                                    <span class="material-symbols-outlined text-sm">payments</span>
+                                    Control Financiero · ${currentMonth}
                                 </div>
                                 <span class="text-[10px] uppercase font-bold text-slate-400 block">Total Gastado este Mes</span>
                                 <h2 class="text-3xl md:text-4xl font-display font-black tracking-tight text-white">${formatMoney(summary.totalSpent)}</h2>
                             </div>
 
-                            <div class="flex items-center gap-4 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10">
-                                <div>
-                                    <span class="text-[10px] uppercase font-bold text-slate-300">Presupuesto</span>
-                                    <p class="text-base md:text-lg font-mono font-black text-white">${formatMoney(summary.totalBudget)}</p>
+                            <div class="flex items-center gap-3 bg-white/5 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10">
+                                <div class="size-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-xl">receipt_long</span>
                                 </div>
-                                <div class="h-8 w-px bg-white/20"></div>
                                 <div>
-                                    <span class="text-[10px] uppercase font-bold text-slate-300">Disponible</span>
-                                    <p class="text-base md:text-lg font-mono font-black ${summary.remainingBudget > 0 ? 'text-emerald-400' : 'text-red-400'}">
-                                        ${formatMoney(summary.remainingBudget)}
-                                    </p>
+                                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Movimientos</span>
+                                    <p class="text-sm font-bold text-white">${(state.expenses || []).filter(e => e.date?.startsWith(currentMonth)).length} gastos registrados</p>
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Progress Bar with Alert Color -->
-                        <div class="mt-5 pt-3 border-t border-white/10">
-                            <div class="flex justify-between items-center text-xs mb-1.5 font-bold">
-                                <span class="text-slate-300">Consumo del Presupuesto</span>
-                                <span class="${percentUsed > 90 ? 'text-red-300' : percentUsed > 70 ? 'text-amber-300' : 'text-emerald-300'}">
-                                    ${percentUsed}% utilizado
-                                </span>
-                            </div>
-                            <div class="h-2.5 w-full bg-white/10 rounded-full overflow-hidden">
-                                <div class="h-full rounded-full transition-all duration-500 ${
-                                    percentUsed > 90 ? 'bg-red-500' : percentUsed > 70 ? 'bg-amber-400' : 'bg-emerald-400'
-                                }" style="width: ${percentUsed}%"></div>
                             </div>
                         </div>
                     </div>
@@ -142,11 +123,11 @@ export const renderWallet = () => {
                         </div>
                     </div>
 
-                    <!-- Category Budgets List -->
+                    <!-- Category Expenses List -->
                     <div class="white-card p-5 border border-slate-700/60 shadow-xl">
                         <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
                             <div class="flex items-center gap-2">
-                                <h3 class="text-base font-display font-black text-white uppercase tracking-tight">Presupuesto por Categoría</h3>
+                                <h3 class="text-base font-display font-black text-white uppercase tracking-tight">Gastos por Categoría</h3>
                                 <span class="text-xs text-slate-400 font-mono font-bold">(${categories.length})</span>
                             </div>
                             <button id="open-new-cat-from-list-btn" class="text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-500/30 transition-all cursor-pointer">
@@ -159,28 +140,19 @@ export const renderWallet = () => {
                             ${summary.byCategory.map(item => {
                                 const cat = item.category;
                                 const spentFormatted = formatMoney(item.spent);
-                                const budgetFormatted = formatMoney(item.budget);
-                                const isOver = item.spent > item.budget && item.budget > 0;
 
                                 return `
-                                <div class="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-700/60 flex flex-col gap-2">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center gap-2.5">
-                                            <span class="text-xl">${cat.icon || '🏷️'}</span>
-                                            <div>
-                                                <h4 class="text-xs font-bold text-white">${cat.name}</h4>
-                                                <span class="text-[10px] text-slate-400 font-mono">${spentFormatted} de ${budgetFormatted}</span>
-                                            </div>
+                                <div class="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-700/60 flex items-center justify-between">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="text-xl">${cat.icon || '🏷️'}</span>
+                                        <div>
+                                            <h4 class="text-xs font-bold text-white">${cat.name}</h4>
+                                            <span class="text-[10px] text-slate-400 font-mono">${item.spent > 0 ? `${spentFormatted} gastado este mes` : 'Sin gastos este mes'}</span>
                                         </div>
-                                        <span class="text-xs font-mono font-bold ${isOver ? 'text-red-400' : 'text-slate-300'}">
-                                            ${item.percent}%
-                                        </span>
                                     </div>
-                                    <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                                        <div class="h-full rounded-full transition-all duration-300 ${
-                                            isOver ? 'bg-red-500' : item.percent > 80 ? 'bg-amber-400' : 'bg-emerald-400'
-                                        }" style="width: ${Math.min(100, item.percent)}%"></div>
-                                    </div>
+                                    <span class="text-xs font-mono font-bold ${item.spent > 0 ? 'text-emerald-400' : 'text-slate-500'}">
+                                        ${spentFormatted}
+                                    </span>
                                 </div>
                                 `;
                             }).join('')}

@@ -26,7 +26,7 @@ export const renderDashboard = () => {
     // Daily Stats & Burn
     const stats = getDailyStats(selectedDate);
     const dailyBurn = getDailyBurn(selectedDate);
-    const dayStats = state.days?.[selectedDate] || {};
+    const dayStats = state.days?.[selectedDate] || {};
 
     // Auto habits generation once a day
     if (state.lastHabitGenerationDate !== today && !window.hasTriggeredHabits) {
@@ -177,7 +177,7 @@ export const renderDashboard = () => {
                                         <span class="material-symbols-outlined text-xl">account_balance_wallet</span>
                                     </div>
                                     <div>
-                                        <span class="text-[10px] font-bold uppercase tracking-wider text-blue-300">Presupuestos</span>
+                                        <span class="text-[10px] font-bold uppercase tracking-wider text-blue-300">Finanzas</span>
                                         <h3 class="text-base font-display font-black text-white uppercase">Mi Billetera</h3>
                                     </div>
                                 </div>
@@ -194,9 +194,9 @@ export const renderDashboard = () => {
                                     </p>
                                 </div>
                                 <div class="text-right">
-                                    <span class="text-[10px] text-slate-400 block uppercase">Presupuesto</span>
+                                    <span class="text-[10px] text-slate-400 block uppercase">Registros</span>
                                     <p class="font-mono font-bold text-slate-300">
-                                        $${(state.expenseCategories || []).reduce((s, c) => s + Number(c.monthly_budget || 0), 0).toLocaleString('es-AR')}
+                                        ${(state.expenses || []).filter(e => e.date?.startsWith(today.substring(0, 7))).length} gastos
                                     </p>
                                 </div>
                             </div>
@@ -341,7 +341,7 @@ export const renderDashboard = () => {
 
         <!-- Global Modals Container -->
         <div id="meal-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4"></div>
-        <div id="barcode-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4"></div>
+        <div id="barcode-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4"></div>
     </div>
     `;
 };
@@ -398,7 +398,7 @@ export const attachDashboardEvents = () => {
     const fileInput = document.getElementById('quick-log-file');
     const barcodeBtn = document.getElementById('open-barcode-modal-btn');
     const modal = document.getElementById('meal-modal');
-    const barcodeModal = document.getElementById('barcode-modal');
+    const barcodeModal = document.getElementById('barcode-modal');
 
     // Analysis Logic (OpenAI)
     const handleAnalysis = async (text, file) => {

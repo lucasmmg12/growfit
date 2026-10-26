@@ -66,12 +66,12 @@ const defaultState = {
     dailyTip: { date: null, content: null },
     obetideTreatments: [],
     expenseCategories: [
-        { id: 1, name: 'Alimentación & Supermercado', icon: '🛒', color: '#10b981', monthly_budget: 150000 },
-        { id: 2, name: 'Salud & Obetide', icon: '💉', color: '#3b82f6', monthly_budget: 80000 },
-        { id: 3, name: 'Fitness & Gimnasio', icon: '🏋️', color: '#8b5cf6', monthly_budget: 30000 },
-        { id: 4, name: 'Transporte', icon: '🚗', color: '#f59e0b', monthly_budget: 40000 },
-        { id: 5, name: 'Servicios del Hogar', icon: '💡', color: '#6366f1', monthly_budget: 60000 },
-        { id: 6, name: 'Ocio & Salidas', icon: '🎉', color: '#ec4899', monthly_budget: 50000 }
+        { id: 1, name: 'Alimentación & Supermercado', icon: '🛒', color: '#10b981', monthly_budget: 0 },
+        { id: 2, name: 'Salud & Obetide', icon: '💉', color: '#3b82f6', monthly_budget: 0 },
+        { id: 3, name: 'Fitness & Gimnasio', icon: '🏋️', color: '#8b5cf6', monthly_budget: 0 },
+        { id: 4, name: 'Transporte', icon: '🚗', color: '#f59e0b', monthly_budget: 0 },
+        { id: 5, name: 'Servicios del Hogar', icon: '💡', color: '#6366f1', monthly_budget: 0 },
+        { id: 6, name: 'Ocio & Salidas', icon: '🎉', color: '#ec4899', monthly_budget: 0 }
     ],
     expenses: [],
     aiMealPlans: [],
@@ -106,6 +106,14 @@ export const getState = () => {
     }
     if (!state.gymSessions) {
         state.gymSessions = [];
+    }
+    // Clean up old hardcoded mock budget (410.000) if present in user's localStorage
+    if (state.expenseCategories && Array.isArray(state.expenseCategories)) {
+        const total = state.expenseCategories.reduce((sum, c) => sum + (Number(c.monthly_budget) || 0), 0);
+        if (total === 410000) {
+            state.expenseCategories.forEach(c => { c.monthly_budget = 0; });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
     }
     return state;
 };
