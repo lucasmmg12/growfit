@@ -139,6 +139,81 @@ export const renderDashboard = () => {
                         </div>
                     </div>
 
+                    <!-- Obetide & Mi Billetera Highlight Widgets -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Obetide Clinical Card -->
+                        <div class="white-card p-5 bg-gradient-to-br from-emerald-900 to-teal-950 text-white border-0 shadow-emerald-md flex flex-col justify-between cursor-pointer" onclick="window.router.navigate('obetide')">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="size-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-emerald-300 border border-white/10">
+                                        <span class="material-symbols-outlined text-xl">syringe</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Tratamiento GLP-1</span>
+                                        <h3 class="text-base font-display font-black text-white uppercase">Control Obetide</h3>
+                                    </div>
+                                </div>
+                                <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-400/30 text-[10px]">
+                                    ${state.obetideTreatments?.[0] ? `${state.obetideTreatments[0].dose_ml} ml` : '0.25 ml Inicio'}
+                                </span>
+                            </div>
+
+                            <div class="my-3 flex items-center justify-between text-xs">
+                                <div>
+                                    <span class="text-[10px] text-emerald-300/80 block uppercase">Última Aplicación</span>
+                                    <p class="font-mono font-bold text-white">${state.obetideTreatments?.[0]?.date || 'Pendiente'}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] text-emerald-300/80 block uppercase">Sitio</span>
+                                    <p class="font-bold text-white capitalize">${(state.obetideTreatments?.[0]?.injection_site || 'Abdomen').replace('_', ' ')}</p>
+                                </div>
+                            </div>
+
+                            <div class="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-emerald-200">
+                                <span>Ver titulación & dosis</span>
+                                <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                            </div>
+                        </div>
+
+                        <!-- Mi Billetera Card -->
+                        <div class="white-card p-5 bg-gradient-to-br from-blue-950 to-slate-900 text-white border-0 shadow-sm flex flex-col justify-between cursor-pointer" onclick="window.router.navigate('wallet')">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="size-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-blue-300 border border-white/10">
+                                        <span class="material-symbols-outlined text-xl">account_balance_wallet</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] font-bold uppercase tracking-wider text-blue-300">Presupuestos</span>
+                                        <h3 class="text-base font-display font-black text-white uppercase">Mi Billetera</h3>
+                                    </div>
+                                </div>
+                                <span class="badge-emerald bg-blue-500/20 text-blue-300 border-blue-400/30 text-[10px]">
+                                    ${today.substring(0, 7)}
+                                </span>
+                            </div>
+
+                            <div class="my-3 flex items-center justify-between text-xs">
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block uppercase">Gastos del Mes</span>
+                                    <p class="font-mono font-black text-white text-base">
+                                        $${(state.expenses || []).filter(e => e.date?.startsWith(today.substring(0, 7))).reduce((s, e) => s + Number(e.amount), 0).toLocaleString('es-AR')}
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] text-slate-400 block uppercase">Presupuesto</span>
+                                    <p class="font-mono font-bold text-slate-300">
+                                        $${(state.expenseCategories || []).reduce((s, c) => s + Number(c.monthly_budget || 0), 0).toLocaleString('es-AR')}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-blue-200">
+                                <span>Ver detalle & categorías</span>
+                                <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Main Metric Bento Grid -->
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
                         

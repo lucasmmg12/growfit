@@ -602,3 +602,131 @@ export const generateShoppingList = async (profile, history) => {
     return "Error al generar lista de compras.";
   }
 };
+
+// --- COACHING IA: TRATAMIENTO OBETIDE (GLP-1) Y RESUMEN DIARIO/SEMANAL ---
+
+export const generateObetideCoachingSummary = async (state) => {
+  const apiKey = getOpenAIKey();
+  if (!apiKey) throw new Error("Missing OpenAI API Key");
+
+  const latestObetide = state.obetideTreatments?.[0] || null;
+  const recentMeals = (state.dailyLog || []).slice(0, 15);
+  const recentMeasurements = (state.measurements || []).slice(0, 5);
+  const profile = state.profile || {};
+
+  const systemPrompt = `
+    Eres un médico endocrinólogo y nutricionista clínico de alta experiencia, especialista en agonistas del receptor GLP-1 (como Obetide / Semaglutida).
+    El usuario está en un tratamiento médico con Obetide para descenso de peso, iniciando con titulación progresiva de 0.25 ml por semana.
+    
+    Analiza la situación actual y devuelve un JSON con:
+    {
+      "statusTitle": "Título motivador y clínico (ej: Buena tolerancia a 0.25 ml)",
+      "titrationStatus": "Evaluación de la dosis actual y cuándo evaluar el próximo escalón",
+      "proteinAlert": "Consejo sobre masa muscular y consumo proteico",
+      "satietyNotes": "Análisis de saciedad y efectos secundarios",
+      "actionableTips": ["Tip 1", "Tip 2", "Tip 3"]
+    }
+
+    Reglas:
+    - Prioriza siempre la preservación de masa muscular magra (consumo de proteína 1.6-2.0 g/kg).
+    - Prevención de náuseas o reflujo: porciones chicas, masticar despacio, evitar grasas pesadas e hidratación constante.
+    - Responde únicamente el objeto JSON sin formato markdown.
+  `;
+
+  const userContext = JSON.stringify({
+    profile: {
+      name: profile.name,
+      currentWeight: recentMeasurements[0]?.weight || profile.startingWeight,
+      targetWeight: profile.targetWeight,
+      dailyCalorieGoal: profile.calorieGoal,
+      proteinGoal: profile.proteinGoal
+    },
+    latestObetideTreatment: latestObetide,
+    recentMealsCount: recentMeals.length,
+    recentWeightTrend: recentMeasurements.map(m => ({ date: m.date, weight: m.weight }))
+  });
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Analiza este paciente en tratamiento con Obetide: ${userContext}` }
+        ],
+        temperature: 0.7
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    const content = data.choices[0].message.content.trim().replace(/^```json/, '').replace(/```$/, '');
+    return JSON.parse(content);
+  } catch (err) {
+    console.error("Error generating Obetide coaching summary:", err);
+    throw err;
+  }
+};
+
+// --- GENERADOR DE PLAN NUTRICIONAL ADAPTADO A OBETIDE (GLP-1) ---
+
+export const generateMealPlanWithAI = async (profile, targetCalories = null) => {
+  const apiKey = getOpenAIKey();
+  if (!apiKey) throw new Error("Missing OpenAI API Key");
+
+  const calories = targetCalories || profile.calorieGoal || 1800;
+
+  const systemPrompt = `
+    Eres un Nutricionista Deportivo y Clínico experto en pacientes bajo tratamiento médico con agonistas GLP-1 (Obetide / Semaglutida).
+    Crea un plan de alimentación estructurado para 7 días enfocado en:
+    1. Alta densidad proteica para proteger masa muscular mientras se pierde grasa.
+    2. Digestibilidad ligera: platos sin exceso de grasas saturadas para prevenir náuseas y pesadez gastrointestinal típicas del GLP-1.
+    3. Distribución en 4 a 5 comidas chicas y fáciles de tolerar.
+    4. Meta calórica diaria: aprox ${calories} kcal.
+
+    Devuelve ÚNICAMENTE un JSON con esta estructura exacta:
+    {
+      "targetCalories": ${calories},
+      "estimatedProteinGrams": number,
+      "clinicalRecommendation": "Recomendación médica sobre hidratación y tiempos de ingesta",
+      "days": [
+        {
+          "day": "Lunes",
+          "meals": [
+            { "meal": "Desayuno", "name": "Nombre del plato", "calories": 350, "protein": 30, "description": "Detalle y porciones" },
+            { "meal": "Almuerzo", "name": "Nombre del plato", "calories": 500, "protein": 45, "description": "Detalle y porciones" },
+            { "meal": "Merienda", "name": "Nombre del plato", "calories": 250, "protein": 20, "description": "Detalle y porciones" },
+            { "meal": "Cena", "name": "Nombre del plato", "calories": 400, "protein": 35, "description": "Detalle y porciones" }
+          ]
+        }
+      ]
+    }
+    No incluyas markdown backticks en la respuesta.
+  `;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Generar plan nutricional para ${profile.name || 'Paciente'}, peso meta: ${profile.targetWeight || 70}kg.` }
+        ],
+        temperature: 0.7
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    const content = data.choices[0].message.content.trim().replace(/^```json/, '').replace(/```$/, '');
+    return JSON.parse(content);
+  } catch (err) {
+    console.error("Error generating meal plan:", err);
+    throw err;
+  }
+};
+

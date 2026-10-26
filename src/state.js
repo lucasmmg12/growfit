@@ -7,7 +7,14 @@ import {
     addMeasurementDB,
     addWorkoutDB,
     deleteWorkoutDB,
-    updateMealDB
+    updateMealDB,
+    addObetideTreatmentDB,
+    deleteObetideTreatmentDB,
+    saveExpenseCategoryDB,
+    deleteExpenseCategoryDB,
+    addExpenseDB,
+    deleteExpenseDB,
+    saveAiMealPlanDB
 } from './services/db';
 
 const STORAGE_KEY = 'growfit_state_v1';
@@ -57,6 +64,17 @@ const defaultState = {
     ],
     habitLog: {},
     dailyTip: { date: null, content: null },
+    obetideTreatments: [],
+    expenseCategories: [
+        { id: 1, name: 'Alimentación & Supermercado', icon: '🛒', color: '#10b981', monthly_budget: 150000 },
+        { id: 2, name: 'Salud & Obetide', icon: '💉', color: '#3b82f6', monthly_budget: 80000 },
+        { id: 3, name: 'Fitness & Gimnasio', icon: '🏋️', color: '#8b5cf6', monthly_budget: 30000 },
+        { id: 4, name: 'Transporte', icon: '🚗', color: '#f59e0b', monthly_budget: 40000 },
+        { id: 5, name: 'Servicios del Hogar', icon: '💡', color: '#6366f1', monthly_budget: 60000 },
+        { id: 6, name: 'Ocio & Salidas', icon: '🎉', color: '#ec4899', monthly_budget: 50000 }
+    ],
+    expenses: [],
+    aiMealPlans: [],
     currentView: 'dashboard',
     selectedDate: getArgentinaDate()
 };
@@ -124,7 +142,11 @@ export const initializeState = async () => {
                 // Cloud DB is the authoritative source of truth
                 dailyLog: (cloudData.dailyLog && cloudData.dailyLog.length > 0) ? cloudData.dailyLog : (local.dailyLog || []),
                 measurements: (cloudData.measurements && cloudData.measurements.length > 0) ? cloudData.measurements : (local.measurements || []),
-                workouts: (cloudData.workouts && cloudData.workouts.length > 0) ? cloudData.workouts : (local.workouts || [])
+                workouts: (cloudData.workouts && cloudData.workouts.length > 0) ? cloudData.workouts : (local.workouts || []),
+                obetideTreatments: (cloudData.obetideTreatments && cloudData.obetideTreatments.length > 0) ? cloudData.obetideTreatments : (local.obetideTreatments || []),
+                expenseCategories: (cloudData.expenseCategories && cloudData.expenseCategories.length > 0) ? cloudData.expenseCategories : (local.expenseCategories && local.expenseCategories.length > 0 ? local.expenseCategories : defaultState.expenseCategories),
+                expenses: (cloudData.expenses && cloudData.expenses.length > 0) ? cloudData.expenses : (local.expenses || []),
+                aiMealPlans: (cloudData.aiMealPlans && cloudData.aiMealPlans.length > 0) ? cloudData.aiMealPlans : (local.aiMealPlans || [])
             };
 
             localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
@@ -603,3 +625,198 @@ export const setDailyTip = (content) => {
     state.dailyTip = { date: today, content };
     saveState(state);
 };
+
+// --- OBETIDE (GLP-1) ACTIONS ---
+
+export const addObetideTreatment = async (data) => {
+    const state = getState();
+    if (!state.obetideTreatments) state.obetideTreatments = [];
+
+    const newEntry = {
+        id: Date.now(),
+        date: data.date || getArgentinaDate(),
+        dose_ml: Number(data.dose_ml || data.dose || 0.25),
+        injection_site: data.injection_site || 'abdomen_der',
+        satiety_level: Number(data.satiety_level || 7),
+        side_effects: data.side_effects || [],
+        notes: data.notes || '',
+        created_at: new Date().toISOString()
+    };
+
+    state.obetideTreatments.unshift(newEntry);
+    addXP(state, 60);
+    saveState(state);
+
+    const saved = await addObetideTreatmentDB(newEntry);
+    if (saved && saved.id) {
+        newEntry.id = saved.id;
+        saveState(state);
+    }
+    return newEntry;
+};
+
+export const deleteObetideTreatment = async (id) => {
+    const state = getState();
+    if (!state.obetideTreatments) return;
+    state.obetideTreatments = state.obetideTreatments.filter(t => t.id !== id);
+    saveState(state);
+    await deleteObetideTreatmentDB(id);
+};
+
+export const getLatestObetideTreatment = () => {
+    const state = getState();
+    if (!state.obetideTreatments || state.obetideTreatments.length === 0) return null;
+    return [...state.obetideTreatments].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+};
+
+// --- MI BILLETERA (FINANZAS & PRESUPUESTOS) ACTIONS ---
+
+export const addExpense = async (data) => {
+    const state = getState();
+    if (!state.expenses) state.expenses = [];
+
+    const newExpense = {
+        id: Date.now(),
+        category_id: data.category_id || null,
+        category_name: data.category_name || 'General',
+        amount: Number(data.amount),
+        date: data.date || getArgentinaDate(),
+        description: data.description || '',
+        payment_method: data.payment_method || 'tarjeta_debito',
+        created_at: new Date().toISOString()
+    };
+
+    state.expenses.unshift(newExpense);
+    addXP(state, 20);
+    saveState(state);
+
+    const saved = await addExpenseDB(newExpense);
+    if (saved && saved.id) {
+        newExpense.id = saved.id;
+        saveState(state);
+    }
+    return newExpense;
+};
+
+export const deleteExpense = async (id) => {
+    const state = getState();
+    if (!state.expenses) return;
+    state.expenses = state.expenses.filter(e => e.id !== id);
+    saveState(state);
+    await deleteExpenseDB(id);
+};
+
+export const saveExpenseCategory = async (catData) => {
+    const state = getState();
+    if (!state.expenseCategories) state.expenseCategories = [];
+
+    let updatedCat = null;
+    const existingIndex = state.expenseCategories.findIndex(c => c.id === catData.id);
+
+    if (existingIndex >= 0) {
+        state.expenseCategories[existingIndex] = { ...state.expenseCategories[existingIndex], ...catData };
+        updatedCat = state.expenseCategories[existingIndex];
+    } else {
+        updatedCat = {
+            id: catData.id || `temp-${Date.now()}`,
+            name: catData.name,
+            icon: catData.icon || '💰',
+            color: catData.color || '#3b82f6',
+            monthly_budget: Number(catData.monthly_budget || 0)
+        };
+        state.expenseCategories.push(updatedCat);
+    }
+
+    saveState(state);
+    const dbResult = await saveExpenseCategoryDB(updatedCat);
+    if (dbResult && dbResult.id) {
+        updatedCat.id = dbResult.id;
+        saveState(state);
+    }
+    return updatedCat;
+};
+
+export const deleteExpenseCategory = async (id) => {
+    const state = getState();
+    if (!state.expenseCategories) return;
+    state.expenseCategories = state.expenseCategories.filter(c => c.id !== id);
+    saveState(state);
+    await deleteExpenseCategoryDB(id);
+};
+
+export const getFinancialSummary = (monthStr = null) => {
+    const state = getState();
+    const expenses = state.expenses || [];
+    const categories = state.expenseCategories || [];
+
+    const targetMonth = monthStr || getArgentinaDate().substring(0, 7); // 'YYYY-MM'
+    const monthExpenses = expenses.filter(e => e.date && e.date.startsWith(targetMonth));
+
+    const totalSpent = monthExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const totalBudget = categories.reduce((sum, c) => sum + Number(c.monthly_budget || 0), 0);
+
+    // Spend by category
+    const byCategory = {};
+    categories.forEach(c => {
+        byCategory[c.id || c.name] = {
+            category: c,
+            spent: 0,
+            budget: Number(c.monthly_budget || 0),
+            percent: 0
+        };
+    });
+
+    monthExpenses.forEach(e => {
+        const key = e.category_id || e.category_name;
+        if (!byCategory[key]) {
+            byCategory[key] = {
+                category: { name: e.category_name, icon: '🏷️', color: '#94a3b8', monthly_budget: 0 },
+                spent: 0,
+                budget: 0,
+                percent: 0
+            };
+        }
+        byCategory[key].spent += Number(e.amount || 0);
+    });
+
+    Object.values(byCategory).forEach(item => {
+        if (item.budget > 0) {
+            item.percent = Math.min(200, Math.round((item.spent / item.budget) * 100));
+        } else {
+            item.percent = 0;
+        }
+    });
+
+    return {
+        month: targetMonth,
+        totalSpent,
+        totalBudget,
+        remainingBudget: Math.max(0, totalBudget - totalSpent),
+        byCategory: Object.values(byCategory),
+        recentExpenses: monthExpenses.slice(0, 10)
+    };
+};
+
+// --- PLANES DE ALIMENTACIÓN IA ---
+
+export const saveAiMealPlan = async (plan) => {
+    const state = getState();
+    if (!state.aiMealPlans) state.aiMealPlans = [];
+
+    const entry = {
+        id: Date.now(),
+        target_calories: plan.target_calories || 1800,
+        plan_data: plan.plan_data || plan,
+        created_at: new Date().toISOString()
+    };
+
+    state.aiMealPlans.unshift(entry);
+    saveState(state);
+    const saved = await saveAiMealPlanDB(entry);
+    if (saved && saved.id) {
+        entry.id = saved.id;
+        saveState(state);
+    }
+    return entry;
+};
+
