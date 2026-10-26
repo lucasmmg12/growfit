@@ -3,7 +3,7 @@ import { renderSidebar, renderMobileHeader, renderBottomNav } from '../component
 import Chart from 'chart.js/auto';
 
 let walletChartInstance = null;
-let expandedCategories = new Set(['vivienda-servicios', 'compromisos-cuotas', 'operativos-vida']);
+let expandedCategories = new Set(['vivienda-servicios', 'compromisos-cuotas', 'operativos-vida', 'salud-obetide']);
 
 export const renderWallet = () => {
     const state = getState();
@@ -171,15 +171,15 @@ export const renderWallet = () => {
                                         💉
                                     </div>
                                     <div>
-                                        <p class="text-xs font-semibold text-white">Tratamiento Obetide</p>
-                                        <span class="text-[10px] text-purple-300">Gasto mensual acumulado</span>
+                                        <p class="text-xs font-semibold text-white">Tratamiento Dutide & Tiroides</p>
+                                        <span class="text-[10px] text-purple-300">Dutide ($100.000) + Levotiroxina ($15.000)</span>
                                     </div>
                                 </div>
                                 <div class="text-right">
                                     <span class="font-mono font-bold text-[#BF5AF2] text-lg">
                                         ${formatMoney(
                                             (state.expenses || [])
-                                                .filter(e => e.date?.startsWith(currentMonth) && (e.category_name?.toLowerCase().includes('obetide') || e.category_name?.toLowerCase().includes('salud')))
+                                                .filter(e => e.date?.startsWith(currentMonth) && (e.category_id === 'salud-obetide' || e.category_name?.toLowerCase().includes('salud') || e.name?.toLowerCase().includes('dutide') || e.name?.toLowerCase().includes('levotiroxina') || e.category_name?.toLowerCase().includes('obetide')))
                                                 .reduce((sum, e) => sum + Number(e.amount), 0)
                                         )}
                                     </span>
@@ -187,8 +187,8 @@ export const renderWallet = () => {
                             </div>
 
                             <p class="text-[11px] text-slate-400 flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-amber-400 text-sm">lightbulb</span>
-                                Inversión prioritaria: promueve saciedad temprana y reduce gastos de comida impulsiva.
+                                <span class="material-symbols-outlined text-purple-400 text-sm">verified_user</span>
+                                Inversión prioritaria: control metabólico, saciedad temprana y soporte endocrino.
                             </p>
                         </div>
                     </div>

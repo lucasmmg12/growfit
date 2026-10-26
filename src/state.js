@@ -113,11 +113,14 @@ const defaultState = {
         },
         {
             id: 'salud-obetide',
-            name: 'Salud & Obetide',
+            name: 'Salud & Medicación',
             icon: '💉',
             color: '#BF5AF2',
-            monthly_budget: 0,
-            items: []
+            monthly_budget: 115000,
+            items: [
+                { name: 'Dutide', amount: 100000 },
+                { name: 'Levotiroxina', amount: 15000 }
+            ]
         }
     ],
     expenses: [
@@ -136,7 +139,9 @@ const defaultState = {
         { id: 'exp-13', name: 'Combustible', amount: 150000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-16', is_recurring: true },
         { id: 'exp-14', name: 'Almuerzos', amount: 125000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-18', is_recurring: false },
         { id: 'exp-15', name: 'Transporte de los niños', amount: 90000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-02', is_recurring: true },
-        { id: 'exp-16', name: 'Gimnasio', amount: 40000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-03', is_recurring: true }
+        { id: 'exp-16', name: 'Gimnasio', amount: 40000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-03', is_recurring: true },
+        { id: 'exp-17', name: 'Dutide', amount: 100000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-20', is_recurring: true },
+        { id: 'exp-18', name: 'Levotiroxina', amount: 15000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-21', is_recurring: true }
     ],
     aiMealPlans: [],
     currentView: 'dashboard',
@@ -181,6 +186,28 @@ export const getState = () => {
         state.expenseCategories = defaultState.expenseCategories;
         state.expenses = defaultState.expenses;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } else {
+        // Ensure Salud & Medicación has Dutide and Levotiroxina
+        const saludCat = state.expenseCategories?.find(c => c.id === 'salud-obetide');
+        if (saludCat && (saludCat.monthly_budget !== 115000 || !saludCat.items?.some(i => i.name === 'Dutide'))) {
+            saludCat.name = 'Salud & Medicación';
+            saludCat.monthly_budget = 115000;
+            saludCat.items = [
+                { name: 'Dutide', amount: 100000 },
+                { name: 'Levotiroxina', amount: 15000 }
+            ];
+            if (!state.expenses.some(e => e.name === 'Dutide')) {
+                state.expenses.push(
+                    { id: 'exp-17', name: 'Dutide', amount: 100000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-20', is_recurring: true }
+                );
+            }
+            if (!state.expenses.some(e => e.name === 'Levotiroxina')) {
+                state.expenses.push(
+                    { id: 'exp-18', name: 'Levotiroxina', amount: 15000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-21', is_recurring: true }
+                );
+            }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
     }
     return state;
 };
