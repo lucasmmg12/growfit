@@ -1,4 +1,4 @@
-import { getState, addExpense, deleteExpense, saveExpenseCategory, deleteExpenseCategory, getFinancialSummary, setMonthlyIncome, getArgentinaDate } from '../state';
+import { getState, addExpense, deleteExpense, saveExpenseCategory, deleteExpenseCategory, getFinancialSummary, setMonthlyIncome, getArgentinaDate, toggleExpensePaid, setAllExpensesPaid } from '../state';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
 import Chart from 'chart.js/auto';
 
@@ -39,7 +39,7 @@ export const renderWallet = () => {
                     <!-- Apple Health / iOS 18 Hero Cashflow Card -->
                     <div class="white-card p-6 md:p-8 bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/[0.08] shadow-2xl relative overflow-hidden">
                         <!-- Top Metadata -->
-                        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+                        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
                             <div class="flex items-center gap-2">
                                 <span class="badge-emerald py-1 px-3 text-xs font-semibold">
                                     <span class="size-1.5 rounded-full bg-[#10E775] animate-pulse"></span>
@@ -51,11 +51,39 @@ export const renderWallet = () => {
                                 </span>
                             </div>
 
-                            <button id="open-income-modal-btn" class="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer font-medium py-1 px-2.5 rounded-xl hover:bg-white/5">
-                                <span class="material-symbols-outlined text-sm">edit</span>
-                                Ajustar Sueldo
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button id="mark-all-paid-btn" class="text-xs text-[#10E775] hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer font-medium py-1 px-2.5 rounded-xl hover:bg-[#10E775]/10 border border-[#10E775]/20">
+                                    <span class="material-symbols-outlined text-sm">done_all</span>
+                                    ${summary.isAllPaid ? 'Todo Pagado' : 'Marcar todo pagado'}
+                                </button>
+                                <button id="open-income-modal-btn" class="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer font-medium py-1 px-2.5 rounded-xl hover:bg-white/5">
+                                    <span class="material-symbols-outlined text-sm">edit</span>
+                                    Ajustar Sueldo
+                                </button>
+                            </div>
                         </div>
+
+                        ${summary.isAllPaid ? `
+                        <!-- 100% Paid & Fulfilled Celebration Banner -->
+                        <div class="mb-6 p-4 md:p-5 rounded-2xl bg-gradient-to-r from-[#10E775]/15 via-[#10E775]/10 to-transparent border border-[#10E775]/30 flex flex-wrap sm:flex-nowrap items-center justify-between gap-4">
+                            <div class="flex items-center gap-3.5">
+                                <div class="size-11 rounded-2xl bg-[#10E775]/20 border border-[#10E775]/40 flex items-center justify-center text-[#10E775] shrink-0 shadow-lg shadow-[#10E775]/10">
+                                    <span class="material-symbols-outlined text-2xl">verified</span>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="text-sm md:text-base font-bold text-white tracking-tight">¡Octubre 100% Pagado y Cumplido!</h4>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#10E775] text-[#0D1117] uppercase tracking-wider">Al día</span>
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-1">Has cancelado y cumplido todos tus compromisos del mes (${summary.paidCount} conceptos por ${formatMoney(summary.totalPaid)}). Sin deudas pendientes.</p>
+                                </div>
+                            </div>
+                            <div class="hidden sm:flex flex-col items-end shrink-0">
+                                <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 font-mono">Pendiente</span>
+                                <span class="text-lg font-mono font-bold text-[#10E775]">$0</span>
+                            </div>
+                        </div>
+                        ` : ''}
 
                         <!-- 3 Hero KPIs (Apple Rings Grid) -->
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
@@ -73,34 +101,37 @@ export const renderWallet = () => {
                                 </div>
                             </div>
 
-                            <!-- Expenses -->
+                            <!-- Expenses / Paid -->
                             <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col justify-between">
                                 <span class="text-[11px] font-medium text-slate-400 flex items-center justify-between">
-                                    Gastos del Mes
-                                    <span class="material-symbols-outlined text-base text-slate-300">receipt_long</span>
+                                    Total Pagado y Cumplido
+                                    <span class="material-symbols-outlined text-base text-[#10E775]">task_alt</span>
                                 </span>
                                 <div class="mt-2">
                                     <h3 class="text-2xl md:text-2xl font-bold font-mono tracking-tight text-white">
-                                        ${formatMoney(totalSpent)}
+                                        ${formatMoney(summary.totalPaid)}
                                     </h3>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">${(state.expenses || []).filter(e => e.date?.startsWith(currentMonth)).length} conceptos activos</p>
+                                    <p class="text-[10px] ${summary.isAllPaid ? 'text-[#10E775]' : 'text-slate-400'} font-medium mt-0.5 flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-xs">check</span>
+                                        ${summary.paidCount} de ${summary.paidCount + summary.pendingCount} pagados (${summary.isAllPaid ? '100% al día' : `${formatMoney(summary.totalPending)} pendiente`})
+                                    </p>
                                 </div>
                             </div>
 
-                            <!-- Net Cash Balance / Gap -->
-                            <div class="p-4 rounded-2xl ${isDeficit ? 'bg-red-500/[0.06] border-red-500/20' : 'bg-emerald-500/[0.06] border-emerald-500/20'} border flex flex-col justify-between">
-                                <span class="text-[11px] font-medium ${isDeficit ? 'text-red-300' : 'text-emerald-300'} flex items-center justify-between">
-                                    ${isDeficit ? 'Brecha / Déficit' : 'Saldo Disponible'}
-                                    <span class="material-symbols-outlined text-base ${isDeficit ? 'text-[#FF453A]' : 'text-[#10E775]'}">
-                                        ${isDeficit ? 'error' : 'check_circle'}
+                            <!-- Net Cash Balance / Status -->
+                            <div class="p-4 rounded-2xl ${summary.isAllPaid ? 'bg-[#10E775]/[0.08] border-[#10E775]/25' : isDeficit ? 'bg-red-500/[0.06] border-red-500/20' : 'bg-emerald-500/[0.06] border-emerald-500/20'} border flex flex-col justify-between">
+                                <span class="text-[11px] font-medium ${summary.isAllPaid ? 'text-emerald-300' : isDeficit ? 'text-red-300' : 'text-emerald-300'} flex items-center justify-between">
+                                    ${summary.isAllPaid ? 'Estado de Compromisos' : isDeficit ? 'Brecha / Déficit' : 'Saldo Disponible'}
+                                    <span class="material-symbols-outlined text-base ${summary.isAllPaid ? 'text-[#10E775]' : isDeficit ? 'text-[#FF453A]' : 'text-[#10E775]'}">
+                                        ${summary.isAllPaid ? 'verified' : isDeficit ? 'error' : 'check_circle'}
                                     </span>
                                 </span>
                                 <div class="mt-2">
-                                    <h3 class="text-2xl md:text-2xl font-bold font-mono tracking-tight ${isDeficit ? 'text-[#FF453A]' : 'text-[#10E775]'}">
-                                        ${formatMoney(netBalance)}
+                                    <h3 class="text-2xl md:text-2xl font-bold font-mono tracking-tight ${summary.isAllPaid ? 'text-[#10E775]' : isDeficit ? 'text-[#FF453A]' : 'text-[#10E775]'}">
+                                        ${summary.isAllPaid ? '100% Cubierto' : formatMoney(netBalance)}
                                     </h3>
-                                    <p class="text-[10px] ${isDeficit ? 'text-red-300/80' : 'text-emerald-300/80'} mt-0.5">
-                                        ${isDeficit ? 'Obligaciones superan el sueldo' : 'Superávit positivo'}
+                                    <p class="text-[10px] ${summary.isAllPaid ? 'text-emerald-300/80' : isDeficit ? 'text-red-300/80' : 'text-emerald-300/80'} mt-0.5">
+                                        ${summary.isAllPaid ? 'Sueldo + Fondos Propios integrados' : isDeficit ? 'Obligaciones superan el sueldo' : 'Superávit positivo'}
                                     </p>
                                 </div>
                             </div>
@@ -109,14 +140,19 @@ export const renderWallet = () => {
                         <!-- Cashflow Coverage Meter (Apple iOS Bar) -->
                         <div class="mt-5 pt-4 border-t border-white/[0.06]">
                             <div class="flex items-center justify-between text-xs mb-1.5 font-medium">
-                                <span class="text-slate-400">Cobertura con Ingreso Sanatorio</span>
-                                <span class="${isDeficit ? 'text-red-300' : 'text-[#10E775]'} font-mono font-semibold">
-                                    ${coveragePercent}% cubierto
+                                <span class="text-slate-400">Estado de Liquidación y Cumplimiento</span>
+                                <span class="text-[#10E775] font-mono font-semibold flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-xs">task_alt</span>
+                                    ${summary.isAllPaid ? `100% Abonado (${summary.paidCount} de ${summary.paidCount} conceptos)` : `${coveragePercent}% cubierto con sueldo`}
                                 </span>
                             </div>
                             <div class="h-2 w-full bg-white/[0.06] rounded-full overflow-hidden">
-                                <div class="h-full rounded-full transition-all duration-700 ${isDeficit ? 'bg-gradient-to-r from-[#10E775] via-[#FF9F0A] to-[#FF453A]' : 'bg-[#10E775]'}" style="width: ${Math.min(100, coveragePercent)}%"></div>
+                                <div class="h-full rounded-full transition-all duration-700 bg-[#10E775]" style="width: ${summary.isAllPaid ? '100' : Math.min(100, coveragePercent)}%"></div>
                             </div>
+                            <p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm text-[#0A84FF]">info</span>
+                                Sueldo Sanatorio cubrió ${formatMoney(monthlyIncome)} (75%) · El saldo complementario de ${formatMoney(Math.abs(netBalance))} fue cancelado con fondos y ahorros personales.
+                            </p>
                         </div>
                     </div>
 
@@ -214,6 +250,7 @@ export const renderWallet = () => {
                                     (e.date?.startsWith(currentMonth)) && 
                                     (String(e.category_id) === String(cat.id) || e.category_name === cat.name)
                                 );
+                                const allCatPaid = catExpenses.length > 0 && catExpenses.every(e => e.is_paid !== false);
 
                                 return `
                                 <div class="rounded-2xl bg-white/[0.025] border border-white/[0.06] overflow-hidden transition-all hover:border-white/[0.12]">
@@ -224,9 +261,17 @@ export const renderWallet = () => {
                                                 ${cat.icon || '🏷️'}
                                             </div>
                                             <div class="min-w-0">
-                                                <h4 class="text-sm font-semibold text-white truncate">${cat.name}</h4>
+                                                <div class="flex items-center gap-2">
+                                                    <h4 class="text-sm font-semibold text-white truncate">${cat.name}</h4>
+                                                    ${allCatPaid ? `
+                                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#10E775]/15 border border-[#10E775]/30 text-[#10E775] flex items-center gap-1">
+                                                            <span class="material-symbols-outlined text-[10px]">check</span>
+                                                            Abonado
+                                                        </span>
+                                                    ` : ''}
+                                                </div>
                                                 <p class="text-[11px] text-slate-400 font-mono mt-0.5">
-                                                    ${catExpenses.length} ${catExpenses.length === 1 ? 'concepto' : 'conceptos'}
+                                                    ${catExpenses.length} ${catExpenses.length === 1 ? 'concepto' : 'conceptos'} · ${catExpenses.filter(e => e.is_paid !== false).length}/${catExpenses.length} al día
                                                 </p>
                                             </div>
                                         </div>
@@ -249,21 +294,28 @@ export const renderWallet = () => {
                                     <!-- Detailed Concepts List -->
                                     <div class="${isExpanded ? 'block' : 'hidden'} px-4 pb-3 pt-1 border-t border-white/[0.04]">
                                         <div class="divide-y divide-white/[0.04]">
-                                            ${catExpenses.length ? catExpenses.map(exp => `
-                                                <div class="py-2.5 flex items-center justify-between text-xs">
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="size-1.5 rounded-full" style="background-color: ${cat.color || '#0A84FF'};"></span>
-                                                        <span class="text-slate-200 font-medium">${exp.name || exp.description}</span>
-                                                        ${exp.is_recurring ? '<span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-slate-400 font-mono">Fijo</span>' : ''}
+                                            ${catExpenses.length ? catExpenses.map(exp => {
+                                                const isPaid = exp.is_paid !== false;
+                                                return `
+                                                <div class="py-2.5 flex items-center justify-between text-xs gap-2">
+                                                    <div class="flex items-center gap-2 min-w-0">
+                                                        <span class="size-1.5 rounded-full shrink-0" style="background-color: ${cat.color || '#0A84FF'};"></span>
+                                                        <span class="text-slate-200 font-medium truncate">${exp.name || exp.description}</span>
+                                                        ${exp.is_recurring ? '<span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-slate-400 font-mono shrink-0">Fijo</span>' : ''}
                                                     </div>
-                                                    <div class="flex items-center gap-3">
+                                                    <div class="flex items-center gap-2.5 shrink-0">
+                                                        <button class="toggle-expense-paid-btn flex items-center gap-1 px-2 py-0.5 rounded-lg ${isPaid ? 'bg-[#10E775]/15 border border-[#10E775]/30 text-[#10E775] hover:bg-[#10E775]/25' : 'bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25'} text-[10px] font-semibold transition-all cursor-pointer" data-id="${exp.id}" title="${isPaid ? 'Marcar como pendiente' : 'Marcar como pagado'}">
+                                                            <span class="material-symbols-outlined text-xs">${isPaid ? 'check_circle' : 'schedule'}</span>
+                                                            ${isPaid ? 'Pagado' : 'Pendiente'}
+                                                        </button>
                                                         <span class="font-mono font-semibold text-slate-100">${formatMoney(exp.amount)}</span>
                                                         <button class="delete-expense-btn size-6 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors cursor-pointer" data-id="${exp.id}" title="Eliminar registro">
                                                             <span class="material-symbols-outlined text-sm">close</span>
                                                         </button>
                                                     </div>
                                                 </div>
-                                            `).join('') : `
+                                                `;
+                                            }).join('') : `
                                                 <p class="py-3 text-xs text-slate-500 italic text-center">No hay gastos cargados en esta categoría para este mes.</p>
                                             `}
                                         </div>
@@ -282,7 +334,9 @@ export const renderWallet = () => {
                         </div>
 
                         <div class="flex flex-col gap-2">
-                            ${(state.expenses || []).length ? (state.expenses || []).slice(0, 10).map(e => `
+                            ${(state.expenses || []).length ? (state.expenses || []).slice(0, 10).map(e => {
+                                const isPaid = e.is_paid !== false;
+                                return `
                                 <div class="flex items-center justify-between p-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] transition-colors">
                                     <div class="flex items-center gap-3">
                                         <div class="size-9 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-base">
@@ -294,14 +348,18 @@ export const renderWallet = () => {
                                         </div>
                                     </div>
 
-                                    <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-2.5 shrink-0">
+                                        <span class="px-2 py-0.5 rounded-md ${isPaid ? 'bg-[#10E775]/10 text-[#10E775] border border-[#10E775]/20' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'} text-[10px] font-mono">
+                                            ${isPaid ? '✓ Pagado' : 'Pendiente'}
+                                        </span>
                                         <span class="font-mono font-semibold text-xs text-slate-200">-${formatMoney(e.amount)}</span>
                                         <button class="delete-expense-btn size-6 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors cursor-pointer" data-id="${e.id}">
                                             <span class="material-symbols-outlined text-sm">delete</span>
                                         </button>
                                     </div>
                                 </div>
-                            `).join('') : `
+                                `;
+                            }).join('') : `
                                 <div class="text-center py-8 text-slate-500">
                                     <span class="material-symbols-outlined text-3xl mb-1">payments</span>
                                     <p class="text-xs">Sin gastos registrados este mes</p>
@@ -599,6 +657,26 @@ export const attachWalletEvents = () => {
                 window.router.navigate('wallet');
             });
         });
+    });
+
+    // Toggle Paid Status on individual concept
+    document.querySelectorAll('.toggle-expense-paid-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            toggleExpensePaid(id);
+            window.router.navigate('wallet');
+        });
+    });
+
+    // Mark All Expenses as Paid for Current Month
+    const markAllBtn = document.getElementById('mark-all-paid-btn');
+    markAllBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const currentMonth = getArgentinaDate().substring(0, 7);
+        setAllExpensesPaid(currentMonth, true);
+        window.showAlert?.('¡Mes 100% al día!', 'Todos los gastos de Octubre han sido marcados como abonados y cumplidos.', 'success');
+        window.router.navigate('wallet');
     });
 
     // Save Budgets

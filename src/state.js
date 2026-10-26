@@ -162,24 +162,24 @@ const defaultState = {
         }
     ],
     expenses: [
-        { id: 'exp-1', name: 'Alquiler casa actual', amount: 1056000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-05', is_recurring: true },
-        { id: 'exp-2', name: 'Luz', amount: 120000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-10', is_recurring: true },
-        { id: 'exp-3', name: 'Gas', amount: 80000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-12', is_recurring: true },
-        { id: 'exp-4', name: 'Conectividad / Internet', amount: 75000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-08', is_recurring: true },
-        { id: 'exp-5', name: 'Agua', amount: 40000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-14', is_recurring: true },
-        { id: 'exp-6', name: 'Municipalidad', amount: 30000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-15', is_recurring: true },
-        { id: 'exp-7', name: 'Cuota Florencia', amount: 500000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-06', is_recurring: true },
-        { id: 'exp-8', name: 'Cuota Auto', amount: 500000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-07', is_recurring: true },
-        { id: 'exp-9', name: 'Préstamo Ángel', amount: 350000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-08', is_recurring: true },
-        { id: 'exp-10', name: 'Refinanciación Banco Nación', amount: 350000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-09', is_recurring: true },
-        { id: 'exp-11', name: 'Cuota Majo', amount: 155000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-11', is_recurring: true },
-        { id: 'exp-12', name: 'Niñera', amount: 200000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-01', is_recurring: true },
-        { id: 'exp-13', name: 'Combustible', amount: 150000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-16', is_recurring: true },
-        { id: 'exp-14', name: 'Almuerzos', amount: 125000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-18', is_recurring: false },
-        { id: 'exp-15', name: 'Transporte de los niños', amount: 90000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-02', is_recurring: true },
-        { id: 'exp-16', name: 'Gimnasio', amount: 40000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-03', is_recurring: true },
-        { id: 'exp-17', name: 'Dutide', amount: 100000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-20', is_recurring: true },
-        { id: 'exp-18', name: 'Levotiroxina', amount: 15000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-21', is_recurring: true }
+        { id: 'exp-1', name: 'Alquiler casa actual', amount: 1056000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-05', is_recurring: true, is_paid: true },
+        { id: 'exp-2', name: 'Luz', amount: 120000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-10', is_recurring: true, is_paid: true },
+        { id: 'exp-3', name: 'Gas', amount: 80000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-12', is_recurring: true, is_paid: true },
+        { id: 'exp-4', name: 'Conectividad / Internet', amount: 75000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-08', is_recurring: true, is_paid: true },
+        { id: 'exp-5', name: 'Agua', amount: 40000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-14', is_recurring: true, is_paid: true },
+        { id: 'exp-6', name: 'Municipalidad', amount: 30000, category_id: 'vivienda-servicios', category_name: 'Vivienda y Servicios', date: '2026-10-15', is_recurring: true, is_paid: true },
+        { id: 'exp-7', name: 'Cuota Florencia', amount: 500000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-06', is_recurring: true, is_paid: true },
+        { id: 'exp-8', name: 'Cuota Auto', amount: 500000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-07', is_recurring: true, is_paid: true },
+        { id: 'exp-9', name: 'Préstamo Ángel', amount: 350000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-08', is_recurring: true, is_paid: true },
+        { id: 'exp-10', name: 'Refinanciación Banco Nación', amount: 350000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-09', is_recurring: true, is_paid: true },
+        { id: 'exp-11', name: 'Cuota Majo', amount: 155000, category_id: 'compromisos-cuotas', category_name: 'Compromisos y Cuotas', date: '2026-10-11', is_recurring: true, is_paid: true },
+        { id: 'exp-12', name: 'Niñera', amount: 200000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-01', is_recurring: true, is_paid: true },
+        { id: 'exp-13', name: 'Combustible', amount: 150000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-16', is_recurring: true, is_paid: true },
+        { id: 'exp-14', name: 'Almuerzos', amount: 125000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-18', is_recurring: false, is_paid: true },
+        { id: 'exp-15', name: 'Transporte de los niños', amount: 90000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-02', is_recurring: true, is_paid: true },
+        { id: 'exp-16', name: 'Gimnasio', amount: 40000, category_id: 'operativos-vida', category_name: 'Operativos y Vida Diaria', date: '2026-10-03', is_recurring: true, is_paid: true },
+        { id: 'exp-17', name: 'Dutide', amount: 100000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-20', is_recurring: true, is_paid: true },
+        { id: 'exp-18', name: 'Levotiroxina', amount: 15000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-21', is_recurring: true, is_paid: true }
     ],
     aiMealPlans: [],
     currentView: 'dashboard',
@@ -304,6 +304,18 @@ export const getState = () => {
                 localStorage.setItem(key, JSON.stringify(state));
             }
         }
+        // Ensure all October expenses for lmarinero are marked as paid
+        let hadUnpaid = false;
+        state.expenses?.forEach(e => {
+            if (e.date?.startsWith('2026-10') && e.is_paid !== true) {
+                e.is_paid = true;
+                hadUnpaid = true;
+            }
+        });
+        if (hadUnpaid) {
+            localStorage.setItem(key, JSON.stringify(state));
+        }
+
         if (state.dailyLog.length === 0) {
             state.dailyLog = defaultState.dailyLog;
             localStorage.setItem(key, JSON.stringify(state));
@@ -1131,17 +1143,48 @@ export const getFinancialSummary = (monthStr = null) => {
         }
     });
 
+    const paidExpenses = monthExpenses.filter(e => e.is_paid !== false);
+    const pendingExpenses = monthExpenses.filter(e => e.is_paid === false);
+    const totalPaid = paidExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const totalPending = pendingExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    const isAllPaid = monthExpenses.length > 0 && pendingExpenses.length === 0;
+
     return {
         month: targetMonth,
         monthlyIncome,
         incomeSource,
         totalSpent,
         totalBudget,
+        totalPaid,
+        totalPending,
+        isAllPaid,
+        paidCount: paidExpenses.length,
+        pendingCount: pendingExpenses.length,
         netBalance,
         remainingBudget: Math.max(0, totalBudget - totalSpent),
         byCategory: Object.values(byCategory),
         recentExpenses: monthExpenses.slice(0, 10)
     };
+};
+
+export const toggleExpensePaid = (id) => {
+    const state = getState();
+    const exp = (state.expenses || []).find(e => String(e.id) === String(id));
+    if (exp) {
+        exp.is_paid = !(exp.is_paid !== false);
+        saveState(state);
+    }
+};
+
+export const setAllExpensesPaid = (monthStr = null, paid = true) => {
+    const state = getState();
+    const targetMonth = monthStr || getArgentinaDate().substring(0, 7);
+    (state.expenses || []).forEach(e => {
+        if (e.date && e.date.startsWith(targetMonth)) {
+            e.is_paid = paid;
+        }
+    });
+    saveState(state);
 };
 
 // --- PLANES DE ALIMENTACIÓN IA ---
