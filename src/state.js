@@ -15,6 +15,11 @@ import {
     addExpenseDB,
     updateExpenseDB,
     deleteExpenseDB,
+    saveIncomeCategoryDB,
+    deleteIncomeCategoryDB,
+    addIncomeDB,
+    updateIncomeDB,
+    deleteIncomeDB,
     saveAiMealPlanDB
 } from './services/db';
 import { getActiveStorageKey, getCurrentUser } from './services/auth';
@@ -125,6 +130,24 @@ const defaultState = {
     obetideTreatments: [],
     monthlyIncome: 2975000,
     incomeSource: 'Sanatorio Argentino',
+    incomeCategories: [
+        { id: 'inc-cat-sueldo', slug: 'inc-cat-sueldo', name: 'Sueldo', icon: '🏦', color: '#10E775' },
+        { id: 'inc-cat-growlabs', slug: 'inc-cat-growlabs', name: 'Grow Labs', icon: '🚀', color: '#0A84FF' },
+        { id: 'inc-cat-otros', slug: 'inc-cat-otros', name: 'Otros Ingresos', icon: '💼', color: '#BF5AF2' }
+    ],
+    incomes: [
+        {
+            id: 'inc-1',
+            name: 'Sueldo Sanatorio Argentino',
+            description: 'Sueldo Sanatorio Argentino',
+            amount: 2975000,
+            category_id: 'inc-cat-sueldo',
+            category_name: 'Sueldo',
+            date: '2026-10-05',
+            is_recurring: true,
+            is_received: true
+        }
+    ],
     expenseCategories: [
         {
             id: 'vivienda-servicios',
@@ -289,6 +312,10 @@ export const getState = () => {
     if (!state.gymSessions) state.gymSessions = [];
     if (!state.expenseCategories) state.expenseCategories = [];
     if (!state.expenses) state.expenses = [];
+    if (!state.incomeCategories || state.incomeCategories.length === 0) {
+        state.incomeCategories = JSON.parse(JSON.stringify(defaultState.incomeCategories));
+    }
+    if (!state.incomes) state.incomes = [];
     if (!state.dailyLog) state.dailyLog = [];
 
     // Specific preset maintenance exclusively for lmarinero
@@ -296,6 +323,22 @@ export const getState = () => {
         if (!state.monthlyIncome) {
             state.monthlyIncome = defaultState.monthlyIncome;
             state.incomeSource = defaultState.incomeSource;
+        }
+        if (!state.incomes || state.incomes.length === 0) {
+            state.incomes = [
+                {
+                    id: 'inc-1',
+                    name: `Sueldo ${state.incomeSource || 'Sanatorio Argentino'}`,
+                    description: `Sueldo ${state.incomeSource || 'Sanatorio Argentino'}`,
+                    amount: Number(state.monthlyIncome || 2975000),
+                    category_id: 'inc-cat-sueldo',
+                    category_name: 'Sueldo',
+                    date: '2026-10-05',
+                    is_recurring: true,
+                    is_received: true
+                }
+            ];
+            localStorage.setItem(key, JSON.stringify(state));
         }
         if (!state.expenseCategories || state.expenseCategories.length === 0) {
             state.expenseCategories = JSON.parse(JSON.stringify(defaultState.expenseCategories));
@@ -543,6 +586,81 @@ export const initializeState = async () => {
             }
             const finalCategories = Array.from(mergedCategoriesMap.values());
 
+            // 6. Upload any local unsynced incomes
+            const cloudIncomes = [...(cloudData.incomes || [])];
+            for (const inc of (local.incomes || [])) {
+                if (isUnsyncedLocalId(inc.id)) {
+                    const alreadyInCloud = cloudIncomes.some(
+                        ci => ci.date === inc.date && Number(ci.amount) === Number(inc.amount) && (ci.name === inc.name || ci.description === inc.description)
+                    );
+                    if (!alreadyInCloud) {
+                        const saved = await addIncomeDB(inc);
+                        if (saved && saved.id) {
+                            cloudIncomes.unshift({ ...inc, id: saved.id });
+                            needsCloudProfilePush = true;
+                        } else {
+                            cloudIncomes.unshift(inc);
+                        }
+                    }
+                }
+            }
+
+            // Combine recurring/preset incomes from baseState with DB incomes without duplicating
+            let finalIncomes = baseState.incomes || local.incomes || [];
+            if (cloudIncomes.length > 0) {
+                const dbIncomeMap = new Map();
+                cloudIncomes.forEach(ci => {
+                    const sig = `${ci.date}|${(ci.name || ci.description || '').toLowerCase()}|${ci.amount}`;
+                    dbIncomeMap.set(sig, ci);
+                });
+                const mergedInc = [...cloudIncomes];
+                for (const li of finalIncomes) {
+                    const sig = `${li.date}|${(li.name || li.description || '').toLowerCase()}|${li.amount}`;
+                    if (!dbIncomeMap.has(sig)) {
+                        mergedInc.push(li);
+                        dbIncomeMap.set(sig, li);
+                    }
+                }
+                finalIncomes = mergedExpIncomesSort(mergedInc);
+            }
+            function mergedExpIncomesSort(arr) {
+                return arr.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+            }
+
+            // Merge preset + cloudfull + DB incomeCategories
+            const mergedIncomeCatMap = new Map();
+            const seedIncomeCats = [
+                ...defaultState.incomeCategories,
+                ...(baseState.incomeCategories || []),
+                ...(local.incomeCategories || []),
+                ...(cloudData.incomeCategories || [])
+            ];
+            for (const cat of seedIncomeCats) {
+                if (!cat || !cat.name) continue;
+                const keyId = String(cat.slug || cat.id || cat.name).toLowerCase();
+                const existing = mergedIncomeCatMap.get(keyId) ||
+                    Array.from(mergedIncomeCatMap.values()).find(c => c.name?.toLowerCase() === cat.name?.toLowerCase());
+                if (existing) {
+                    const existingKey = String(existing.slug || existing.id || existing.name).toLowerCase();
+                    mergedIncomeCatMap.set(existingKey, {
+                        ...existing,
+                        ...cat,
+                        id: existing.id && !String(existing.id).startsWith('temp-') && isNaN(Number(existing.id))
+                            ? existing.id
+                            : (cat.slug || cat.id || existing.id),
+                        db_id: cat.db_id || existing.db_id || (typeof cat.id === 'number' ? cat.id : undefined)
+                    });
+                } else {
+                    const stableId = (typeof cat.id === 'number' && cat.slug) ? cat.slug : (cat.id || `inc-cat-${Date.now()}`);
+                    mergedIncomeCatMap.set(String(stableId).toLowerCase(), {
+                        ...cat,
+                        id: stableId,
+                        db_id: cat.db_id || (typeof cat.id === 'number' ? cat.id : undefined)
+                    });
+                }
+            }
+            const finalIncomeCategories = Array.from(mergedIncomeCatMap.values());
+
             const newState = {
                 ...baseState,
                 profile: mergedProfile,
@@ -552,6 +670,8 @@ export const initializeState = async () => {
                 obetideTreatments: cloudObetide.length > 0 ? cloudObetide : (baseState.obetideTreatments || []),
                 expenseCategories: finalCategories.length > 0 ? finalCategories : defaultState.expenseCategories,
                 expenses: finalExpenses,
+                incomeCategories: finalIncomeCategories.length > 0 ? finalIncomeCategories : defaultState.incomeCategories,
+                incomes: finalIncomes.length > 0 ? finalIncomes : (isLmarinero ? defaultState.incomes : []),
                 aiMealPlans: (cloudData.aiMealPlans && cloudData.aiMealPlans.length > 0)
                     ? cloudData.aiMealPlans
                     : (baseState.aiMealPlans || []),
@@ -1353,15 +1473,197 @@ export const setMonthlyIncome = (amount, source = 'Sanatorio Argentino') => {
     saveState(state);
 };
 
+// --- INGRESOS & CATEGORÍAS DE INGRESOS ACTIONS ---
+
+export const addIncome = async (data) => {
+    const state = getState();
+    if (!state.incomes) state.incomes = [];
+
+    const tempId = Date.now();
+    const conceptName = (data.name || data.description || data.category_name || 'Ingreso').trim();
+    const newIncome = {
+        id: tempId,
+        name: conceptName,
+        description: data.description || conceptName,
+        amount: Number(data.amount || 0),
+        category_id: data.category_id || 'inc-cat-sueldo',
+        category_name: data.category_name || 'Sueldo',
+        date: data.date || getArgentinaDate(),
+        is_recurring: Boolean(data.is_recurring),
+        is_received: data.is_received !== undefined ? Boolean(data.is_received) : true,
+        created_at: new Date().toISOString()
+    };
+
+    state.incomes.unshift(newIncome);
+    addXP(state, 25);
+    saveState(state);
+
+    const saved = await addIncomeDB(newIncome);
+    if (saved && saved.id) {
+        const currentState = getState();
+        const target = (currentState.incomes || []).find(i => i.id === tempId);
+        if (target) {
+            target.id = saved.id;
+            saveState(currentState);
+        }
+        newIncome.id = saved.id;
+    }
+    return newIncome;
+};
+
+export const deleteIncome = async (id) => {
+    const state = getState();
+    if (!state.incomes) return;
+    state.incomes = state.incomes.filter(i => String(i.id) !== String(id));
+    saveState(state);
+    await deleteIncomeDB(id);
+};
+
+export const toggleIncomeReceived = (id) => {
+    const state = getState();
+    const inc = (state.incomes || []).find(i => String(i.id) === String(id));
+    if (inc) {
+        inc.is_received = !(inc.is_received !== false);
+        saveState(state);
+        updateIncomeDB(inc.id, { is_received: inc.is_received });
+    }
+};
+
+export const saveIncomeCategory = async (catData) => {
+    const state = getState();
+    if (!state.incomeCategories) state.incomeCategories = [];
+
+    let updatedCat = null;
+    const existingIndex = (catData.id !== undefined && catData.id !== null)
+        ? state.incomeCategories.findIndex(c =>
+            String(c.id) === String(catData.id) ||
+            (c.db_id !== undefined && String(c.db_id) === String(catData.id))
+        )
+        : state.incomeCategories.findIndex(c => c.name?.toLowerCase() === catData.name?.trim().toLowerCase());
+
+    if (existingIndex >= 0) {
+        state.incomeCategories[existingIndex] = {
+            ...state.incomeCategories[existingIndex],
+            ...catData,
+            id: state.incomeCategories[existingIndex].id
+        };
+        updatedCat = state.incomeCategories[existingIndex];
+    } else {
+        const slugBase = (catData.name || 'ingreso')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
+        const stableId = catData.id || `inc-cat-${slugBase || 'cat'}-${Date.now().toString().slice(-4)}`;
+        updatedCat = {
+            id: stableId,
+            slug: stableId,
+            name: catData.name.trim(),
+            icon: catData.icon || '💵',
+            color: catData.color || '#10E775'
+        };
+        state.incomeCategories.push(updatedCat);
+    }
+
+    saveState(state);
+    const dbResult = await saveIncomeCategoryDB(updatedCat);
+    if (dbResult && dbResult.id) {
+        const currentState = getState();
+        const target = (currentState.incomeCategories || []).find(c => String(c.id) === String(updatedCat.id));
+        if (target) {
+            target.db_id = dbResult.id;
+            saveState(currentState);
+        }
+        updatedCat.db_id = dbResult.id;
+    }
+    return updatedCat;
+};
+
+export const deleteIncomeCategory = async (id) => {
+    const state = getState();
+    if (!state.incomeCategories) return;
+    const catToDelete = state.incomeCategories.find(c => String(c.id) === String(id) || String(c.db_id) === String(id));
+    state.incomeCategories = state.incomeCategories.filter(
+        c => String(c.id) !== String(id) && String(c.db_id) !== String(id)
+    );
+    saveState(state);
+    await deleteIncomeCategoryDB(catToDelete?.db_id || id);
+};
+
 export const getFinancialSummary = (monthStr = null) => {
     const state = getState();
     const expenses = state.expenses || [];
     const categories = state.expenseCategories || [];
-    const monthlyIncome = Number(state.monthlyIncome || 2975000);
-    const incomeSource = state.incomeSource || 'Sanatorio Argentino';
+    const incomes = state.incomes || [];
+    const incomeCategories = state.incomeCategories || defaultState.incomeCategories;
 
     const targetMonth = monthStr || getArgentinaDate().substring(0, 7); // 'YYYY-MM'
     const monthExpenses = expenses.filter(e => e.date && e.date.startsWith(targetMonth));
+    const monthIncomes = incomes.filter(i => !i.date || i.date.startsWith(targetMonth) || i.is_recurring);
+
+    const calculatedIncome = monthIncomes.reduce((sum, i) => sum + Number(i.amount || 0), 0);
+    const monthlyIncome = monthIncomes.length > 0 ? calculatedIncome : Number(state.monthlyIncome || 0);
+
+    // Group Incomes by Category
+    const incomesByCategoryMap = {};
+    incomeCategories.forEach(c => {
+        const key = String(c.id || c.name);
+        incomesByCategoryMap[key] = {
+            category: c,
+            total: 0,
+            items: [],
+            percentOfIncome: 0
+        };
+    });
+
+    const resolveIncomeCategoryKey = (inc) => {
+        const rawId = inc.category_id !== undefined && inc.category_id !== null ? String(inc.category_id) : '';
+        const rawName = (inc.category_name || '').trim().toLowerCase();
+
+        if (rawId && incomesByCategoryMap[rawId]) return rawId;
+
+        const matchedCat = incomeCategories.find(c =>
+            (rawId && (String(c.id) === rawId || String(c.db_id) === rawId || String(c.slug) === rawId)) ||
+            (rawName && c.name?.trim().toLowerCase() === rawName)
+        );
+        if (matchedCat) {
+            return String(matchedCat.id || matchedCat.name);
+        }
+
+        const fallbackKey = rawId || inc.category_name || 'inc-cat-otros';
+        if (!incomesByCategoryMap[fallbackKey]) {
+            incomesByCategoryMap[fallbackKey] = {
+                category: {
+                    id: fallbackKey,
+                    name: inc.category_name || 'Otros Ingresos',
+                    icon: '💼',
+                    color: '#BF5AF2'
+                },
+                total: 0,
+                items: [],
+                percentOfIncome: 0
+            };
+        }
+        return fallbackKey;
+    };
+
+    monthIncomes.forEach(inc => {
+        const key = resolveIncomeCategoryKey(inc);
+        incomesByCategoryMap[key].total += Number(inc.amount || 0);
+        incomesByCategoryMap[key].items.push(inc);
+    });
+
+    Object.values(incomesByCategoryMap).forEach(item => {
+        item.percentOfIncome = monthlyIncome > 0 ? Math.round((item.total / monthlyIncome) * 100) : 0;
+    });
+
+    const activeIncomeCategoryNames = Object.values(incomesByCategoryMap)
+        .filter(i => i.total > 0)
+        .map(i => i.category.name);
+    const incomeSource = activeIncomeCategoryNames.length > 0
+        ? activeIncomeCategoryNames.join(' + ')
+        : (state.incomeSource || 'Ingresos');
 
     const totalSpent = monthExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
     const totalBudget = categories.reduce((sum, c) => sum + Number(c.monthly_budget || 0), 0);
@@ -1440,6 +1742,9 @@ export const getFinancialSummary = (monthStr = null) => {
         month: targetMonth,
         monthlyIncome,
         incomeSource,
+        incomeCount: monthIncomes.length,
+        incomes: monthIncomes,
+        incomesByCategory: Object.values(incomesByCategoryMap),
         totalSpent,
         totalBudget,
         totalPaid,

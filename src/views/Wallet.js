@@ -1,9 +1,10 @@
-import { getState, addExpense, deleteExpense, saveExpenseCategory, deleteExpenseCategory, getFinancialSummary, setMonthlyIncome, getArgentinaDate, toggleExpensePaid, setAllExpensesPaid } from '../state';
+import { getState, addExpense, deleteExpense, saveExpenseCategory, deleteExpenseCategory, addIncome, deleteIncome, toggleIncomeReceived, saveIncomeCategory, deleteIncomeCategory, getFinancialSummary, setMonthlyIncome, getArgentinaDate, toggleExpensePaid, setAllExpensesPaid } from '../state';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
 import Chart from 'chart.js/auto';
 
 let walletChartInstance = null;
 let expandedCategories = new Set(['vivienda-servicios', 'compromisos-cuotas', 'operativos-vida', 'salud-obetide']);
+let expandedIncomeCategories = new Set(['inc-cat-sueldo', 'inc-cat-growlabs', 'inc-cat-otros']);
 
 export const renderWallet = () => {
     const state = getState();
@@ -11,6 +12,8 @@ export const renderWallet = () => {
     const summary = getFinancialSummary(currentMonth);
     const currency = state.profile.currency || 'ARS';
     const categories = state.expenseCategories || [];
+    const incomeCategories = state.incomeCategories || [];
+    const incomesByCategory = summary.incomesByCategory || [];
 
     const formatMoney = (val) => {
         return new Intl.NumberFormat('es-AR', {
@@ -46,8 +49,8 @@ export const renderWallet = () => {
                                     Flujo de Caja · Octubre 2026
                                 </span>
                                 <span class="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 text-[#0A84FF] font-medium flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-sm">domain</span>
-                                    ${summary.incomeSource}
+                                    <span class="material-symbols-outlined text-sm">account_balance_wallet</span>
+                                    Ingresos: ${summary.incomeSource}
                                 </span>
                             </div>
 
@@ -56,9 +59,9 @@ export const renderWallet = () => {
                                     <span class="material-symbols-outlined text-sm">done_all</span>
                                     ${summary.isAllPaid ? 'Todo Pagado' : 'Marcar todo pagado'}
                                 </button>
-                                <button id="open-income-modal-btn" class="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer font-medium py-1 px-2.5 rounded-xl hover:bg-white/5">
-                                    <span class="material-symbols-outlined text-sm">edit</span>
-                                    Ajustar Sueldo
+                                <button id="open-income-modal-btn" class="text-xs text-[#10E775] hover:text-white flex items-center gap-1 transition-colors cursor-pointer font-semibold py-1 px-2.5 rounded-xl bg-[#10E775]/10 hover:bg-[#10E775]/20 border border-[#10E775]/25">
+                                    <span class="material-symbols-outlined text-sm">add_circle</span>
+                                    + Registrar Ingreso
                                 </button>
                             </div>
                         </div>
@@ -90,14 +93,16 @@ export const renderWallet = () => {
                             <!-- Income -->
                             <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col justify-between">
                                 <span class="text-[11px] font-medium text-slate-400 flex items-center justify-between">
-                                    Ingresos Cobrados
+                                    Ingresos Totales
                                     <span class="material-symbols-outlined text-base text-[#10E775]">trending_up</span>
                                 </span>
                                 <div class="mt-2">
                                     <h3 class="text-2xl md:text-2xl font-bold font-mono tracking-tight text-[#10E775]">
                                         ${formatMoney(monthlyIncome)}
                                     </h3>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Sueldo neto percibido</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5 truncate" title="${summary.incomeSource}">
+                                        ${summary.incomeCount || 1} ${(summary.incomeCount || 1) === 1 ? 'ingreso' : 'ingresos'} · ${summary.incomeSource}
+                                    </p>
                                 </div>
                             </div>
 
@@ -131,7 +136,7 @@ export const renderWallet = () => {
                                         ${summary.isAllPaid ? '100% Cubierto' : formatMoney(netBalance)}
                                     </h3>
                                     <p class="text-[10px] ${summary.isAllPaid ? 'text-emerald-300/80' : isDeficit ? 'text-red-300/80' : 'text-emerald-300/80'} mt-0.5">
-                                        ${summary.isAllPaid ? 'Sueldo + Fondos Propios integrados' : isDeficit ? 'Obligaciones superan el sueldo' : 'Superávit positivo'}
+                                        ${summary.isAllPaid ? 'Ingresos + Fondos Propios integrados' : isDeficit ? 'Obligaciones superan los ingresos' : 'Superávit positivo'}
                                     </p>
                                 </div>
                             </div>
@@ -143,7 +148,7 @@ export const renderWallet = () => {
                                 <span class="text-slate-400">Estado de Liquidación y Cumplimiento</span>
                                 <span class="text-[#10E775] font-mono font-semibold flex items-center gap-1">
                                     <span class="material-symbols-outlined text-xs">task_alt</span>
-                                    ${summary.isAllPaid ? `100% Abonado (${summary.paidCount} de ${summary.paidCount} conceptos)` : `${coveragePercent}% cubierto con sueldo`}
+                                    ${summary.isAllPaid ? `100% Abonado (${summary.paidCount} de ${summary.paidCount} conceptos)` : `${coveragePercent}% cubierto con ingresos`}
                                 </span>
                             </div>
                             <div class="h-2 w-full bg-white/[0.06] rounded-full overflow-hidden">
@@ -151,14 +156,18 @@ export const renderWallet = () => {
                             </div>
                             <p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
                                 <span class="material-symbols-outlined text-sm text-[#0A84FF]">info</span>
-                                Sueldo Sanatorio cubrió ${formatMoney(monthlyIncome)} (75%) · El saldo complementario de ${formatMoney(Math.abs(netBalance))} fue cancelado con fondos y ahorros personales.
+                                Ingresos registrados (${summary.incomeSource}) suman ${formatMoney(monthlyIncome)} (${coveragePercent}%)${isDeficit ? ` · El saldo complementario de ${formatMoney(Math.abs(netBalance))} fue cubierto con fondos personales.` : ' · Superávit disponible a favor.'}
                             </p>
                         </div>
                     </div>
 
                     <!-- Action Bar -->
-                    <div class="flex flex-wrap sm:flex-nowrap gap-3 items-center justify-between">
-                        <button id="open-expense-modal-btn" class="flex-1 btn-emerald py-3 px-5 rounded-2xl flex items-center justify-center gap-2 font-semibold text-xs tracking-wide cursor-pointer shadow-md">
+                    <div class="grid grid-cols-2 sm:flex sm:flex-nowrap gap-2.5 items-center justify-between">
+                        <button id="open-income-modal-top-btn" class="flex-1 py-3 px-4 rounded-2xl bg-[#10E775]/15 hover:bg-[#10E775]/25 border border-[#10E775]/35 text-[#10E775] flex items-center justify-center gap-2 font-semibold text-xs tracking-wide cursor-pointer transition-colors">
+                            <span class="material-symbols-outlined text-lg">payments</span>
+                            Agregar Ingreso
+                        </button>
+                        <button id="open-expense-modal-btn" class="flex-1 btn-emerald py-3 px-4 rounded-2xl flex items-center justify-center gap-2 font-semibold text-xs tracking-wide cursor-pointer shadow-md">
                             <span class="material-symbols-outlined text-lg">add_card</span>
                             Agregar Gasto
                         </button>
@@ -230,6 +239,119 @@ export const renderWallet = () => {
                                 <span class="material-symbols-outlined text-purple-400 text-sm">verified_user</span>
                                 Inversión prioritaria: control metabólico, saciedad temprana y soporte endocrino.
                             </p>
+                        </div>
+                    </div>
+
+                    <!-- Ingresos por Categoría (Sueldo, Grow Labs, Otros Ingresos) -->
+                    <div class="white-card p-5 md:p-6 border border-white/[0.07] shadow-xl">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-white/[0.06]">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-base font-semibold text-white">Ingresos por Categoría</h3>
+                                    <span class="text-xs font-mono font-bold text-[#10E775] bg-[#10E775]/10 px-2.5 py-0.5 rounded-full border border-[#10E775]/25">
+                                        ${formatMoney(monthlyIncome)}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-0.5">Sueldo, Grow Labs y otras fuentes de ingreso del mes</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button id="open-new-income-cat-btn" class="px-2.5 py-1.5 rounded-xl bg-[#0A84FF]/10 hover:bg-[#0A84FF]/20 border border-[#0A84FF]/25 text-[#0A84FF] text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors">
+                                    <span class="material-symbols-outlined text-xs">create_new_folder</span>
+                                    + Categoría Ingreso
+                                </button>
+                                <button id="open-income-modal-section-btn" class="px-2.5 py-1.5 rounded-xl bg-[#10E775]/15 hover:bg-[#10E775]/25 border border-[#10E775]/30 text-[#10E775] text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors">
+                                    <span class="material-symbols-outlined text-xs">add</span>
+                                    + Nuevo Ingreso
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-3">
+                            ${incomesByCategory.map(item => {
+                                const cat = item.category;
+                                const totalFormatted = formatMoney(item.total);
+                                const isExpanded = expandedIncomeCategories.has(String(cat.id));
+                                const catIncomes = item.items || [];
+                                const allReceived = catIncomes.length > 0 && catIncomes.every(i => i.is_received !== false);
+                                const isCustomIncomeCat = !['inc-cat-sueldo', 'inc-cat-growlabs', 'inc-cat-otros'].includes(String(cat.id));
+
+                                return `
+                                <div class="rounded-2xl bg-white/[0.025] border border-white/[0.06] overflow-hidden transition-all hover:border-white/[0.12]">
+                                    <button class="toggle-inc-cat-accordion-btn w-full p-4 flex items-center justify-between text-left cursor-pointer hover:bg-white/[0.02] transition-colors" data-catid="${cat.id}">
+                                        <div class="flex items-center gap-3 min-w-0">
+                                            <div class="size-10 rounded-2xl flex items-center justify-center text-xl shrink-0" style="background-color: ${cat.color || '#10E775'}15; border: 1px solid ${cat.color || '#10E775'}30;">
+                                                ${cat.icon || '💵'}
+                                            </div>
+                                            <div class="min-w-0">
+                                                <div class="flex items-center gap-2">
+                                                    <h4 class="text-sm font-semibold text-white truncate">${cat.name}</h4>
+                                                    ${allReceived ? `
+                                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#10E775]/15 border border-[#10E775]/30 text-[#10E775] flex items-center gap-1">
+                                                            <span class="material-symbols-outlined text-[10px]">check</span>
+                                                            Cobrado
+                                                        </span>
+                                                    ` : ''}
+                                                </div>
+                                                <p class="text-[11px] text-slate-400 font-mono mt-0.5">
+                                                    ${catIncomes.length} ${catIncomes.length === 1 ? 'ingreso' : 'ingresos'} · ${item.percentOfIncome || 0}% del total de ingresos
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center gap-3 shrink-0">
+                                            <div class="text-right">
+                                                <span class="text-sm font-bold font-mono ${item.total > 0 ? 'text-[#10E775]' : 'text-slate-400'} block">
+                                                    +${totalFormatted}
+                                                </span>
+                                            </div>
+                                            ${isCustomIncomeCat ? `
+                                                <span class="delete-income-cat-btn size-7 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors" data-id="${cat.id}" data-name="${cat.name}" title="Eliminar categoría de ingreso">
+                                                    <span class="material-symbols-outlined text-sm">delete</span>
+                                                </span>
+                                            ` : ''}
+                                            <span class="material-symbols-outlined text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}">
+                                                expand_more
+                                            </span>
+                                        </div>
+                                    </button>
+
+                                    <div class="${isExpanded ? 'block' : 'hidden'} px-4 pb-3 pt-1 border-t border-white/[0.04]">
+                                        <div class="divide-y divide-white/[0.04]">
+                                            ${catIncomes.length ? catIncomes.map(inc => {
+                                                const isReceived = inc.is_received !== false;
+                                                return `
+                                                <div class="py-2.5 flex items-center justify-between text-xs gap-2">
+                                                    <div class="flex items-center gap-2 min-w-0">
+                                                        <span class="size-1.5 rounded-full shrink-0" style="background-color: ${cat.color || '#10E775'};"></span>
+                                                        <span class="text-slate-200 font-medium truncate">${inc.name || inc.description}</span>
+                                                        ${inc.is_recurring ? '<span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-slate-400 font-mono shrink-0">Fijo</span>' : ''}
+                                                    </div>
+                                                    <div class="flex items-center gap-2.5 shrink-0">
+                                                        <button class="toggle-income-received-btn flex items-center gap-1 px-2 py-0.5 rounded-lg ${isReceived ? 'bg-[#10E775]/15 border border-[#10E775]/30 text-[#10E775] hover:bg-[#10E775]/25' : 'bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25'} text-[10px] font-semibold transition-all cursor-pointer" data-id="${inc.id}" title="${isReceived ? 'Marcar como pendiente de cobro' : 'Marcar como cobrado'}">
+                                                            <span class="material-symbols-outlined text-xs">${isReceived ? 'check_circle' : 'schedule'}</span>
+                                                            ${isReceived ? 'Cobrado' : 'Pendiente'}
+                                                        </button>
+                                                        <span class="font-mono font-semibold text-[#10E775]">+${formatMoney(inc.amount)}</span>
+                                                        <button class="delete-income-btn size-6 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors cursor-pointer" data-id="${inc.id}" title="Eliminar ingreso">
+                                                            <span class="material-symbols-outlined text-sm">close</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                `;
+                                            }).join('') : `
+                                                <p class="py-3 text-xs text-slate-500 italic text-center">No hay ingresos cargados en "${cat.name}" este mes.</p>
+                                            `}
+                                        </div>
+                                        <div class="pt-2 mt-1 border-t border-white/[0.04] flex justify-end">
+                                            <button type="button" class="quick-add-cat-income-btn px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-[#10E775]/15 border border-white/[0.08] hover:border-[#10E775]/30 text-slate-300 hover:text-[#10E775] text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer" data-catid="${cat.id}">
+                                                <span class="material-symbols-outlined text-xs">add_circle</span>
+                                                Agregar ingreso en ${cat.name}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('')}
                         </div>
                     </div>
 
@@ -395,13 +517,18 @@ export const renderWallet = () => {
             ${renderBottomNav('wallet')}
         </main>
 
-        <!-- Income Edit Modal -->
-        <div id="income-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-            <div class="white-card p-6 w-full max-w-sm relative animate-scale-up shadow-2xl border border-white/[0.1]">
+        <!-- New Income Modal -->
+        <div id="income-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 overflow-y-auto">
+            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-2xl border border-white/[0.1] my-6">
                 <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.08]">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[#10E775] text-xl">account_balance</span>
-                        <h3 class="text-sm font-semibold text-white">Ingresos Mensuales</h3>
+                        <div class="size-8 rounded-xl bg-[#10E775]/10 text-[#10E775] border border-[#10E775]/20 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-lg">payments</span>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold text-white">Registrar Ingreso</h3>
+                            <p class="text-[11px] text-slate-400">Sueldo, Grow Labs u otros ingresos</p>
+                        </div>
                     </div>
                     <button id="close-income-modal" class="size-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 cursor-pointer">
                         <span class="material-symbols-outlined text-sm">close</span>
@@ -410,20 +537,109 @@ export const renderWallet = () => {
 
                 <form id="income-form" class="flex flex-col gap-4">
                     <div>
-                        <label class="text-[11px] font-medium text-slate-400">Sueldo / Ingreso Neto ($)</label>
+                        <label class="text-[11px] font-medium text-slate-400">Monto del Ingreso ($)</label>
                         <div class="relative mt-1">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-sm text-slate-400">$</span>
-                            <input type="number" id="income-amount-input" value="${monthlyIncome}" required class="w-full bg-black/40 border border-white/[0.1] rounded-xl pl-7 pr-3 py-2.5 text-lg font-mono font-bold text-white outline-none focus:border-[#10E775]">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-base text-slate-400">$</span>
+                            <input type="number" id="income-amount-input" placeholder="0" required step="any" class="w-full bg-black/40 border border-white/[0.1] rounded-2xl pl-8 pr-4 py-3 text-2xl font-mono font-bold text-white outline-none focus:border-[#10E775]">
                         </div>
                     </div>
 
                     <div>
-                        <label class="text-[11px] font-medium text-slate-400">Fuente / Empleador</label>
-                        <input type="text" id="income-source-input" value="${summary.incomeSource}" required class="w-full mt-1 bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2 text-xs font-medium text-white outline-none focus:border-[#10E775]">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-[11px] font-medium text-slate-400">Categoría de Ingreso</label>
+                            <button type="button" id="open-new-inc-cat-from-income-btn" class="text-[11px] font-semibold text-[#10E775] hover:underline flex items-center gap-0.5 cursor-pointer">
+                                <span class="material-symbols-outlined text-xs">add</span>
+                                Nueva Categoría
+                            </button>
+                        </div>
+                        <select id="income-category" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-200 outline-none focus:border-[#10E775] cursor-pointer">
+                            ${incomeCategories.map(c => `
+                                <option value="${c.id}" data-name="${c.name}">${c.icon} ${c.name}</option>
+                            `).join('')}
+                        </select>
                     </div>
 
-                    <button type="submit" class="btn-emerald py-2.5 text-xs font-semibold rounded-xl mt-2 cursor-pointer shadow-md">
+                    <div>
+                        <label class="text-[11px] font-medium text-slate-400">Concepto / Origen</label>
+                        <input type="text" id="income-source-input" placeholder="ej. Sueldo Sanatorio Argentino, Proyecto Grow Labs..." required class="w-full mt-1 bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2.5 text-xs font-medium text-white outline-none focus:border-[#10E775]">
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div>
+                            <label class="text-[11px] font-medium text-slate-400">Fecha</label>
+                            <input type="date" id="income-date" value="${getArgentinaDate()}" class="w-full mt-1 bg-black/40 border border-white/[0.1] text-white rounded-xl px-2.5 py-2 text-xs font-medium outline-none focus:border-[#10E775]">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-medium text-slate-400">Estado</label>
+                            <select id="income-received-status" class="w-full mt-1 bg-black/40 border border-white/[0.1] text-slate-200 rounded-xl px-2.5 py-2 text-xs font-medium outline-none focus:border-[#10E775] cursor-pointer">
+                                <option value="received">✓ Cobrado</option>
+                                <option value="pending">⏳ Pendiente</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-medium text-slate-400">Frecuencia</label>
+                            <select id="income-recurring" class="w-full mt-1 bg-black/40 border border-white/[0.1] text-slate-200 rounded-xl px-2.5 py-2 text-xs font-medium outline-none focus:border-[#10E775] cursor-pointer">
+                                <option value="once">Del mes</option>
+                                <option value="recurring">Fijo mensual</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-emerald py-3 text-xs font-semibold rounded-xl mt-2 cursor-pointer shadow-md">
                         Guardar Ingreso
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Create Income Category Modal -->
+        <div id="new-income-category-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+            <div class="white-card p-6 w-full max-w-sm relative animate-scale-up shadow-2xl border border-white/[0.1] my-6">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.08]">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[#10E775] text-lg">create_new_folder</span>
+                        <h3 class="text-sm font-semibold text-white">Nueva Categoría de Ingreso</h3>
+                    </div>
+                    <button id="close-new-inc-cat-modal" class="size-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+
+                <form id="new-income-category-form" class="flex flex-col gap-3.5">
+                    <div>
+                        <label class="text-[11px] font-medium text-slate-400">Nombre de la Categoría</label>
+                        <input type="text" id="new-inc-cat-name" placeholder="ej. Grow Labs, Honorarios, Inversiones..." required class="w-full mt-1 bg-black/40 border border-white/[0.1] text-white rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:border-[#10E775]">
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-medium text-slate-400 mb-1 block">Ícono / Emoji</label>
+                        <div class="flex items-center gap-2 mb-2">
+                            <div id="new-inc-cat-icon-preview" class="size-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-lg shrink-0">
+                                🚀
+                            </div>
+                            <input type="text" id="new-inc-cat-icon" value="🚀" maxlength="4" class="w-16 bg-black/40 border border-white/[0.1] text-white text-center rounded-xl px-2 py-1.5 text-sm font-bold outline-none focus:border-[#10E775]">
+                        </div>
+                        <div class="grid grid-cols-6 gap-1 p-2 bg-black/30 border border-white/5 rounded-xl">
+                            ${['🏦', '🚀', '💼', '💵', '📈', '🏥', '💻', '🤝', '🪙', '⚡', '🏆', '💎'].map(emoji => `
+                                <button type="button" class="preset-inc-emoji-btn size-7 rounded-lg hover:bg-white/10 flex items-center justify-center text-sm transition-transform active:scale-90 cursor-pointer" data-emoji="${emoji}">
+                                    ${emoji}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-medium text-slate-400 mb-1 block">Color Identificador</label>
+                        <input type="hidden" id="new-inc-cat-color" value="#10E775">
+                        <div class="flex items-center gap-2">
+                            ${['#10E775', '#0A84FF', '#BF5AF2', '#FF9F0A', '#06B6D4', '#FF453A'].map((color, idx) => `
+                                <button type="button" class="preset-inc-color-btn size-7 rounded-full border-2 ${idx === 0 ? 'border-white scale-110' : 'border-transparent'} transition-transform cursor-pointer" style="background-color: ${color};" data-color="${color}"></button>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-emerald py-2.5 text-xs font-semibold rounded-xl mt-1 cursor-pointer shadow-md">
+                        Guardar Categoría de Ingreso
                     </button>
                 </form>
             </div>
@@ -635,11 +851,18 @@ export const attachWalletEvents = () => {
     const openCategoriesBtn = document.getElementById('open-categories-modal-btn');
     const closeCategoriesBtn = document.getElementById('close-categories-modal');
     const openIncomeBtn = document.getElementById('open-income-modal-btn');
+    const openIncomeTopBtn = document.getElementById('open-income-modal-top-btn');
+    const openIncomeSectionBtn = document.getElementById('open-income-modal-section-btn');
     const closeIncomeBtn = document.getElementById('close-income-modal');
 
     const expenseForm = document.getElementById('expense-form');
     const incomeForm = document.getElementById('income-form');
     const saveBudgetsBtn = document.getElementById('save-budgets-btn');
+
+    const openIncomeModal = () => {
+        incomeModal?.classList.remove('hidden');
+        setTimeout(() => document.getElementById('income-amount-input')?.focus(), 50);
+    };
 
     openExpenseBtn?.addEventListener('click', () => {
         expenseModal?.classList.remove('hidden');
@@ -650,8 +873,36 @@ export const attachWalletEvents = () => {
     openCategoriesBtn?.addEventListener('click', () => categoriesModal?.classList.remove('hidden'));
     closeCategoriesBtn?.addEventListener('click', () => categoriesModal?.classList.add('hidden'));
 
-    openIncomeBtn?.addEventListener('click', () => incomeModal?.classList.remove('hidden'));
+    openIncomeBtn?.addEventListener('click', openIncomeModal);
+    openIncomeTopBtn?.addEventListener('click', openIncomeModal);
+    openIncomeSectionBtn?.addEventListener('click', openIncomeModal);
     closeIncomeBtn?.addEventListener('click', () => incomeModal?.classList.add('hidden'));
+
+    // Quick Add Income in a specific income category
+    document.querySelectorAll('.quick-add-cat-income-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const catId = btn.dataset.catid;
+            const sel = document.getElementById('income-category');
+            if (sel && catId) {
+                sel.value = catId;
+            }
+            openIncomeModal();
+        });
+    });
+
+    // Accordion Toggle for Income Category Detailed Concepts
+    document.querySelectorAll('.toggle-inc-cat-accordion-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const catId = String(btn.dataset.catid);
+            if (expandedIncomeCategories.has(catId)) {
+                expandedIncomeCategories.delete(catId);
+            } else {
+                expandedIncomeCategories.add(catId);
+            }
+            window.router.navigate('wallet');
+        });
+    });
 
     // Quick Add Expense in a specific category
     document.querySelectorAll('.quick-add-cat-expense-btn').forEach(btn => {
@@ -681,14 +932,159 @@ export const attachWalletEvents = () => {
     });
 
     // Handle Income Form Submit
-    incomeForm?.addEventListener('submit', (e) => {
+    incomeForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const amount = Number(document.getElementById('income-amount-input').value) || 0;
-        const source = document.getElementById('income-source-input').value.trim() || 'Sanatorio Argentino';
-        setMonthlyIncome(amount, source);
+        const amount = Number(document.getElementById('income-amount-input').value);
+        if (!amount || amount <= 0) {
+            window.showAlert?.('Monto inválido', 'Ingresa un monto de ingreso mayor a 0.', 'error');
+            return;
+        }
+        const sel = document.getElementById('income-category');
+        const category_id = sel?.value || 'inc-cat-sueldo';
+        const category_name = sel?.options[sel.selectedIndex]?.dataset.name || 'Sueldo';
+        const description = document.getElementById('income-source-input').value.trim() || category_name;
+        const date = document.getElementById('income-date')?.value || getArgentinaDate();
+        const receivedStatus = document.getElementById('income-received-status')?.value || 'received';
+        const recurringVal = document.getElementById('income-recurring')?.value || 'once';
+
+        expandedIncomeCategories.add(String(category_id));
+
+        await addIncome({
+            name: description,
+            description,
+            amount,
+            category_id,
+            category_name,
+            date,
+            is_received: receivedStatus !== 'pending',
+            is_recurring: recurringVal === 'recurring'
+        });
+
         incomeModal?.classList.add('hidden');
-        window.showAlert?.('¡Ingreso Actualizado!', `Sueldo fijado en $${amount.toLocaleString('es-AR')}.`, 'success');
+        window.showAlert?.('¡Ingreso Registrado!', `Se agregó +$${amount.toLocaleString('es-AR')} en ${category_name}.`, 'success');
         window.router.navigate('wallet');
+    });
+
+    // Delete Income
+    document.querySelectorAll('.delete-income-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = isNaN(Number(btn.dataset.id)) ? btn.dataset.id : Number(btn.dataset.id);
+            window.showConfirm?.('¿Eliminar ingreso?', 'Se eliminará este registro de ingreso de tu billetera.', async () => {
+                await deleteIncome(id);
+                window.router.navigate('wallet');
+            });
+        });
+    });
+
+    // Toggle Received Status on individual income
+    document.querySelectorAll('.toggle-income-received-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            toggleIncomeReceived(id);
+            window.router.navigate('wallet');
+        });
+    });
+
+    // New Income Category Modal Controls
+    const newIncomeCategoryModal = document.getElementById('new-income-category-modal');
+    const openNewIncomeCatBtn = document.getElementById('open-new-income-cat-btn');
+    const openNewIncCatFromIncomeBtn = document.getElementById('open-new-inc-cat-from-income-btn');
+    const closeNewIncCatBtn = document.getElementById('close-new-inc-cat-modal');
+    const newIncomeCategoryForm = document.getElementById('new-income-category-form');
+
+    const openNewIncomeCategoryModal = () => {
+        newIncomeCategoryModal?.classList.remove('hidden');
+        setTimeout(() => document.getElementById('new-inc-cat-name')?.focus(), 50);
+    };
+
+    openNewIncomeCatBtn?.addEventListener('click', openNewIncomeCategoryModal);
+    openNewIncCatFromIncomeBtn?.addEventListener('click', openNewIncomeCategoryModal);
+    closeNewIncCatBtn?.addEventListener('click', () => newIncomeCategoryModal?.classList.add('hidden'));
+
+    // Preset Income Emojis
+    document.querySelectorAll('.preset-inc-emoji-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const emoji = btn.dataset.emoji;
+            const iconInput = document.getElementById('new-inc-cat-icon');
+            const iconPreview = document.getElementById('new-inc-cat-icon-preview');
+            if (iconInput) iconInput.value = emoji;
+            if (iconPreview) iconPreview.textContent = emoji;
+        });
+    });
+
+    // Preset Income Colors
+    document.querySelectorAll('.preset-inc-color-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const color = btn.dataset.color;
+            const colorInput = document.getElementById('new-inc-cat-color');
+            if (colorInput) colorInput.value = color;
+            document.querySelectorAll('.preset-inc-color-btn').forEach(b => {
+                b.classList.remove('border-white', 'scale-110');
+                b.classList.add('border-transparent');
+            });
+            btn.classList.remove('border-transparent');
+            btn.classList.add('border-white', 'scale-110');
+        });
+    });
+
+    // New Income Category Submit
+    newIncomeCategoryForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('new-inc-cat-name').value.trim();
+        const icon = document.getElementById('new-inc-cat-icon').value.trim() || '💵';
+        const color = document.getElementById('new-inc-cat-color')?.value || '#10E775';
+
+        if (!name) return;
+
+        const createdCat = await saveIncomeCategory({
+            name,
+            icon,
+            color
+        });
+
+        if (createdCat?.id) {
+            expandedIncomeCategories.add(String(createdCat.id));
+        }
+
+        newIncomeCategoryModal?.classList.add('hidden');
+        newIncomeCategoryForm.reset();
+
+        const isIncomeModalOpen = incomeModal && !incomeModal.classList.contains('hidden');
+        if (isIncomeModalOpen && createdCat) {
+            const sel = document.getElementById('income-category');
+            if (sel) {
+                const opt = document.createElement('option');
+                opt.value = createdCat.id;
+                opt.dataset.name = createdCat.name;
+                opt.textContent = `${createdCat.icon} ${createdCat.name}`;
+                sel.appendChild(opt);
+                sel.value = createdCat.id;
+            }
+            window.showAlert?.('¡Categoría de Ingreso Creada!', `Se seleccionó "${name}" para tu ingreso.`, 'success');
+        } else {
+            window.showAlert?.('¡Categoría de Ingreso Creada!', `Se agregó "${name}" a tus fuentes de ingreso.`, 'success');
+            window.router.navigate('wallet');
+        }
+    });
+
+    // Delete Income Category
+    document.querySelectorAll('.delete-income-cat-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = isNaN(Number(btn.dataset.id)) ? btn.dataset.id : Number(btn.dataset.id);
+            const name = btn.dataset.name || 'esta categoría';
+            window.showConfirm?.(
+                '¿Eliminar categoría de ingreso?',
+                `¿Deseas eliminar "${name}"?`,
+                async () => {
+                    await deleteIncomeCategory(id);
+                    window.showAlert?.('Categoría Eliminada', `Se eliminó "${name}".`, 'info');
+                    window.router.navigate('wallet');
+                }
+            );
+        });
     });
 
     // Handle Add Expense Submit

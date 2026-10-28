@@ -114,6 +114,22 @@ export const loadFullState = async () => {
 
         if (expError) console.warn("Error expenses:", expError);
 
+        // 7B. Mi Billetera: Categorías de Ingresos e Ingresos
+        const { data: incomeCategories, error: icError } = await supabase
+            .from('income_categories')
+            .select('*')
+            .in('user_id', userIds);
+
+        if (icError) console.warn("Error income_categories:", icError);
+
+        const { data: incomes, error: incError } = await supabase
+            .from('incomes')
+            .select('*')
+            .in('user_id', userIds)
+            .order('date', { ascending: false });
+
+        if (incError) console.warn("Error incomes:", incError);
+
         // 8. Planes de Alimentación IA
         const { data: mealPlans, error: mpError } = await supabase
             .from('ai_meal_plans')
@@ -198,6 +214,27 @@ export const loadFullState = async () => {
             created_at: e.created_at
         }));
 
+        const mappedIncomeCategories = (incomeCategories || []).map(c => ({
+            id: c.slug || c.id,
+            db_id: c.id,
+            name: c.name,
+            icon: c.icon || '💵',
+            color: c.color || '#10E775'
+        }));
+
+        const mappedIncomes = (incomes || []).map(inc => ({
+            id: inc.id,
+            name: inc.name || inc.description || inc.category_name || 'Ingreso',
+            description: inc.description || inc.name || '',
+            amount: Number(inc.amount || 0),
+            category_id: inc.category_key || inc.category_id || null,
+            category_name: inc.category_name || 'Sueldo',
+            date: inc.date ? String(inc.date).substring(0, 10) : '',
+            is_recurring: Boolean(inc.is_recurring),
+            is_received: inc.is_received !== false,
+            created_at: inc.created_at
+        }));
+
         return {
             fullState: (profileData?.data && Object.keys(profileData.data).length > 0) ? profileData.data : null,
             updatedAt: profileData?.updated_at || null,
@@ -215,6 +252,8 @@ export const loadFullState = async () => {
             obetideTreatments: mappedObetide,
             expenseCategories: mappedCategories,
             expenses: mappedExpenses,
+            incomeCategories: mappedIncomeCategories,
+            incomes: mappedIncomes,
             aiMealPlans: mealPlans || []
         };
     } catch (e) {
@@ -512,6 +551,110 @@ export const deleteExpenseDB = async (id) => {
         .delete()
         .eq('id', Number(id));
     if (error) console.error("Error deleting expense:", error);
+};
+
+// --- MI BILLETERA: CATEGORÍAS DE INGRESOS E INGRESOS ---
+export const saveIncomeCategoryDB = async (cat) => {
+    const userId = await getCurrentUserId();
+    const isNumericId = typeof cat.id === 'number' || (/^\d+$/.test(String(cat.id || '')) && Number(cat.id) < 1000000000000);
+    const slugVal = !isNumericId && cat.id ? String(cat.id) : (cat.slug || null);
+    const row = {
+        user_id: userId,
+        slug: slugVal,
+        name: cat.name,
+        icon: cat.icon || '💵',
+        color: cat.color || '#10E775'
+    };
+
+    if (cat.db_id && !isNaN(Number(cat.db_id))) {
+        row.id = Number(cat.db_id);
+    } else if (isNumericId) {
+        row.id = Number(cat.id);
+    } else if (slugVal) {
+        const { data: existing } = await supabase
+            .from('income_categories')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('slug', slugVal)
+            .maybeSingle();
+        if (existing?.id) {
+            row.id = existing.id;
+        }
+    }
+
+    const { data, error } = await supabase
+        .from('income_categories')
+        .upsert(row)
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error saving income category:", error);
+        return null;
+    }
+    return data;
+};
+
+export const deleteIncomeCategoryDB = async (id) => {
+    const userId = await getCurrentUserId();
+    const isNumericId = typeof id === 'number' || (/^\d+$/.test(String(id || '')) && Number(id) < 1000000000000);
+    if (isNumericId) {
+        const { error } = await supabase.from('income_categories').delete().eq('user_id', userId).eq('id', Number(id));
+        if (error) console.error("Error deleting income category by id:", error);
+    } else {
+        const { error } = await supabase.from('income_categories').delete().eq('user_id', userId).eq('slug', String(id));
+        if (error) console.error("Error deleting income category by slug:", error);
+    }
+};
+
+export const addIncomeDB = async (income) => {
+    const userId = await getCurrentUserId();
+    const rawCatId = income.category_id || income.categoryId || null;
+    const isNumericCatId = typeof rawCatId === 'number' || (/^\d+$/.test(String(rawCatId || '')) && Number(rawCatId) < 1000000000000);
+
+    const row = {
+        user_id: userId,
+        category_id: isNumericCatId ? Number(rawCatId) : null,
+        category_key: !isNumericCatId && rawCatId ? String(rawCatId) : null,
+        category_name: income.category_name || income.categoryName || 'Sueldo',
+        name: income.name || income.description || income.category_name || 'Ingreso',
+        amount: Number(income.amount || 0),
+        date: income.date,
+        description: income.description || income.name || '',
+        is_recurring: Boolean(income.is_recurring),
+        is_received: income.is_received !== false
+    };
+    const { data, error } = await supabase
+        .from('incomes')
+        .insert(row)
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error adding income:", error);
+        return null;
+    }
+    return data;
+};
+
+export const updateIncomeDB = async (id, patch) => {
+    const isNumericId = typeof id === 'number' || (/^\d+$/.test(String(id || '')) && Number(id) < 1000000000000);
+    if (!isNumericId) return;
+    const { error } = await supabase
+        .from('incomes')
+        .update(patch)
+        .eq('id', Number(id));
+    if (error) console.error("Error updating income:", error);
+};
+
+export const deleteIncomeDB = async (id) => {
+    const isNumericId = typeof id === 'number' || (/^\d+$/.test(String(id || '')) && Number(id) < 1000000000000);
+    if (!isNumericId) return;
+    const { error } = await supabase
+        .from('incomes')
+        .delete()
+        .eq('id', Number(id));
+    if (error) console.error("Error deleting income:", error);
 };
 
 // --- PLANES DE ALIMENTACIÓN IA ---
