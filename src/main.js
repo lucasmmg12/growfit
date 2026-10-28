@@ -46,16 +46,24 @@ const routes = {
   'auth': { render: renderAuth, attach: attachAuthEvents }
 };
 
+let activeRoutePath = 'dashboard';
+
 window.router = {
-  navigate: (path) => {
+  navigate: (path, preserveScroll = false) => {
     const currentUser = getCurrentUser();
     const targetPath = (!currentUser && path !== 'auth') ? 'auth' : path;
     const route = routes[targetPath] || (currentUser ? routes['dashboard'] : routes['auth']);
     if (route) {
+      activeRoutePath = routes[targetPath] ? targetPath : (currentUser ? 'dashboard' : 'auth');
       app.innerHTML = route.render();
       if (route.attach) route.attach();
-      if (targetPath !== 'auth') initChat();
-      window.scrollTo(0, 0);
+      if (activeRoutePath !== 'auth') initChat();
+      if (!preserveScroll) window.scrollTo(0, 0);
+    }
+  },
+  refresh: () => {
+    if (activeRoutePath && activeRoutePath !== 'auth') {
+      window.router.navigate(activeRoutePath, true);
     }
   }
 };
@@ -312,18 +320,38 @@ window.handleGlobalLogout = () => {
   );
 };
 
-// --- AUTH STATE LISTENER (MULTI-TENANT) ---
+// --- AUTH & CLOUD SYNC LISTENERS (MULTI-DEVICE) ---
 window.addEventListener('auth-changed', async (e) => {
   if (e.detail) {
+    setLocalUserId(e.detail.userId);
     await initializeState();
+    window.router.refresh();
   }
 });
 
-supabase.auth.onAuthStateChange(async (event, session) => {
-  console.log(`[Supabase Auth] Event: ${event}, User: ${session?.user?.id || 'none'}`);
-  if (session?.user) {
-    setLocalUserId(session.user.id);
+let lastCloudSyncAt = Date.now();
+const syncFromCloudOnResume = async () => {
+  const currentUser = getCurrentUser();
+  if (!currentUser) return;
+  if (Date.now() - lastCloudSyncAt < 10000) return;
+  lastCloudSyncAt = Date.now();
+  await initializeState();
+  // Re-render current view if no modal is currently active
+  const anyModalOpen = Array.from(document.querySelectorAll('[id$="-modal"], #quick-actions-sheet'))
+    .some(el => !el.classList.contains('hidden'));
+  if (!anyModalOpen) {
+    window.router.refresh();
   }
+};
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    syncFromCloudOnResume();
+  }
+});
+
+window.addEventListener('focus', () => {
+  syncFromCloudOnResume();
 });
 
 // --- APP STARTUP ---
@@ -332,8 +360,10 @@ const startApp = async () => {
   if (!currentUser) {
     window.router.navigate('auth');
   } else {
-    await initializeState();
+    setLocalUserId(currentUser.userId);
     window.router.navigate('dashboard');
+    await initializeState();
+    window.router.refresh();
   }
 };
 

@@ -1,4 +1,5 @@
 import { login, register, getCurrentUser } from '../services/auth';
+import { initializeState } from '../state';
 
 export const renderAuth = () => {
     const currentUser = getCurrentUser();
@@ -156,11 +157,10 @@ export const attachAuthEvents = () => {
                 showMsg(res.error, true);
                 if (btn) btn.disabled = false;
             } else {
-                showMsg(`¡Bienvenido, ${res.user.displayName}! Cargando tu perfil...`, false);
-                setTimeout(() => {
-                    window.location.hash = '#dashboard';
-                    window.router.navigate('dashboard');
-                }, 400);
+                showMsg(`¡Bienvenido, ${res.user.displayName}! Sincronizando tus datos de la nube...`, false);
+                await initializeState();
+                window.location.hash = '#dashboard';
+                window.router.navigate('dashboard');
             }
         } catch (err) {
             showMsg(err.message || 'Error al iniciar sesión.', true);
@@ -185,11 +185,10 @@ export const attachAuthEvents = () => {
                 showMsg(res.error, true);
                 if (btn) btn.disabled = false;
             } else {
-                showMsg(`¡Cuenta @${res.user.username} creada con éxito! Entrando...`, false);
-                setTimeout(() => {
-                    window.location.hash = '#dashboard';
-                    window.router.navigate('dashboard');
-                }, 500);
+                showMsg(`¡Cuenta @${res.user.username} creada con éxito! Sincronizando...`, false);
+                await initializeState();
+                window.location.hash = '#dashboard';
+                window.router.navigate('dashboard');
             }
         } catch (err) {
             showMsg(err.message || 'Error al registrar la cuenta.', true);

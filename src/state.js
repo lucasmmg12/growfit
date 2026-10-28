@@ -328,6 +328,7 @@ export const getState = () => {
 // GLOBAL SAVE (Isolated by active user)
 export const saveState = (newState) => {
     const key = getActiveStorageKey();
+    newState.updatedAt = new Date().toISOString();
     localStorage.setItem(key, JSON.stringify(newState));
     saveProfileDB(newState);
     window.dispatchEvent(new CustomEvent('state-changed', { detail: newState }));
@@ -336,36 +337,193 @@ export const saveState = (newState) => {
 export const setSelectedDate = (date) => {
     const state = getState();
     state.selectedDate = date;
-    saveState(state);
+    const key = getActiveStorageKey();
+    localStorage.setItem(key, JSON.stringify(state));
+    window.dispatchEvent(new CustomEvent('state-changed', { detail: state }));
+};
+
+const isUnsyncedLocalId = (id) => {
+    const num = Number(id);
+    return !Number.isNaN(num) && num > 1000000000000;
 };
 
 export const initializeState = async () => {
     try {
+        const key = getActiveStorageKey();
+        const currentUser = getCurrentUser();
+        const isLmarinero = !currentUser || currentUser.username?.toLowerCase() === 'lmarinero';
+
+        // Read existing local state for this user (or legacy key fallback for lmarinero)
+        let localRaw = localStorage.getItem(key);
+        if (!localRaw && isLmarinero) {
+            localRaw = localStorage.getItem(STORAGE_KEY);
+        }
+        const local = localRaw ? JSON.parse(localRaw) : getState();
+
         const cloudData = await loadFullState();
         if (cloudData) {
-            const localRaw = localStorage.getItem(STORAGE_KEY);
-            const local = localRaw ? JSON.parse(localRaw) : {};
+            let needsCloudProfilePush = false;
+
+            // 1. Upload any local unsynced meals (created while offline or before schema fix)
+            const cloudMeals = [...(cloudData.dailyLog || [])];
+            for (const m of (local.dailyLog || [])) {
+                if (isUnsyncedLocalId(m.id)) {
+                    const alreadyInCloud = cloudMeals.some(
+                        cm => cm.date === m.date && cm.name === m.name && Number(cm.calories) === Number(m.calories)
+                    );
+                    if (!alreadyInCloud) {
+                        const saved = await addMealDB(m);
+                        if (saved && saved.id) {
+                            cloudMeals.unshift({ ...m, id: saved.id });
+                            needsCloudProfilePush = true;
+                        } else {
+                            cloudMeals.unshift(m);
+                        }
+                    }
+                }
+            }
+
+            // 2. Upload any local unsynced measurements
+            const cloudMeasurements = [...(cloudData.measurements || [])];
+            for (const meas of (local.measurements || [])) {
+                if (isUnsyncedLocalId(meas.id)) {
+                    const alreadyInCloud = cloudMeasurements.some(
+                        cm => cm.date === meas.date && Number(cm.weight) === Number(meas.weight)
+                    );
+                    if (!alreadyInCloud) {
+                        const saved = await addMeasurementDB(meas);
+                        if (saved && saved.id) {
+                            cloudMeasurements.unshift({ ...meas, id: saved.id });
+                            needsCloudProfilePush = true;
+                        } else {
+                            cloudMeasurements.unshift(meas);
+                        }
+                    }
+                }
+            }
+
+            // 3. Upload any local unsynced workouts
+            const cloudWorkouts = [...(cloudData.workouts || [])];
+            for (const w of (local.workouts || [])) {
+                if (isUnsyncedLocalId(w.id)) {
+                    const alreadyInCloud = cloudWorkouts.some(
+                        cw => cw.date === w.date && (cw.name === w.name || cw.type === w.name) && Number(cw.calories) === Number(w.calories)
+                    );
+                    if (!alreadyInCloud) {
+                        const saved = await addWorkoutDB(w);
+                        if (saved && saved.id) {
+                            cloudWorkouts.unshift({ ...w, id: saved.id });
+                            needsCloudProfilePush = true;
+                        } else {
+                            cloudWorkouts.unshift(w);
+                        }
+                    }
+                }
+            }
+
+            // 4. Upload any local unsynced Obetide treatments
+            const cloudObetide = [...(cloudData.obetideTreatments || [])];
+            for (const ob of (local.obetideTreatments || [])) {
+                if (isUnsyncedLocalId(ob.id)) {
+                    const alreadyInCloud = cloudObetide.some(
+                        co => co.date === ob.date && Number(co.dose_ml) === Number(ob.dose_ml)
+                    );
+                    if (!alreadyInCloud) {
+                        const saved = await addObetideTreatmentDB(ob);
+                        if (saved && saved.id) {
+                            cloudObetide.unshift({ ...ob, id: saved.id });
+                            needsCloudProfilePush = true;
+                        } else {
+                            cloudObetide.unshift(ob);
+                        }
+                    }
+                }
+            }
+
+            // 5. Upload any local unsynced expenses
+            const cloudExpenses = [...(cloudData.expenses || [])];
+            for (const exp of (local.expenses || [])) {
+                if (isUnsyncedLocalId(exp.id)) {
+                    const alreadyInCloud = cloudExpenses.some(
+                        ce => ce.date === exp.date && Number(ce.amount) === Number(exp.amount) && (ce.name === exp.name || ce.description === exp.description)
+                    );
+                    if (!alreadyInCloud) {
+                        const saved = await addExpenseDB(exp);
+                        if (saved && saved.id) {
+                            cloudExpenses.unshift({ ...exp, id: saved.id });
+                            needsCloudProfilePush = true;
+                        } else {
+                            cloudExpenses.unshift(exp);
+                        }
+                    }
+                }
+            }
+
+            // Determine authoritative base state (cloud fullState vs local)
+            const cloudFull = cloudData.fullState || {};
+            const cloudTime = new Date(cloudData.updatedAt || cloudFull.updatedAt || 0).getTime();
+            const localTime = new Date(local.updatedAt || 0).getTime();
+            const cloudIsNewerOrEqual = Boolean(cloudData.fullState) && (cloudTime >= localTime || !local.updatedAt);
+
+            const baseState = cloudIsNewerOrEqual
+                ? { ...defaultState, ...local, ...cloudFull }
+                : { ...defaultState, ...cloudFull, ...local };
+
+            if (!cloudData.fullState || localTime > cloudTime) {
+                needsCloudProfilePush = true;
+            }
+
             const cloudProfile = cloudData.profile || {};
+            const mergedProfile = cloudIsNewerOrEqual
+                ? { ...defaultState.profile, ...(local.profile || {}), ...(cloudProfile.profile || cloudProfile) }
+                : { ...defaultState.profile, ...(cloudProfile.profile || cloudProfile), ...(local.profile || {}) };
+
+            // Combine recurring/preset expenses from baseState with DB expenses without duplicating
+            let finalExpenses = baseState.expenses || local.expenses || [];
+            if (cloudExpenses.length > 0) {
+                const dbExpenseMap = new Map();
+                cloudExpenses.forEach(ce => {
+                    const sig = `${ce.date}|${ce.name || ce.description}|${ce.amount}`;
+                    dbExpenseMap.set(sig, ce);
+                });
+                const mergedExp = [...cloudExpenses];
+                for (const le of finalExpenses) {
+                    const sig = `${le.date}|${le.name || le.description}|${le.amount}`;
+                    if (!dbExpenseMap.has(sig) && String(le.id).startsWith('exp-')) {
+                        mergedExp.push(le);
+                    }
+                }
+                finalExpenses = mergedExp;
+            }
 
             const newState = {
-                ...defaultState,
-                ...local,
-                profile: {
-                    ...defaultState.profile,
-                    ...(cloudProfile.profile || cloudProfile),
-                    ...(local.profile || {})
-                },
-                // Cloud DB is the authoritative source of truth
-                dailyLog: (cloudData.dailyLog && cloudData.dailyLog.length > 0) ? cloudData.dailyLog : (local.dailyLog || []),
-                measurements: (cloudData.measurements && cloudData.measurements.length > 0) ? cloudData.measurements : (local.measurements || []),
-                workouts: (cloudData.workouts && cloudData.workouts.length > 0) ? cloudData.workouts : (local.workouts || []),
-                obetideTreatments: (cloudData.obetideTreatments && cloudData.obetideTreatments.length > 0) ? cloudData.obetideTreatments : (local.obetideTreatments || []),
-                expenseCategories: (cloudData.expenseCategories && cloudData.expenseCategories.length > 0) ? cloudData.expenseCategories : (local.expenseCategories && local.expenseCategories.length > 0 ? local.expenseCategories : defaultState.expenseCategories),
-                expenses: (cloudData.expenses && cloudData.expenses.length > 0) ? cloudData.expenses : (local.expenses || []),
-                aiMealPlans: (cloudData.aiMealPlans && cloudData.aiMealPlans.length > 0) ? cloudData.aiMealPlans : (local.aiMealPlans || [])
+                ...baseState,
+                profile: mergedProfile,
+                dailyLog: cloudMeals.length > 0 ? cloudMeals : (baseState.dailyLog || []),
+                measurements: cloudMeasurements.length > 0 ? cloudMeasurements : (baseState.measurements || []),
+                workouts: cloudWorkouts.length > 0 ? cloudWorkouts : (baseState.workouts || []),
+                obetideTreatments: cloudObetide.length > 0 ? cloudObetide : (baseState.obetideTreatments || []),
+                expenseCategories: (cloudData.expenseCategories && cloudData.expenseCategories.length > 0)
+                    ? cloudData.expenseCategories
+                    : (baseState.expenseCategories && baseState.expenseCategories.length > 0 ? baseState.expenseCategories : defaultState.expenseCategories),
+                expenses: finalExpenses,
+                aiMealPlans: (cloudData.aiMealPlans && cloudData.aiMealPlans.length > 0)
+                    ? cloudData.aiMealPlans
+                    : (baseState.aiMealPlans || []),
+                selectedDate: local.selectedDate || getArgentinaDate(),
+                updatedAt: cloudData.updatedAt || new Date().toISOString()
             };
 
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+            localStorage.setItem(key, JSON.stringify(newState));
+            if (isLmarinero) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+            }
+
+            if (needsCloudProfilePush) {
+                await saveProfileDB(newState);
+            }
+
+            window.dispatchEvent(new CustomEvent('state-changed', { detail: newState }));
             return newState;
         }
     } catch (e) {
@@ -866,7 +1024,15 @@ export const addMeasurement = async (data) => {
 
     addXP(state, 50);
     saveState(state);
-    await addMeasurementDB(newEntry);
+    const saved = await addMeasurementDB(newEntry);
+    if (saved && saved.id) {
+        const currentState = getState();
+        const idx = (currentState.measurements || []).findIndex(m => m.id === newEntry.id);
+        if (idx !== -1) {
+            currentState.measurements[idx].id = saved.id;
+            saveState(currentState);
+        }
+    }
 
     return newEntry;
 };

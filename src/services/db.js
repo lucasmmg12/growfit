@@ -1,36 +1,45 @@
 import { supabase } from '../supabase-client';
 
-// Cache for current user id
 let currentCachedUserId = null;
 
 export const getCurrentUserId = async () => {
     try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user && user.id) {
-            currentCachedUserId = user.id;
-            return user.id;
+        const sessionRaw = localStorage.getItem('growfit_active_session');
+        if (sessionRaw) {
+            const session = JSON.parse(sessionRaw);
+            if (session) {
+                if (session.username?.toLowerCase() === 'lmarinero' || session.userId === 'lucas-admin-v1') {
+                    currentCachedUserId = 'lmarinero';
+                    return 'lmarinero';
+                }
+                const uid = session.userId || (session.username ? `user-${session.username.toLowerCase()}` : null);
+                if (uid) {
+                    currentCachedUserId = uid;
+                    return uid;
+                }
+            }
         }
     } catch (e) {
-        console.warn("Could not fetch Supabase auth user:", e);
+        console.warn("Error reading active session for user_id:", e);
+    }
+
+    const localId = localStorage.getItem('growfit_user_id');
+    if (localId) {
+        const normalized = localId === 'lucas-admin-v1' ? 'lmarinero' : localId;
+        currentCachedUserId = normalized;
+        return normalized;
     }
 
     if (currentCachedUserId) return currentCachedUserId;
 
-    // Check localStorage fallback for multi-tenant guest / offline
-    const localId = localStorage.getItem('growfit_user_id');
-    if (localId) {
-        currentCachedUserId = localId;
-        return localId;
-    }
-
-    // Default admin id fallback
-    return 'lucas-admin-v1';
+    return 'lmarinero';
 };
 
 export const setLocalUserId = (userId) => {
-    currentCachedUserId = userId;
-    if (userId) {
-        localStorage.setItem('growfit_user_id', userId);
+    const normalized = userId === 'lucas-admin-v1' ? 'lmarinero' : userId;
+    currentCachedUserId = normalized;
+    if (normalized) {
+        localStorage.setItem('growfit_user_id', normalized);
     } else {
         localStorage.removeItem('growfit_user_id');
     }
@@ -40,22 +49,23 @@ export const setLocalUserId = (userId) => {
 export const loadFullState = async () => {
     try {
         const userId = await getCurrentUserId();
-        console.log(`[GrowFit DB] Sincronizando datos para usuario: ${userId}`);
+        const userIds = userId === 'lmarinero' ? ['lmarinero', 'lucas-admin-v1'] : [userId];
+        console.log(`[GrowFit DB] Sincronizando datos en la nube para usuario: ${userId}`);
 
-        // 1. Perfil
+        // 1. Perfil y Estado Completo (growfit_profiles)
         const { data: profileData, error: pError } = await supabase
-            .from('profiles')
+            .from('growfit_profiles')
             .select('*')
             .eq('user_id', userId)
             .maybeSingle();
 
-        if (pError && pError.code !== 'PGRST116') console.warn("Error profile:", pError);
+        if (pError && pError.code !== 'PGRST116') console.warn("Error growfit_profiles:", pError);
 
         // 2. Comidas
         const { data: meals, error: mError } = await supabase
             .from('meals')
             .select('*')
-            .eq('user_id', userId)
+            .in('user_id', userIds)
             .order('date', { ascending: false });
 
         if (mError) console.warn("Error meals:", mError);
@@ -64,7 +74,7 @@ export const loadFullState = async () => {
         const { data: measurements, error: measError } = await supabase
             .from('measurements')
             .select('*')
-            .eq('user_id', userId)
+            .in('user_id', userIds)
             .order('date', { ascending: false });
 
         if (measError) console.warn("Error measurements:", measError);
@@ -73,7 +83,7 @@ export const loadFullState = async () => {
         const { data: workouts, error: wError } = await supabase
             .from('workouts')
             .select('*')
-            .eq('user_id', userId)
+            .in('user_id', userIds)
             .order('date', { ascending: false });
 
         if (wError) console.warn("Error workouts:", wError);
@@ -82,7 +92,7 @@ export const loadFullState = async () => {
         const { data: obetide, error: oError } = await supabase
             .from('obetide_treatments')
             .select('*')
-            .eq('user_id', userId)
+            .in('user_id', userIds)
             .order('date', { ascending: false });
 
         if (oError) console.warn("Error obetide_treatments:", oError);
@@ -91,7 +101,7 @@ export const loadFullState = async () => {
         const { data: categories, error: cError } = await supabase
             .from('expense_categories')
             .select('*')
-            .eq('user_id', userId);
+            .in('user_id', userIds);
 
         if (cError) console.warn("Error expense_categories:", cError);
 
@@ -99,7 +109,7 @@ export const loadFullState = async () => {
         const { data: expenses, error: expError } = await supabase
             .from('expenses')
             .select('*')
-            .eq('user_id', userId)
+            .in('user_id', userIds)
             .order('date', { ascending: false });
 
         if (expError) console.warn("Error expenses:", expError);
@@ -108,36 +118,103 @@ export const loadFullState = async () => {
         const { data: mealPlans, error: mpError } = await supabase
             .from('ai_meal_plans')
             .select('*')
-            .eq('user_id', userId)
+            .in('user_id', userIds)
             .order('created_at', { ascending: false });
 
         if (mpError) console.warn("Error ai_meal_plans:", mpError);
 
+        const mappedMeals = (meals || []).map(m => ({
+            id: m.id,
+            date: m.date,
+            name: m.name,
+            calories: Number(m.calories || 0),
+            category: m.category || m.time || m.meal_type || 'Almuerzo',
+            time: m.time || m.category || m.meal_type || 'Almuerzo',
+            meal_type: m.meal_type || m.category || 'Almuerzo',
+            macros: m.macros || { protein: 0, carbs: 0, fat: 0 },
+            photo_url: m.photo_url || null,
+            ai_analysis: m.ai_analysis || null,
+            icon: m.icon || 'restaurant',
+            satiety_score: m.satiety_score ? Number(m.satiety_score) : null,
+            sensations: Array.isArray(m.sensations) ? m.sensations : [],
+            opinion: m.opinion || null
+        }));
+
+        const mappedMeasurements = (measurements || []).map(m => ({
+            id: m.id,
+            date: m.date,
+            weight: Number(m.weight),
+            neck: Number(m.neck || 0),
+            waist: Number(m.waist || 0),
+            hip: Number(m.hip || 0),
+            bodyFat: Number(m.body_fat || 0),
+            leanMass: Number(m.lean_mass || 0),
+            fatMass: Number(m.fat_mass || 0),
+            notes: m.notes || ''
+        }));
+
+        const mappedWorkouts = (workouts || []).map(w => ({
+            id: w.id,
+            date: w.date,
+            name: w.type || w.name || 'Entrenamiento',
+            type: w.type || 'strength',
+            duration: Number(w.duration || 30),
+            calories: Number(w.calories || 0),
+            details: w.details || {}
+        }));
+
+        const mappedObetide = (obetide || []).map(o => ({
+            id: o.id,
+            date: o.date,
+            dose_ml: Number(o.dose_ml || 0.25),
+            injection_site: o.injection_site || 'abdomen_der',
+            satiety_level: Number(o.satiety_level || 7),
+            side_effects: Array.isArray(o.side_effects) ? o.side_effects : [],
+            notes: o.notes || '',
+            created_at: o.created_at
+        }));
+
+        const mappedCategories = (categories || []).map(c => ({
+            id: c.slug || c.id,
+            db_id: c.id,
+            name: c.name,
+            icon: c.icon || '💰',
+            color: c.color || '#3b82f6',
+            monthly_budget: Number(c.monthly_budget || 0),
+            items: Array.isArray(c.items) ? c.items : []
+        }));
+
+        const mappedExpenses = (expenses || []).map(e => ({
+            id: e.id,
+            name: e.name || e.description || e.category_name || 'Gasto',
+            description: e.description || e.name || '',
+            amount: Number(e.amount || 0),
+            category_id: e.category_key || e.category_id || null,
+            category_name: e.category_name || 'General',
+            date: e.date ? String(e.date).substring(0, 10) : '',
+            payment_method: e.payment_method || 'tarjeta_debito',
+            is_recurring: Boolean(e.is_recurring),
+            is_paid: e.is_paid !== false,
+            created_at: e.created_at
+        }));
+
         return {
-            profile: profileData?.data || (profileData ? {
-                name: profileData.full_name,
-                height: profileData.height,
-                startingWeight: profileData.starting_weight,
-                targetWeight: profileData.target_weight,
-                calorieGoal: profileData.daily_calorie_target,
-                currency: profileData.currency
+            fullState: (profileData?.data && Object.keys(profileData.data).length > 0) ? profileData.data : null,
+            updatedAt: profileData?.updated_at || null,
+            profile: profileData?.data?.profile || (profileData ? {
+                name: profileData.full_name || profileData.display_name,
+                height: Number(profileData.height || 175),
+                startingWeight: Number(profileData.starting_weight || 80),
+                targetWeight: Number(profileData.target_weight || 70),
+                calorieGoal: Number(profileData.daily_calorie_target || 2000),
+                currency: profileData.currency || 'ARS'
             } : null),
-            dailyLog: meals || [],
-            measurements: (measurements || []).map(m => ({
-                id: m.id,
-                date: m.date,
-                weight: Number(m.weight),
-                neck: Number(m.neck),
-                waist: Number(m.waist),
-                hip: Number(m.hip),
-                bodyFat: Number(m.body_fat),
-                leanMass: Number(m.lean_mass),
-                fatMass: Number(m.fat_mass)
-            })),
-            workouts: workouts || [],
-            obetideTreatments: obetide || [],
-            expenseCategories: categories || [],
-            expenses: expenses || [],
+            dailyLog: mappedMeals,
+            measurements: mappedMeasurements,
+            workouts: mappedWorkouts,
+            obetideTreatments: mappedObetide,
+            expenseCategories: mappedCategories,
+            expenses: mappedExpenses,
             aiMealPlans: mealPlans || []
         };
     } catch (e) {
@@ -148,42 +225,49 @@ export const loadFullState = async () => {
 
 // --- GRANULAR SAVES ---
 
-// Perfil
+// Perfil y Estado Completo en growfit_profiles
 export const saveProfileDB = async (stateOrProfile) => {
-    const userId = await getCurrentUserId();
-    const profile = stateOrProfile?.profile || stateOrProfile;
-    const { error } = await supabase
-        .from('profiles')
-        .upsert({
-            user_id: userId,
-            full_name: profile.name || '',
-            height: profile.height || 175,
-            target_weight: profile.targetWeight || 70,
-            starting_weight: profile.startingWeight || 75,
-            daily_calorie_target: profile.calorieGoal || 2000,
-            currency: profile.currency || 'ARS',
-            data: stateOrProfile,
-            updated_at: new Date().toISOString()
-        });
-    if (error) console.error("Error saving profile:", error);
+    try {
+        const userId = await getCurrentUserId();
+        const profile = stateOrProfile?.profile || stateOrProfile || {};
+        const { error } = await supabase
+            .from('growfit_profiles')
+            .upsert({
+                user_id: userId,
+                full_name: profile.name || '',
+                display_name: profile.name || '',
+                height: Number(profile.height) || 175,
+                target_weight: Number(profile.targetWeight) || 70,
+                starting_weight: Number(profile.startingWeight) || 75,
+                daily_calorie_target: Number(profile.calorieGoal) || 2000,
+                currency: profile.currency || 'ARS',
+                data: stateOrProfile,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+        if (error) console.error("Error saving profile to growfit_profiles:", error);
+    } catch (err) {
+        console.error("Exception saving profile to growfit_profiles:", err);
+    }
 };
 
 // Comidas
 export const addMealDB = async (meal) => {
     const userId = await getCurrentUserId();
+    const categoryVal = meal.category || meal.time || meal.meal_type || 'Almuerzo';
     const row = {
         user_id: userId,
         date: meal.date,
-        meal_type: meal.category || meal.meal_type || 'almuerzo',
+        meal_type: categoryVal,
+        category: categoryVal,
         name: meal.name,
-        calories: meal.calories || 0,
+        calories: Math.max(0, Math.round(Number(meal.calories) || 0)),
         macros: meal.macros || { protein: 0, carbs: 0, fat: 0 },
         photo_url: meal.photo_url || null,
         ai_analysis: meal.ai_analysis || null,
-        icon: meal.category || meal.icon || 'restaurant',
-        time: meal.time || '',
-        satiety_score: meal.satiety_score || null,
-        sensations: meal.sensations || [],
+        icon: meal.icon || categoryVal || 'restaurant',
+        time: meal.time || categoryVal,
+        satiety_score: meal.satiety_score ? Number(meal.satiety_score) : null,
+        sensations: Array.isArray(meal.sensations) ? meal.sensations : [],
         opinion: meal.opinion || null
     };
     const { data, error } = await supabase
@@ -200,16 +284,18 @@ export const addMealDB = async (meal) => {
 };
 
 export const updateMealDB = async (id, meal) => {
+    const categoryVal = meal.category || meal.time || meal.meal_type || 'Almuerzo';
     const row = {
         date: meal.date,
-        meal_type: meal.category || meal.meal_type || 'almuerzo',
+        meal_type: categoryVal,
+        category: categoryVal,
         name: meal.name,
-        calories: meal.calories,
-        macros: meal.macros,
-        icon: meal.category || meal.icon,
-        time: meal.time,
-        satiety_score: meal.satiety_score || null,
-        sensations: meal.sensations || [],
+        calories: Math.max(0, Math.round(Number(meal.calories) || 0)),
+        macros: meal.macros || { protein: 0, carbs: 0, fat: 0 },
+        icon: meal.icon || categoryVal,
+        time: meal.time || categoryVal,
+        satiety_score: meal.satiety_score ? Number(meal.satiety_score) : null,
+        sensations: Array.isArray(meal.sensations) ? meal.sensations : [],
         opinion: meal.opinion || null
     };
     const { error } = await supabase
@@ -246,13 +332,13 @@ export const addMeasurementDB = async (m) => {
     const row = {
         user_id: userId,
         date: m.date,
-        weight: m.weight,
-        neck: m.neck,
-        waist: m.waist,
-        hip: m.hip,
-        body_fat: m.bodyFat,
-        lean_mass: m.leanMass,
-        fat_mass: m.fatMass,
+        weight: Number(m.weight),
+        neck: m.neck && Number(m.neck) > 0 ? Number(m.neck) : null,
+        waist: m.waist && Number(m.waist) > 0 ? Number(m.waist) : null,
+        hip: m.hip && Number(m.hip) > 0 ? Number(m.hip) : null,
+        body_fat: m.bodyFat !== undefined && m.bodyFat !== null ? Number(m.bodyFat) : null,
+        lean_mass: m.leanMass !== undefined && m.leanMass !== null ? Number(m.leanMass) : null,
+        fat_mass: m.fatMass !== undefined && m.fatMass !== null ? Number(m.fatMass) : null,
         notes: m.notes || ''
     };
     const { data, error } = await supabase.from('measurements').insert(row).select().single();
@@ -269,9 +355,9 @@ export const addWorkoutDB = async (w) => {
     const row = {
         user_id: userId,
         date: w.date,
-        type: w.name || w.type,
-        duration: w.duration,
-        calories: w.calories,
+        type: w.name || w.type || 'Entrenamiento',
+        duration: Math.max(1, Math.round(Number(w.duration) || 30)),
+        calories: Math.max(0, Math.round(Number(w.calories) || 0)),
         details: w.details || {}
     };
     const { data, error } = await supabase.from('workouts').insert(row).select().single();
@@ -287,17 +373,17 @@ export const deleteWorkoutDB = async (id) => {
     if (error) console.error("Error deleting workout from DB:", error);
 };
 
-
 // --- TRATAMIENTO OBETIDE (GLP-1) ---
 export const addObetideTreatmentDB = async (item) => {
     const userId = await getCurrentUserId();
+    const rawSatiety = Number(item.satiety_level || item.satietyLevel || 7);
     const row = {
         user_id: userId,
         date: item.date,
         dose_ml: Number(item.dose_ml || item.dose || 0.25),
         injection_site: item.injection_site || item.injectionSite || 'abdomen_der',
-        satiety_level: Number(item.satiety_level || item.satietyLevel || 7),
-        side_effects: item.side_effects || item.sideEffects || [],
+        satiety_level: Math.min(10, Math.max(1, rawSatiety)),
+        side_effects: Array.isArray(item.side_effects || item.sideEffects) ? (item.side_effects || item.sideEffects) : [],
         notes: item.notes || ''
     };
     const { data, error } = await supabase
@@ -324,16 +410,19 @@ export const deleteObetideTreatmentDB = async (id) => {
 // --- MI BILLETERA: CATEGORÍAS & GASTOS ---
 export const saveExpenseCategoryDB = async (cat) => {
     const userId = await getCurrentUserId();
+    const isNumericId = typeof cat.id === 'number' || (/^\d+$/.test(String(cat.id || '')) && Number(cat.id) < 1000000000000);
     const row = {
         user_id: userId,
+        slug: !isNumericId && cat.id ? String(cat.id) : (cat.slug || null),
         name: cat.name,
         icon: cat.icon || '💰',
         color: cat.color || '#3b82f6',
-        monthly_budget: Number(cat.monthly_budget || cat.monthlyBudget || 0)
+        monthly_budget: Number(cat.monthly_budget || cat.monthlyBudget || 0),
+        items: Array.isArray(cat.items) ? cat.items : []
     };
 
-    if (cat.id && !String(cat.id).startsWith('temp-')) {
-        row.id = cat.id;
+    if (isNumericId) {
+        row.id = Number(cat.id);
     }
 
     const { data, error } = await supabase
@@ -350,23 +439,29 @@ export const saveExpenseCategoryDB = async (cat) => {
 };
 
 export const deleteExpenseCategoryDB = async (id) => {
-    const { error } = await supabase
-        .from('expense_categories')
-        .delete()
-        .eq('id', id);
+    const isNumericId = typeof id === 'number' || /^\d+$/.test(String(id || ''));
+    const query = supabase.from('expense_categories').delete();
+    const { error } = isNumericId ? await query.eq('id', Number(id)) : await query.eq('slug', String(id));
     if (error) console.error("Error deleting expense category:", error);
 };
 
 export const addExpenseDB = async (expense) => {
     const userId = await getCurrentUserId();
+    const rawCatId = expense.category_id || expense.categoryId || null;
+    const isNumericCatId = typeof rawCatId === 'number' || (/^\d+$/.test(String(rawCatId || '')) && Number(rawCatId) < 1000000000000);
+
     const row = {
         user_id: userId,
-        category_id: expense.category_id || expense.categoryId || null,
+        category_id: isNumericCatId ? Number(rawCatId) : null,
+        category_key: !isNumericCatId && rawCatId ? String(rawCatId) : null,
         category_name: expense.category_name || expense.categoryName || 'General',
-        amount: Number(expense.amount),
+        name: expense.name || expense.description || expense.category_name || 'Gasto',
+        amount: Number(expense.amount || 0),
         date: expense.date,
-        description: expense.description || '',
-        payment_method: expense.payment_method || expense.paymentMethod || 'tarjeta_debito'
+        description: expense.description || expense.name || '',
+        payment_method: expense.payment_method || expense.paymentMethod || 'tarjeta_debito',
+        is_recurring: Boolean(expense.is_recurring),
+        is_paid: expense.is_paid !== false
     };
     const { data, error } = await supabase
         .from('expenses')
@@ -382,10 +477,12 @@ export const addExpenseDB = async (expense) => {
 };
 
 export const deleteExpenseDB = async (id) => {
+    const isNumericId = typeof id === 'number' || (/^\d+$/.test(String(id || '')) && Number(id) < 1000000000000);
+    if (!isNumericId) return;
     const { error } = await supabase
         .from('expenses')
         .delete()
-        .eq('id', id);
+        .eq('id', Number(id));
     if (error) console.error("Error deleting expense:", error);
 };
 

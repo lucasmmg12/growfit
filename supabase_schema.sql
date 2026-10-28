@@ -3,9 +3,13 @@
 -- Migración Segura y No Destructiva
 -- ==========================================================
 
--- 1. PERFIL DE USUARIO
-CREATE TABLE IF NOT EXISTS public.profiles (
+-- 1. PERFIL Y ESTADO GLOBAL DE USUARIO (GrowFit Multi-Device Cloud Sync)
+CREATE TABLE IF NOT EXISTS public.growfit_profiles (
   user_id TEXT PRIMARY KEY,
+  username TEXT,
+  password TEXT,
+  display_name TEXT,
+  role TEXT DEFAULT 'user',
   email TEXT,
   full_name TEXT,
   height NUMERIC,
@@ -16,23 +20,28 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   activity_level TEXT,
   daily_calorie_target INT DEFAULT 2000,
   currency TEXT DEFAULT 'ARS',
-  data JSONB DEFAULT '{}',
+  data JSONB DEFAULT '{}'::jsonb,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS user_id TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS height NUMERIC;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS target_weight NUMERIC;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS starting_weight NUMERIC;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS birth_date DATE;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS gender TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS activity_level TEXT;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS daily_calorie_target INT DEFAULT 2000;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'ARS';
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS data JSONB DEFAULT '{}';
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS username TEXT;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS password TEXT;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS display_name TEXT;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user';
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS height NUMERIC;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS target_weight NUMERIC;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS starting_weight NUMERIC;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS birth_date DATE;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS gender TEXT;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS activity_level TEXT;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS daily_calorie_target INT DEFAULT 2000;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'ARS';
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS data JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.growfit_profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_growfit_profiles_username ON public.growfit_profiles(LOWER(username));
 
 -- 2. TRATAMIENTO OBETIDE (GLP-1 Titulación y Saciedad)
 CREATE TABLE IF NOT EXISTS public.obetide_treatments (
@@ -77,6 +86,7 @@ CREATE TABLE IF NOT EXISTS public.meals (
 ALTER TABLE public.meals ADD COLUMN IF NOT EXISTS user_id TEXT;
 ALTER TABLE public.meals ADD COLUMN IF NOT EXISTS date DATE;
 ALTER TABLE public.meals ADD COLUMN IF NOT EXISTS meal_type TEXT DEFAULT 'almuerzo';
+ALTER TABLE public.meals ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Almuerzo';
 ALTER TABLE public.meals ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE public.meals ADD COLUMN IF NOT EXISTS calories INT DEFAULT 0;
 ALTER TABLE public.meals ADD COLUMN IF NOT EXISTS macros JSONB DEFAULT '{"protein": 0, "carbs": 0, "fat": 0}'::jsonb;
@@ -97,15 +107,20 @@ CREATE TABLE IF NOT EXISTS public.measurements (
   user_id TEXT NOT NULL,
   date DATE NOT NULL,
   weight NUMERIC CHECK (weight > 0),
-  neck NUMERIC CHECK (neck > 0 OR neck IS NULL),
-  waist NUMERIC CHECK (waist > 0 OR waist IS NULL),
-  hip NUMERIC CHECK (hip > 0 OR hip IS NULL),
-  body_fat NUMERIC CHECK (body_fat >= 0),
+  neck NUMERIC,
+  waist NUMERIC,
+  hip NUMERIC,
+  body_fat NUMERIC,
   fat_mass NUMERIC,
   lean_mass NUMERIC,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.measurements DROP CONSTRAINT IF EXISTS measurements_neck_check;
+ALTER TABLE public.measurements DROP CONSTRAINT IF EXISTS measurements_waist_check;
+ALTER TABLE public.measurements DROP CONSTRAINT IF EXISTS measurements_hip_check;
+ALTER TABLE public.measurements DROP CONSTRAINT IF EXISTS measurements_body_fat_check;
 
 ALTER TABLE public.measurements ADD COLUMN IF NOT EXISTS user_id TEXT;
 ALTER TABLE public.measurements ADD COLUMN IF NOT EXISTS date DATE;
@@ -127,11 +142,14 @@ CREATE TABLE IF NOT EXISTS public.workouts (
   user_id TEXT NOT NULL,
   date DATE NOT NULL,
   type TEXT,
-  duration INT CHECK (duration > 0),
-  calories INT CHECK (calories >= 0),
+  duration INT,
+  calories INT,
   details JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.workouts DROP CONSTRAINT IF EXISTS workouts_duration_check;
+ALTER TABLE public.workouts DROP CONSTRAINT IF EXISTS workouts_calories_check;
 
 ALTER TABLE public.workouts ADD COLUMN IF NOT EXISTS user_id TEXT;
 ALTER TABLE public.workouts ADD COLUMN IF NOT EXISTS date DATE;
@@ -147,18 +165,22 @@ CREATE INDEX IF NOT EXISTS idx_workouts_user_date ON public.workouts(user_id, da
 CREATE TABLE IF NOT EXISTS public.expense_categories (
   id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
   user_id TEXT NOT NULL,
+  slug TEXT,
   name TEXT NOT NULL,
   icon TEXT DEFAULT '💰',
   color TEXT DEFAULT '#3b82f6',
-  monthly_budget NUMERIC DEFAULT 0 CHECK (monthly_budget >= 0),
+  monthly_budget NUMERIC DEFAULT 0,
+  items JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.expense_categories ADD COLUMN IF NOT EXISTS user_id TEXT;
+ALTER TABLE public.expense_categories ADD COLUMN IF NOT EXISTS slug TEXT;
 ALTER TABLE public.expense_categories ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE public.expense_categories ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT '💰';
 ALTER TABLE public.expense_categories ADD COLUMN IF NOT EXISTS color TEXT DEFAULT '#3b82f6';
 ALTER TABLE public.expense_categories ADD COLUMN IF NOT EXISTS monthly_budget NUMERIC DEFAULT 0;
+ALTER TABLE public.expense_categories ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.expense_categories ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_expense_categories_user ON public.expense_categories(user_id);
@@ -168,21 +190,29 @@ CREATE TABLE IF NOT EXISTS public.expenses (
   id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
   user_id TEXT NOT NULL,
   category_id BIGINT REFERENCES public.expense_categories(id) ON DELETE SET NULL,
+  category_key TEXT,
   category_name TEXT,
-  amount NUMERIC NOT NULL CHECK (amount > 0),
+  name TEXT,
+  amount NUMERIC NOT NULL DEFAULT 0,
   date DATE NOT NULL,
   description TEXT,
-  payment_method TEXT DEFAULT 'tarjeta_debito', -- 'efectivo', 'tarjeta_debito', 'tarjeta_credito', 'transferencia'
+  payment_method TEXT DEFAULT 'tarjeta_debito',
+  is_recurring BOOLEAN DEFAULT FALSE,
+  is_paid BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS user_id TEXT;
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS category_id BIGINT;
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS category_key TEXT;
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS category_name TEXT;
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS amount NUMERIC;
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS date DATE;
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'tarjeta_debito';
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS is_recurring BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT TRUE;
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON public.expenses(user_id, date);
@@ -206,7 +236,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_meal_plans_user ON public.ai_meal_plans(user_i
 -- ==========================================================
 -- ROW LEVEL SECURITY (RLS) MULTI-TENANT
 -- ==========================================================
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.growfit_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.obetide_treatments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.meals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.measurements ENABLE ROW LEVEL SECURITY;
@@ -215,59 +245,42 @@ ALTER TABLE public.expense_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_meal_plans ENABLE ROW LEVEL SECURITY;
 
--- Políticas de aislamiento seguras por user_id (soporta auth.uid() y modo directo)
-DROP POLICY IF EXISTS "Multi-tenant Profiles" ON public.profiles;
-CREATE POLICY "Multi-tenant Profiles" ON public.profiles FOR ALL USING (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-) WITH CHECK (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-);
+DROP POLICY IF EXISTS "Multi-tenant GrowFit Profiles" ON public.growfit_profiles;
+CREATE POLICY "Multi-tenant GrowFit Profiles" ON public.growfit_profiles FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Multi-tenant Obetide" ON public.obetide_treatments;
-CREATE POLICY "Multi-tenant Obetide" ON public.obetide_treatments FOR ALL USING (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-) WITH CHECK (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-);
+CREATE POLICY "Multi-tenant Obetide" ON public.obetide_treatments FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Multi-tenant Meals" ON public.meals;
-CREATE POLICY "Multi-tenant Meals" ON public.meals FOR ALL USING (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-) WITH CHECK (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-);
+CREATE POLICY "Multi-tenant Meals" ON public.meals FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Multi-tenant Measurements" ON public.measurements;
-CREATE POLICY "Multi-tenant Measurements" ON public.measurements FOR ALL USING (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-) WITH CHECK (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-);
+CREATE POLICY "Multi-tenant Measurements" ON public.measurements FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Multi-tenant Workouts" ON public.workouts;
-CREATE POLICY "Multi-tenant Workouts" ON public.workouts FOR ALL USING (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-) WITH CHECK (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-);
+CREATE POLICY "Multi-tenant Workouts" ON public.workouts FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Multi-tenant Expense Categories" ON public.expense_categories;
-CREATE POLICY "Multi-tenant Expense Categories" ON public.expense_categories FOR ALL USING (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-) WITH CHECK (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-);
+CREATE POLICY "Multi-tenant Expense Categories" ON public.expense_categories FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Multi-tenant Expenses" ON public.expenses;
-CREATE POLICY "Multi-tenant Expenses" ON public.expenses FOR ALL USING (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-) WITH CHECK (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-);
+CREATE POLICY "Multi-tenant Expenses" ON public.expenses FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Multi-tenant AI Meal Plans" ON public.ai_meal_plans;
-CREATE POLICY "Multi-tenant AI Meal Plans" ON public.ai_meal_plans FOR ALL USING (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-) WITH CHECK (
-  auth.uid()::text = user_id OR auth.uid() IS NULL OR user_id = 'lucas-admin-v1'
-);
+CREATE POLICY "Multi-tenant AI Meal Plans" ON public.ai_meal_plans FOR ALL USING (true) WITH CHECK (true);
+
+-- Unificar registros históricos de 'lucas-admin-v1' hacia la cuenta 'lmarinero'
+UPDATE public.meals SET user_id = 'lmarinero' WHERE user_id = 'lucas-admin-v1';
+UPDATE public.measurements SET user_id = 'lmarinero' WHERE user_id = 'lucas-admin-v1';
+UPDATE public.workouts SET user_id = 'lmarinero' WHERE user_id = 'lucas-admin-v1';
+UPDATE public.obetide_treatments SET user_id = 'lmarinero' WHERE user_id = 'lucas-admin-v1';
+UPDATE public.expense_categories SET user_id = 'lmarinero' WHERE user_id = 'lucas-admin-v1';
+UPDATE public.expenses SET user_id = 'lmarinero' WHERE user_id = 'lucas-admin-v1';
+UPDATE public.ai_meal_plans SET user_id = 'lmarinero' WHERE user_id = 'lucas-admin-v1';
+
+-- Asegurar cuenta maestra lmarinero en growfit_profiles
+INSERT INTO public.growfit_profiles (user_id, username, password, display_name, role, full_name, height, starting_weight, target_weight, daily_calorie_target, currency)
+VALUES ('lmarinero', 'lmarinero', '123456', 'Lucas Marinero', 'owner', 'Lucas Marinero', 175, 104, 70, 2000, 'ARS')
+ON CONFLICT (user_id) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';

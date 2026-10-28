@@ -28,7 +28,6 @@ const seedDefaultUsers = () => {
         ];
         localStorage.setItem(USERS_DIR_KEY, JSON.stringify(users));
     } else {
-        // Ensure lmarinero exists with password 123456
         const hasLmarinero = users.some(u => u.username.toLowerCase() === 'lmarinero');
         if (!hasLmarinero) {
             users.push({
@@ -43,7 +42,7 @@ const seedDefaultUsers = () => {
         }
     }
 
-    // Also migrate legacy growfit_state_v1 to growfit_state_user_lmarinero if not yet migrated
+    // Migrate legacy growfit_state_v1 to growfit_state_user_lmarinero if not yet migrated
     const lmarineroStorageKey = 'growfit_state_user_lmarinero';
     if (!localStorage.getItem(lmarineroStorageKey)) {
         const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
@@ -59,7 +58,13 @@ seedDefaultUsers();
 export const getCurrentUser = () => {
     try {
         const raw = localStorage.getItem(SESSION_KEY);
-        if (raw) return JSON.parse(raw);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.username?.toLowerCase() === 'lmarinero') {
+                parsed.userId = 'lmarinero';
+            }
+            return parsed;
+        }
     } catch (e) {
         return null;
     }
@@ -99,7 +104,39 @@ export const login = async (username, password) => {
         users = [];
     }
 
-    const found = users.find(u => u.username.toLowerCase() === cleanUser);
+    let found = users.find(u => u.username.toLowerCase() === cleanUser);
+
+    // Check cloud directory in growfit_profiles so users registered on another device can log in
+    try {
+        const targetUserId = cleanUser === 'lmarinero' ? 'lmarinero' : `user-${cleanUser}`;
+        const { data: cloudUser } = await supabase
+            .from('growfit_profiles')
+            .select('user_id, username, password, display_name, full_name, role')
+            .or(`user_id.eq.${targetUserId},username.ilike.${cleanUser}`)
+            .maybeSingle();
+
+        if (cloudUser) {
+            const cloudEntry = {
+                username: (cloudUser.username || cleanUser).toLowerCase(),
+                password: cloudUser.password || (found ? found.password : cleanPass),
+                displayName: cloudUser.display_name || cloudUser.full_name || cleanUser,
+                userId: cloudUser.user_id || targetUserId,
+                role: cloudUser.role || 'user',
+                createdAt: new Date().toISOString()
+            };
+            if (!found) {
+                found = cloudEntry;
+                users.push(cloudEntry);
+                localStorage.setItem(USERS_DIR_KEY, JSON.stringify(users));
+            } else if (cloudUser.password) {
+                found.password = cloudUser.password;
+                found.displayName = cloudEntry.displayName;
+                found.userId = cloudEntry.userId;
+            }
+        }
+    } catch (e) {
+        console.warn('[GrowFit Auth] Error consultando usuario en la nube:', e);
+    }
 
     if (!found) {
         return { success: false, error: 'Usuario no registrado. Si eres nuevo, toca en "Crear Cuenta".' };
@@ -109,11 +146,27 @@ export const login = async (username, password) => {
         return { success: false, error: 'Contraseña incorrecta. Verifica tus datos.' };
     }
 
-    // Success session
+    const finalUserId = cleanUser === 'lmarinero' ? 'lmarinero' : (found.userId || `user-${cleanUser}`);
+
+    // Ensure user exists in cloud directory for cross-device login
+    try {
+        await supabase.from('growfit_profiles').upsert({
+            user_id: finalUserId,
+            username: cleanUser,
+            password: cleanPass,
+            display_name: found.displayName || found.username,
+            full_name: found.displayName || found.username,
+            role: found.role || 'user',
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+    } catch (e) {
+        console.warn('[GrowFit Auth] No se pudo sincronizar credencial en nube:', e);
+    }
+
     const session = {
         username: found.username,
         displayName: found.displayName || found.username,
-        userId: found.userId || `user-${found.username}`,
+        userId: finalUserId,
         role: found.role || 'user',
         loginAt: new Date().toISOString()
     };
@@ -121,7 +174,6 @@ export const login = async (username, password) => {
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     setLocalUserId(session.userId);
 
-    // If lmarinero, ensure their complete state is connected
     if (cleanUser === 'lmarinero') {
         const targetKey = getUserStorageKey('lmarinero');
         if (!localStorage.getItem(targetKey)) {
@@ -130,7 +182,6 @@ export const login = async (username, password) => {
         }
     }
 
-    // Notify state changed so views update with user context
     window.dispatchEvent(new CustomEvent('auth-changed', { detail: session }));
 
     return { success: true, user: session };
@@ -161,11 +212,28 @@ export const register = async ({ username, password, displayName }) => {
         return { success: false, error: `El usuario "${cleanUser}" ya existe. Por favor elige otro o inicia sesión.` };
     }
 
+    const newUserId = cleanUser === 'lmarinero' ? 'lmarinero' : `user-${cleanUser}`;
+
+    // Check cloud directory as well
+    try {
+        const { data: existingCloud } = await supabase
+            .from('growfit_profiles')
+            .select('user_id')
+            .or(`user_id.eq.${newUserId},username.ilike.${cleanUser}`)
+            .maybeSingle();
+
+        if (existingCloud) {
+            return { success: false, error: `El usuario "${cleanUser}" ya está registrado en la nube. Inicia sesión con tu contraseña.` };
+        }
+    } catch (e) {
+        console.warn('[GrowFit Auth] Aviso verificando usuario en nube:', e);
+    }
+
     const newUser = {
         username: cleanUser,
         password: cleanPass,
         displayName: cleanName,
-        userId: `user-${cleanUser}`,
+        userId: newUserId,
         role: 'user',
         createdAt: new Date().toISOString()
     };
@@ -173,7 +241,6 @@ export const register = async ({ username, password, displayName }) => {
     users.push(newUser);
     localStorage.setItem(USERS_DIR_KEY, JSON.stringify(users));
 
-    // Initialize completely independent and isolated clean state for this new user
     const newUserKey = getUserStorageKey(cleanUser);
     const cleanInitialState = {
         profile: {
@@ -219,7 +286,27 @@ export const register = async ({ username, password, displayName }) => {
 
     localStorage.setItem(newUserKey, JSON.stringify(cleanInitialState));
 
-    // Set active session
+    // Persist user account and initial state to Supabase immediately
+    try {
+        await supabase.from('growfit_profiles').upsert({
+            user_id: newUser.userId,
+            username: newUser.username,
+            password: cleanPass,
+            display_name: newUser.displayName,
+            full_name: newUser.displayName,
+            role: newUser.role,
+            height: 175,
+            starting_weight: 80,
+            target_weight: 72,
+            daily_calorie_target: 2000,
+            currency: 'ARS',
+            data: cleanInitialState,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+    } catch (e) {
+        console.error('[GrowFit Auth] Error guardando nuevo usuario en Supabase:', e);
+    }
+
     const session = {
         username: newUser.username,
         displayName: newUser.displayName,
