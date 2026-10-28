@@ -160,11 +160,15 @@ export const renderWallet = () => {
                     <div class="flex flex-wrap sm:flex-nowrap gap-3 items-center justify-between">
                         <button id="open-expense-modal-btn" class="flex-1 btn-emerald py-3 px-5 rounded-2xl flex items-center justify-center gap-2 font-semibold text-xs tracking-wide cursor-pointer shadow-md">
                             <span class="material-symbols-outlined text-lg">add_card</span>
-                            Registrar Gasto Extra
+                            Agregar Gasto
+                        </button>
+                        <button id="open-new-cat-direct-btn" class="py-3 px-4 rounded-2xl bg-[#0A84FF]/15 hover:bg-[#0A84FF]/25 border border-[#0A84FF]/30 text-[#0A84FF] flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer transition-colors">
+                            <span class="material-symbols-outlined text-base">create_new_folder</span>
+                            Nueva Categoría
                         </button>
                         <button id="open-categories-modal-btn" class="btn-ghost-light py-3 px-4 rounded-2xl flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer">
                             <span class="material-symbols-outlined text-base">tune</span>
-                            Gestionar Categorías
+                            Presupuestos
                         </button>
                     </div>
 
@@ -231,25 +235,36 @@ export const renderWallet = () => {
 
                     <!-- Real October Categories Breakdown with Detailed Concepts Accordion -->
                     <div class="white-card p-5 md:p-6 border border-white/[0.07] shadow-xl">
-                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.06]">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-white/[0.06]">
                             <div>
                                 <h3 class="text-base font-semibold text-white">Presupuesto por Categoría</h3>
-                                <p class="text-xs text-slate-400 mt-0.5">Toca una categoría para ver los conceptos detallados</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Toca una categoría para ver los conceptos o agregar un gasto</p>
                             </div>
-                            <span class="text-xs font-mono font-medium text-slate-400">
-                                ${summary.byCategory.length} grupos
-                            </span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-mono font-medium text-slate-400">
+                                    ${summary.byCategory.length} grupos
+                                </span>
+                                <button id="open-new-cat-header-btn" class="px-2.5 py-1 rounded-xl bg-[#10E775]/10 hover:bg-[#10E775]/20 border border-[#10E775]/25 text-[#10E775] text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors">
+                                    <span class="material-symbols-outlined text-xs">add</span>
+                                    Crear Categoría
+                                </button>
+                            </div>
                         </div>
 
                         <div class="flex flex-col gap-3">
                             ${summary.byCategory.map(item => {
                                 const cat = item.category;
                                 const spentFormatted = formatMoney(item.spent);
-                                const isExpanded = expandedCategories.has(cat.id);
-                                const catExpenses = (state.expenses || []).filter(e => 
-                                    (e.date?.startsWith(currentMonth)) && 
-                                    (String(e.category_id) === String(cat.id) || e.category_name === cat.name)
-                                );
+                                const isExpanded = expandedCategories.has(String(cat.id));
+                                const catExpenses = (state.expenses || []).filter(e => {
+                                    if (!e.date?.startsWith(currentMonth)) return false;
+                                    const rawId = e.category_id !== undefined && e.category_id !== null ? String(e.category_id) : '';
+                                    const rawName = (e.category_name || '').trim().toLowerCase();
+                                    if (rawId && (String(cat.id) === rawId || String(cat.db_id) === rawId || String(cat.slug) === rawId)) return true;
+                                    if (rawName && cat.name?.trim().toLowerCase() === rawName) return true;
+                                    if (rawName && (rawName.includes('obetide') || rawName.includes('salud')) && String(cat.id) === 'salud-obetide') return true;
+                                    return false;
+                                });
                                 const allCatPaid = catExpenses.length > 0 && catExpenses.every(e => e.is_paid !== false);
 
                                 return `
@@ -318,6 +333,12 @@ export const renderWallet = () => {
                                             }).join('') : `
                                                 <p class="py-3 text-xs text-slate-500 italic text-center">No hay gastos cargados en esta categoría para este mes.</p>
                                             `}
+                                        </div>
+                                        <div class="pt-2 mt-1 border-t border-white/[0.04] flex justify-end">
+                                            <button type="button" class="quick-add-cat-expense-btn px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-[#10E775]/15 border border-white/[0.08] hover:border-[#10E775]/30 text-slate-300 hover:text-[#10E775] text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer" data-catid="${cat.id}">
+                                                <span class="material-symbols-outlined text-xs">add_circle</span>
+                                                Agregar gasto en ${cat.name}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -436,7 +457,13 @@ export const renderWallet = () => {
                     </div>
 
                     <div>
-                        <label class="text-[11px] font-medium text-slate-400 mb-1 block">Categoría</label>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-[11px] font-medium text-slate-400">Categoría</label>
+                            <button type="button" id="open-new-cat-from-expense-btn" class="text-[11px] font-semibold text-[#10E775] hover:underline flex items-center gap-0.5 cursor-pointer">
+                                <span class="material-symbols-outlined text-xs">add</span>
+                                Nueva Categoría
+                            </button>
+                        </div>
                         <select id="expense-category" class="w-full bg-black/40 border border-white/[0.1] rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-200 outline-none focus:border-[#10E775] cursor-pointer">
                             ${categories.map(c => `
                                 <option value="${c.id}" data-name="${c.name}">${c.icon} ${c.name}</option>
@@ -446,7 +473,7 @@ export const renderWallet = () => {
 
                     <div>
                         <label class="text-[11px] font-medium text-slate-400">Concepto / Comercio</label>
-                        <input type="text" id="expense-description" placeholder="ej. Supermercado, Farmacia, Combustible" class="w-full mt-1 bg-black/40 border border-white/[0.1] text-white rounded-xl px-3 py-2.5 text-xs font-medium outline-none focus:border-[#10E775]">
+                        <input type="text" id="expense-description" placeholder="ej. Supermercado, Farmacia, Combustible" required class="w-full mt-1 bg-black/40 border border-white/[0.1] text-white rounded-xl px-3 py-2.5 text-xs font-medium outline-none focus:border-[#10E775]">
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
@@ -461,6 +488,23 @@ export const renderWallet = () => {
                                 <option value="tarjeta_debito">Débito</option>
                                 <option value="efectivo">Efectivo</option>
                                 <option value="tarjeta_credito">Crédito</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] font-medium text-slate-400">Estado</label>
+                            <select id="expense-paid-status" class="w-full mt-1 bg-black/40 border border-white/[0.1] text-slate-200 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:border-[#10E775] cursor-pointer">
+                                <option value="paid">✓ Pagado</option>
+                                <option value="pending">⏳ Pendiente</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-medium text-slate-400">Frecuencia</label>
+                            <select id="expense-recurring" class="w-full mt-1 bg-black/40 border border-white/[0.1] text-slate-200 rounded-xl px-3 py-2 text-xs font-medium outline-none focus:border-[#10E775] cursor-pointer">
+                                <option value="once">Gasto del mes</option>
+                                <option value="recurring">Fijo mensual</option>
                             </select>
                         </div>
                     </div>
@@ -553,7 +597,17 @@ export const renderWallet = () => {
                     </div>
 
                     <div>
-                        <label class="text-[11px] font-medium text-slate-400">Presupuesto Mensual ($)</label>
+                        <label class="text-[11px] font-medium text-slate-400 mb-1 block">Color Identificador</label>
+                        <input type="hidden" id="new-cat-color" value="#0A84FF">
+                        <div class="flex items-center gap-2">
+                            ${['#0A84FF', '#10E775', '#FF9F0A', '#BF5AF2', '#FF453A', '#06B6D4'].map((color, idx) => `
+                                <button type="button" class="preset-color-btn size-7 rounded-full border-2 ${idx === 0 ? 'border-white scale-110' : 'border-transparent'} transition-transform cursor-pointer" style="background-color: ${color};" data-color="${color}"></button>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-medium text-slate-400">Presupuesto Mensual Estimado ($, opcional)</label>
                         <div class="relative mt-1">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-slate-400">$</span>
                             <input type="number" id="new-cat-budget" placeholder="0" step="any" class="w-full bg-black/40 border border-white/[0.1] rounded-xl pl-6 pr-3 py-2 text-xs font-mono font-bold text-white outline-none focus:border-[#10E775]">
@@ -587,7 +641,10 @@ export const attachWalletEvents = () => {
     const incomeForm = document.getElementById('income-form');
     const saveBudgetsBtn = document.getElementById('save-budgets-btn');
 
-    openExpenseBtn?.addEventListener('click', () => expenseModal?.classList.remove('hidden'));
+    openExpenseBtn?.addEventListener('click', () => {
+        expenseModal?.classList.remove('hidden');
+        setTimeout(() => document.getElementById('expense-amount')?.focus(), 50);
+    });
     closeExpenseBtn?.addEventListener('click', () => expenseModal?.classList.add('hidden'));
 
     openCategoriesBtn?.addEventListener('click', () => categoriesModal?.classList.remove('hidden'));
@@ -596,10 +653,24 @@ export const attachWalletEvents = () => {
     openIncomeBtn?.addEventListener('click', () => incomeModal?.classList.remove('hidden'));
     closeIncomeBtn?.addEventListener('click', () => incomeModal?.classList.add('hidden'));
 
+    // Quick Add Expense in a specific category
+    document.querySelectorAll('.quick-add-cat-expense-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const catId = btn.dataset.catid;
+            const sel = document.getElementById('expense-category');
+            if (sel && catId) {
+                sel.value = catId;
+            }
+            expenseModal?.classList.remove('hidden');
+            setTimeout(() => document.getElementById('expense-amount')?.focus(), 50);
+        });
+    });
+
     // Accordion Toggle for Category Detailed Concepts
     document.querySelectorAll('.toggle-cat-accordion-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const catId = btn.dataset.catid;
+            const catId = String(btn.dataset.catid);
             if (expandedCategories.has(catId)) {
                 expandedCategories.delete(catId);
             } else {
@@ -624,13 +695,21 @@ export const attachWalletEvents = () => {
     expenseForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const amount = Number(document.getElementById('expense-amount').value);
+        if (!amount || amount <= 0) {
+            window.showAlert?.('Monto inválido', 'Ingresa un monto mayor a 0.', 'error');
+            return;
+        }
         const sel = document.getElementById('expense-category');
-        const rawVal = sel.value;
+        const rawVal = sel?.value;
         const category_id = rawVal || 'operativos-vida';
-        const category_name = sel.options[sel.selectedIndex]?.dataset.name || 'General';
+        const category_name = sel?.options[sel.selectedIndex]?.dataset.name || 'General';
         const description = document.getElementById('expense-description').value.trim() || category_name;
-        const date = document.getElementById('expense-date').value;
+        const date = document.getElementById('expense-date').value || getArgentinaDate();
         const payment_method = document.getElementById('expense-payment-method').value;
+        const paidStatus = document.getElementById('expense-paid-status')?.value || 'paid';
+        const recurringVal = document.getElementById('expense-recurring')?.value || 'once';
+
+        expandedCategories.add(String(category_id));
 
         await addExpense({
             name: description,
@@ -639,7 +718,9 @@ export const attachWalletEvents = () => {
             category_name,
             description,
             date,
-            payment_method
+            payment_method,
+            is_paid: paidStatus !== 'pending',
+            is_recurring: recurringVal === 'recurring'
         });
 
         expenseModal?.classList.add('hidden');
@@ -700,13 +781,21 @@ export const attachWalletEvents = () => {
     // New Category Modal Controls
     const newCategoryModal = document.getElementById('new-category-modal');
     const openNewCatBtn = document.getElementById('open-new-cat-from-modal-btn');
+    const openNewCatDirectBtn = document.getElementById('open-new-cat-direct-btn');
+    const openNewCatHeaderBtn = document.getElementById('open-new-cat-header-btn');
+    const openNewCatFromExpenseBtn = document.getElementById('open-new-cat-from-expense-btn');
     const closeNewCatBtn = document.getElementById('close-new-cat-modal');
     const newCategoryForm = document.getElementById('new-category-form');
 
-    openNewCatBtn?.addEventListener('click', () => {
+    const openNewCategoryModal = () => {
         newCategoryModal?.classList.remove('hidden');
-        document.getElementById('new-cat-name')?.focus();
-    });
+        setTimeout(() => document.getElementById('new-cat-name')?.focus(), 50);
+    };
+
+    openNewCatBtn?.addEventListener('click', openNewCategoryModal);
+    openNewCatDirectBtn?.addEventListener('click', openNewCategoryModal);
+    openNewCatHeaderBtn?.addEventListener('click', openNewCategoryModal);
+    openNewCatFromExpenseBtn?.addEventListener('click', openNewCategoryModal);
 
     closeNewCatBtn?.addEventListener('click', () => {
         newCategoryModal?.classList.add('hidden');
@@ -723,26 +812,61 @@ export const attachWalletEvents = () => {
         });
     });
 
+    // Preset Colors
+    document.querySelectorAll('.preset-color-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const color = btn.dataset.color;
+            const colorInput = document.getElementById('new-cat-color');
+            if (colorInput) colorInput.value = color;
+            document.querySelectorAll('.preset-color-btn').forEach(b => {
+                b.classList.remove('border-white', 'scale-110');
+                b.classList.add('border-transparent');
+            });
+            btn.classList.remove('border-transparent');
+            btn.classList.add('border-white', 'scale-110');
+        });
+    });
+
     // New Category Submit
     newCategoryForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('new-cat-name').value.trim();
         const icon = document.getElementById('new-cat-icon').value.trim() || '🏷️';
+        const color = document.getElementById('new-cat-color')?.value || '#0A84FF';
         const monthly_budget = Number(document.getElementById('new-cat-budget').value) || 0;
 
         if (!name) return;
 
-        await saveExpenseCategory({
+        const createdCat = await saveExpenseCategory({
             name,
             icon,
-            color: '#0A84FF',
+            color,
             monthly_budget
         });
 
+        if (createdCat?.id) {
+            expandedCategories.add(String(createdCat.id));
+        }
+
         newCategoryModal?.classList.add('hidden');
         newCategoryForm.reset();
-        window.showAlert?.('¡Categoría Creada!', `Se agregó "${name}".`, 'success');
-        window.router.navigate('wallet');
+
+        const isExpenseModalOpen = expenseModal && !expenseModal.classList.contains('hidden');
+        if (isExpenseModalOpen && createdCat) {
+            const sel = document.getElementById('expense-category');
+            if (sel) {
+                const opt = document.createElement('option');
+                opt.value = createdCat.id;
+                opt.dataset.name = createdCat.name;
+                opt.textContent = `${createdCat.icon} ${createdCat.name}`;
+                sel.appendChild(opt);
+                sel.value = createdCat.id;
+            }
+            window.showAlert?.('¡Categoría Creada!', `Se seleccionó "${name}" para tu gasto.`, 'success');
+        } else {
+            window.showAlert?.('¡Categoría Creada!', `Se agregó "${name}" a tu billetera.`, 'success');
+            window.router.navigate('wallet');
+        }
     });
 
     // Delete Category

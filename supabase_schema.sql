@@ -214,6 +214,7 @@ ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS is_recurring BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT TRUE;
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.expenses DROP CONSTRAINT IF EXISTS expenses_category_id_fkey;
 
 CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON public.expenses(user_id, date);
 

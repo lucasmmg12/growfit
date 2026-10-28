@@ -13,6 +13,7 @@ import {
     saveExpenseCategoryDB,
     deleteExpenseCategoryDB,
     addExpenseDB,
+    updateExpenseDB,
     deleteExpenseDB,
     saveAiMealPlanDB
 } from './services/db';
@@ -296,42 +297,33 @@ export const getState = () => {
             state.monthlyIncome = defaultState.monthlyIncome;
             state.incomeSource = defaultState.incomeSource;
         }
-        const hasOldCategories = !state.expenseCategories || state.expenseCategories.some(c => c.name?.includes('Supermercado') || c.id === 1);
-        if (hasOldCategories) {
-            state.expenseCategories = defaultState.expenseCategories;
-            state.expenses = defaultState.expenses;
+        if (!state.expenseCategories || state.expenseCategories.length === 0) {
+            state.expenseCategories = JSON.parse(JSON.stringify(defaultState.expenseCategories));
             localStorage.setItem(key, JSON.stringify(state));
-        } else {
-            const saludCat = state.expenseCategories?.find(c => c.id === 'salud-obetide');
-            if (saludCat && (saludCat.monthly_budget !== 115000 || !saludCat.items?.some(i => i.name === 'Dutide'))) {
-                saludCat.name = 'Salud & Medicación';
-                saludCat.monthly_budget = 115000;
-                saludCat.items = [
-                    { name: 'Dutide', amount: 100000 },
-                    { name: 'Levotiroxina', amount: 15000 }
-                ];
-                if (!state.expenses.some(e => e.name === 'Dutide')) {
-                    state.expenses.push(
-                        { id: 'exp-17', name: 'Dutide', amount: 100000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-20', is_recurring: true }
-                    );
-                }
-                if (!state.expenses.some(e => e.name === 'Levotiroxina')) {
-                    state.expenses.push(
-                        { id: 'exp-18', name: 'Levotiroxina', amount: 15000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-21', is_recurring: true }
-                    );
-                }
-                localStorage.setItem(key, JSON.stringify(state));
-            }
         }
-        // Ensure all October expenses for lmarinero are marked as paid
-        let hadUnpaid = false;
-        state.expenses?.forEach(e => {
-            if (e.date?.startsWith('2026-10') && e.is_paid !== true) {
-                e.is_paid = true;
-                hadUnpaid = true;
+        if (!state.expenses || state.expenses.length === 0) {
+            state.expenses = JSON.parse(JSON.stringify(defaultState.expenses));
+            localStorage.setItem(key, JSON.stringify(state));
+        }
+
+        const saludCat = state.expenseCategories?.find(c => c.id === 'salud-obetide');
+        if (saludCat && (saludCat.monthly_budget !== 115000 || !saludCat.items?.some(i => i.name === 'Dutide'))) {
+            saludCat.name = 'Salud & Medicación';
+            saludCat.monthly_budget = 115000;
+            saludCat.items = [
+                { name: 'Dutide', amount: 100000 },
+                { name: 'Levotiroxina', amount: 15000 }
+            ];
+            if (!state.expenses.some(e => e.name === 'Dutide')) {
+                state.expenses.push(
+                    { id: 'exp-17', name: 'Dutide', amount: 100000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-20', is_recurring: true, is_paid: true }
+                );
             }
-        });
-        if (hadUnpaid) {
+            if (!state.expenses.some(e => e.name === 'Levotiroxina')) {
+                state.expenses.push(
+                    { id: 'exp-18', name: 'Levotiroxina', amount: 15000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-21', is_recurring: true, is_paid: true }
+                );
+            }
             localStorage.setItem(key, JSON.stringify(state));
         }
 
@@ -502,18 +494,54 @@ export const initializeState = async () => {
             if (cloudExpenses.length > 0) {
                 const dbExpenseMap = new Map();
                 cloudExpenses.forEach(ce => {
-                    const sig = `${ce.date}|${ce.name || ce.description}|${ce.amount}`;
+                    const sig = `${ce.date}|${(ce.name || ce.description || '').toLowerCase()}|${ce.amount}`;
                     dbExpenseMap.set(sig, ce);
                 });
                 const mergedExp = [...cloudExpenses];
                 for (const le of finalExpenses) {
-                    const sig = `${le.date}|${le.name || le.description}|${le.amount}`;
-                    if (!dbExpenseMap.has(sig) && String(le.id).startsWith('exp-')) {
+                    const sig = `${le.date}|${(le.name || le.description || '').toLowerCase()}|${le.amount}`;
+                    if (!dbExpenseMap.has(sig)) {
                         mergedExp.push(le);
+                        dbExpenseMap.set(sig, le);
                     }
                 }
                 finalExpenses = mergedExp;
             }
+
+            // Merge preset + cloudfull + DB expenseCategories without losing preset or custom categories
+            const mergedCategoriesMap = new Map();
+            const seedCategories = [
+                ...(isLmarinero ? defaultState.expenseCategories : []),
+                ...(baseState.expenseCategories || []),
+                ...(local.expenseCategories || []),
+                ...(cloudData.expenseCategories || [])
+            ];
+            for (const cat of seedCategories) {
+                if (!cat || !cat.name) continue;
+                const keyId = String(cat.slug || cat.id || cat.name).toLowerCase();
+                const existing = mergedCategoriesMap.get(keyId) ||
+                    Array.from(mergedCategoriesMap.values()).find(c => c.name?.toLowerCase() === cat.name?.toLowerCase());
+                if (existing) {
+                    const existingKey = String(existing.slug || existing.id || existing.name).toLowerCase();
+                    mergedCategoriesMap.set(existingKey, {
+                        ...existing,
+                        ...cat,
+                        id: existing.id && !String(existing.id).startsWith('temp-') && isNaN(Number(existing.id))
+                            ? existing.id
+                            : (cat.slug || cat.id || existing.id),
+                        db_id: cat.db_id || existing.db_id || (typeof cat.id === 'number' ? cat.id : undefined),
+                        items: (cat.items && cat.items.length > 0) ? cat.items : (existing.items || [])
+                    });
+                } else {
+                    const stableId = (typeof cat.id === 'number' && cat.slug) ? cat.slug : (cat.id || `cat-${Date.now()}`);
+                    mergedCategoriesMap.set(String(stableId).toLowerCase(), {
+                        ...cat,
+                        id: stableId,
+                        db_id: cat.db_id || (typeof cat.id === 'number' ? cat.id : undefined)
+                    });
+                }
+            }
+            const finalCategories = Array.from(mergedCategoriesMap.values());
 
             const newState = {
                 ...baseState,
@@ -522,9 +550,7 @@ export const initializeState = async () => {
                 measurements: cloudMeasurements.length > 0 ? cloudMeasurements : (baseState.measurements || []),
                 workouts: cloudWorkouts.length > 0 ? cloudWorkouts : (baseState.workouts || []),
                 obetideTreatments: cloudObetide.length > 0 ? cloudObetide : (baseState.obetideTreatments || []),
-                expenseCategories: (cloudData.expenseCategories && cloudData.expenseCategories.length > 0)
-                    ? cloudData.expenseCategories
-                    : (baseState.expenseCategories && baseState.expenseCategories.length > 0 ? baseState.expenseCategories : defaultState.expenseCategories),
+                expenseCategories: finalCategories.length > 0 ? finalCategories : defaultState.expenseCategories,
                 expenses: finalExpenses,
                 aiMealPlans: (cloudData.aiMealPlans && cloudData.aiMealPlans.length > 0)
                     ? cloudData.aiMealPlans
@@ -1214,14 +1240,19 @@ export const addExpense = async (data) => {
     const state = getState();
     if (!state.expenses) state.expenses = [];
 
+    const tempId = Date.now();
+    const conceptName = (data.name || data.description || data.category_name || 'Gasto').trim();
     const newExpense = {
-        id: Date.now(),
+        id: tempId,
+        name: conceptName,
         category_id: data.category_id || null,
         category_name: data.category_name || 'General',
-        amount: Number(data.amount),
+        amount: Number(data.amount || 0),
         date: data.date || getArgentinaDate(),
-        description: data.description || '',
+        description: data.description || conceptName,
         payment_method: data.payment_method || 'tarjeta_debito',
+        is_recurring: Boolean(data.is_recurring),
+        is_paid: data.is_paid !== undefined ? Boolean(data.is_paid) : true,
         created_at: new Date().toISOString()
     };
 
@@ -1231,8 +1262,13 @@ export const addExpense = async (data) => {
 
     const saved = await addExpenseDB(newExpense);
     if (saved && saved.id) {
+        const currentState = getState();
+        const target = (currentState.expenses || []).find(e => e.id === tempId);
+        if (target) {
+            target.id = saved.id;
+            saveState(currentState);
+        }
         newExpense.id = saved.id;
-        saveState(state);
     }
     return newExpense;
 };
@@ -1240,7 +1276,7 @@ export const addExpense = async (data) => {
 export const deleteExpense = async (id) => {
     const state = getState();
     if (!state.expenses) return;
-    state.expenses = state.expenses.filter(e => e.id !== id);
+    state.expenses = state.expenses.filter(e => String(e.id) !== String(id));
     saveState(state);
     await deleteExpenseDB(id);
 };
@@ -1250,18 +1286,37 @@ export const saveExpenseCategory = async (catData) => {
     if (!state.expenseCategories) state.expenseCategories = [];
 
     let updatedCat = null;
-    const existingIndex = state.expenseCategories.findIndex(c => c.id === catData.id);
+    const existingIndex = (catData.id !== undefined && catData.id !== null)
+        ? state.expenseCategories.findIndex(c =>
+            String(c.id) === String(catData.id) ||
+            (c.db_id !== undefined && String(c.db_id) === String(catData.id))
+        )
+        : state.expenseCategories.findIndex(c => c.name?.toLowerCase() === catData.name?.trim().toLowerCase());
 
     if (existingIndex >= 0) {
-        state.expenseCategories[existingIndex] = { ...state.expenseCategories[existingIndex], ...catData };
+        state.expenseCategories[existingIndex] = {
+            ...state.expenseCategories[existingIndex],
+            ...catData,
+            id: state.expenseCategories[existingIndex].id,
+            monthly_budget: Number(catData.monthly_budget ?? state.expenseCategories[existingIndex].monthly_budget ?? 0)
+        };
         updatedCat = state.expenseCategories[existingIndex];
     } else {
+        const slugBase = (catData.name || 'categoria')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
+        const stableId = catData.id || `${slugBase || 'cat'}-${Date.now().toString().slice(-5)}`;
         updatedCat = {
-            id: catData.id || `temp-${Date.now()}`,
-            name: catData.name,
+            id: stableId,
+            slug: stableId,
+            name: catData.name.trim(),
             icon: catData.icon || '💰',
-            color: catData.color || '#3b82f6',
-            monthly_budget: Number(catData.monthly_budget || 0)
+            color: catData.color || '#0A84FF',
+            monthly_budget: Number(catData.monthly_budget || 0),
+            items: Array.isArray(catData.items) ? catData.items : []
         };
         state.expenseCategories.push(updatedCat);
     }
@@ -1269,8 +1324,13 @@ export const saveExpenseCategory = async (catData) => {
     saveState(state);
     const dbResult = await saveExpenseCategoryDB(updatedCat);
     if (dbResult && dbResult.id) {
-        updatedCat.id = dbResult.id;
-        saveState(state);
+        const currentState = getState();
+        const target = (currentState.expenseCategories || []).find(c => String(c.id) === String(updatedCat.id));
+        if (target) {
+            target.db_id = dbResult.id;
+            saveState(currentState);
+        }
+        updatedCat.db_id = dbResult.id;
     }
     return updatedCat;
 };
@@ -1278,9 +1338,12 @@ export const saveExpenseCategory = async (catData) => {
 export const deleteExpenseCategory = async (id) => {
     const state = getState();
     if (!state.expenseCategories) return;
-    state.expenseCategories = state.expenseCategories.filter(c => c.id !== id);
+    const catToDelete = state.expenseCategories.find(c => String(c.id) === String(id) || String(c.db_id) === String(id));
+    state.expenseCategories = state.expenseCategories.filter(
+        c => String(c.id) !== String(id) && String(c.db_id) !== String(id)
+    );
     saveState(state);
-    await deleteExpenseCategoryDB(id);
+    await deleteExpenseCategoryDB(catToDelete?.db_id || id);
 };
 
 export const setMonthlyIncome = (amount, source = 'Sanatorio Argentino') => {
@@ -1307,26 +1370,54 @@ export const getFinancialSummary = (monthStr = null) => {
     // Spend by category
     const byCategory = {};
     categories.forEach(c => {
-        byCategory[c.id || c.name] = {
+        const key = String(c.id || c.name);
+        byCategory[key] = {
             category: c,
             spent: 0,
             budget: Number(c.monthly_budget || 0),
             items: c.items || [],
-            percent: 0
+            percent: 0,
+            percentOfTotal: 0
         };
     });
 
-    monthExpenses.forEach(e => {
-        const key = e.category_id || e.category_name;
-        if (!byCategory[key]) {
-            byCategory[key] = {
-                category: { name: e.category_name, icon: '🏷️', color: '#94a3b8', monthly_budget: 0 },
+    const resolveCategoryKey = (exp) => {
+        const rawId = exp.category_id !== undefined && exp.category_id !== null ? String(exp.category_id) : '';
+        const rawName = (exp.category_name || '').trim().toLowerCase();
+
+        if (rawId && byCategory[rawId]) return rawId;
+
+        const matchedCat = categories.find(c =>
+            (rawId && (String(c.id) === rawId || String(c.db_id) === rawId || String(c.slug) === rawId)) ||
+            (rawName && c.name?.trim().toLowerCase() === rawName) ||
+            (rawName && (rawName.includes('obetide') || rawName.includes('salud')) && String(c.id) === 'salud-obetide')
+        );
+        if (matchedCat) {
+            return String(matchedCat.id || matchedCat.name);
+        }
+
+        const fallbackKey = rawId || exp.category_name || 'otros';
+        if (!byCategory[fallbackKey]) {
+            byCategory[fallbackKey] = {
+                category: {
+                    id: fallbackKey,
+                    name: exp.category_name || 'Otros Gastos',
+                    icon: '🏷️',
+                    color: '#0A84FF',
+                    monthly_budget: 0
+                },
                 spent: 0,
                 budget: 0,
                 items: [],
-                percent: 0
+                percent: 0,
+                percentOfTotal: 0
             };
         }
+        return fallbackKey;
+    };
+
+    monthExpenses.forEach(e => {
+        const key = resolveCategoryKey(e);
         byCategory[key].spent += Number(e.amount || 0);
     });
 
@@ -1336,6 +1427,7 @@ export const getFinancialSummary = (monthStr = null) => {
         } else {
             item.percent = 0;
         }
+        item.percentOfTotal = totalSpent > 0 ? Math.round((item.spent / totalSpent) * 100) : 0;
     });
 
     const paidExpenses = monthExpenses.filter(e => e.is_paid !== false);
@@ -1368,6 +1460,7 @@ export const toggleExpensePaid = (id) => {
     if (exp) {
         exp.is_paid = !(exp.is_paid !== false);
         saveState(state);
+        updateExpenseDB(exp.id, { is_paid: exp.is_paid });
     }
 };
 
@@ -1377,6 +1470,7 @@ export const setAllExpensesPaid = (monthStr = null, paid = true) => {
     (state.expenses || []).forEach(e => {
         if (e.date && e.date.startsWith(targetMonth)) {
             e.is_paid = paid;
+            updateExpenseDB(e.id, { is_paid: paid });
         }
     });
     saveState(state);

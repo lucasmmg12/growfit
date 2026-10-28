@@ -411,9 +411,10 @@ export const deleteObetideTreatmentDB = async (id) => {
 export const saveExpenseCategoryDB = async (cat) => {
     const userId = await getCurrentUserId();
     const isNumericId = typeof cat.id === 'number' || (/^\d+$/.test(String(cat.id || '')) && Number(cat.id) < 1000000000000);
+    const slugVal = !isNumericId && cat.id ? String(cat.id) : (cat.slug || null);
     const row = {
         user_id: userId,
-        slug: !isNumericId && cat.id ? String(cat.id) : (cat.slug || null),
+        slug: slugVal,
         name: cat.name,
         icon: cat.icon || '💰',
         color: cat.color || '#3b82f6',
@@ -421,8 +422,20 @@ export const saveExpenseCategoryDB = async (cat) => {
         items: Array.isArray(cat.items) ? cat.items : []
     };
 
-    if (isNumericId) {
+    if (cat.db_id && !isNaN(Number(cat.db_id))) {
+        row.id = Number(cat.db_id);
+    } else if (isNumericId) {
         row.id = Number(cat.id);
+    } else if (slugVal) {
+        const { data: existing } = await supabase
+            .from('expense_categories')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('slug', slugVal)
+            .maybeSingle();
+        if (existing?.id) {
+            row.id = existing.id;
+        }
     }
 
     const { data, error } = await supabase
@@ -439,10 +452,15 @@ export const saveExpenseCategoryDB = async (cat) => {
 };
 
 export const deleteExpenseCategoryDB = async (id) => {
-    const isNumericId = typeof id === 'number' || /^\d+$/.test(String(id || ''));
-    const query = supabase.from('expense_categories').delete();
-    const { error } = isNumericId ? await query.eq('id', Number(id)) : await query.eq('slug', String(id));
-    if (error) console.error("Error deleting expense category:", error);
+    const userId = await getCurrentUserId();
+    const isNumericId = typeof id === 'number' || (/^\d+$/.test(String(id || '')) && Number(id) < 1000000000000);
+    if (isNumericId) {
+        const { error } = await supabase.from('expense_categories').delete().eq('user_id', userId).eq('id', Number(id));
+        if (error) console.error("Error deleting expense category by id:", error);
+    } else {
+        const { error } = await supabase.from('expense_categories').delete().eq('user_id', userId).eq('slug', String(id));
+        if (error) console.error("Error deleting expense category by slug:", error);
+    }
 };
 
 export const addExpenseDB = async (expense) => {
@@ -474,6 +492,16 @@ export const addExpenseDB = async (expense) => {
         return null;
     }
     return data;
+};
+
+export const updateExpenseDB = async (id, patch) => {
+    const isNumericId = typeof id === 'number' || (/^\d+$/.test(String(id || '')) && Number(id) < 1000000000000);
+    if (!isNumericId) return;
+    const { error } = await supabase
+        .from('expenses')
+        .update(patch)
+        .eq('id', Number(id));
+    if (error) console.error("Error updating expense:", error);
 };
 
 export const deleteExpenseDB = async (id) => {
