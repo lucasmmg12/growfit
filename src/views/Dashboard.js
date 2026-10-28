@@ -12,7 +12,8 @@ import {
     setSelectedDate, 
     getArgentinaDate,
     getSensationsMetrics,
-    getMealSodium
+    getMealSodium,
+    getFinancialSummary
 } from '../state';
 import { analyzeFood, generateDailyTip, generateSmartHabits } from '../services/openai';
 import { getProductByBarcode } from '../services/openfoodfacts';
@@ -20,6 +21,30 @@ import { renderSidebar, renderMobileHeader, renderBottomNav } from '../component
 import { renderMealSensationsModalContainer, renderSatietyBadge, attachSensationsModalEvents } from '../components/MealSensationsModal';
 
 let barcodeScannerInstance = null;
+
+// Helper to render SVG Circular Performance Ring (Whoop / Oura / Apple Fitness+)
+const renderPerformanceRing = ({ pct, size = 76, stroke = 7, color = '#10E775', glowClass = 'ring-glow-emerald', centerLabel = '', subLabel = '' }) => {
+    const safePct = Math.max(0, Math.min(100, Number(pct) || 0));
+    const radius = (size - stroke * 2) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (safePct / 100) * circumference;
+    const center = size / 2;
+
+    return `
+        <div class="relative flex items-center justify-center shrink-0" style="width:${size}px; height:${size}px;">
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="-rotate-90">
+                <circle cx="${center}" cy="${center}" r="${radius}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="${stroke}"></circle>
+                <circle cx="${center}" cy="${center}" r="${radius}" fill="none" stroke="${color}" stroke-width="${stroke}"
+                    stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+                    class="timer-ring-circle ${glowClass}"></circle>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center text-center leading-none">
+                <span class="font-mono font-extrabold text-white" style="font-size:${size >= 140 ? '26px' : '15px'};">${centerLabel}</span>
+                ${subLabel ? `<span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 mt-1">${subLabel}</span>` : ''}
+            </div>
+        </div>
+    `;
+};
 
 export const renderDashboard = () => {
     const state = getState();
@@ -31,6 +56,7 @@ export const renderDashboard = () => {
     const stats = getDailyStats(selectedDate);
     const dailyBurn = getDailyBurn(selectedDate);
     const dayStats = state.days?.[selectedDate] || {};
+    const walletSummary = getFinancialSummary(today.substring(0, 7));
 
     // Auto habits generation once a day
     if (state.lastHabitGenerationDate !== today && !window.hasTriggeredHabits) {
@@ -62,398 +88,479 @@ export const renderDashboard = () => {
 
     const displayTip = (state.dailyTip?.date === selectedDate && state.dailyTip?.content)
         ? state.dailyTip.content
-        : "Prioriza fuentes de proteína limpia e hidratación constante hoy.";
+        : "Prioriza fuentes de proteína limpia, control de sodio e hidratación constante hoy.";
 
     const waterAmount = dayStats.water || 0;
     const waterGoal = 2500;
     const waterPct = Math.min(100, Math.round((waterAmount / waterGoal) * 100));
 
     return `
-    <div class="flex h-screen w-full bg-background-light font-body text-text-primary overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#070A10] font-body text-text-primary overflow-hidden fade-in">
         ${renderSidebar('dashboard')}
 
         <!-- Main Workspace -->
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-background-light">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
             ${renderMobileHeader('GrowFit')}
 
-            <!-- Scrollable Content Area -->
-            <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-8">
-                <div class="max-w-5xl mx-auto flex flex-col gap-6">
+            <!-- Scrollable Content Area (Full Width Bento) -->
+            <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-10">
+                <div class="max-w-7xl mx-auto flex flex-col gap-6">
 
-                    <!-- Top Welcome & Date Bar -->
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#1E293B] p-5 rounded-3xl border border-slate-700 shadow-sm">
-                        <div>
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="badge-emerald">Tracker Diario</span>
-                                <span class="text-xs text-slate-400 font-bold flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-sm text-amber-400">local_fire_department</span> Racha Activa
-                                </span>
+                    <!-- HERO BAR: Biometric Status, Date & Quick Command Bar -->
+                    <div class="white-card p-5 md:p-6 border border-white/[0.09] bg-gradient-to-r from-[#0F172A]/90 via-[#111B2E]/90 to-[#0B1324]/90 shadow-2xl">
+                        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-white/[0.07]">
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2 mb-2">
+                                    <span class="badge-emerald">
+                                        <span class="size-1.5 rounded-full bg-[#10E775] animate-pulse"></span>
+                                        Biometría Activa
+                                    </span>
+                                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-xs">local_fire_department</span>
+                                        Racha Activa
+                                    </span>
+                                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-xs">vaccines</span>
+                                        GLP-1 ${state.obetideTreatments?.[0] ? `${state.obetideTreatments[0].dose_ml} ml` : '0.25 ml'}
+                                    </span>
+                                </div>
+                                <h2 class="text-2xl md:text-3xl font-display font-extrabold text-white tracking-tight">
+                                    ¡Hola, ${state.profile.name || 'Atleta'}!
+                                </h2>
                             </div>
-                            <h2 class="text-2xl md:text-3xl font-display font-bold text-white uppercase tracking-tight">
-                                ¡Hola, ${state.profile.name || 'Atleta'}!
-                            </h2>
+
+                            <!-- Date Navigation Buttons -->
+                            <div class="flex items-center gap-2.5 self-start lg:self-center">
+                                <div class="flex items-center bg-[#070A10]/90 p-1.5 rounded-2xl border border-white/[0.09]">
+                                    <button id="prev-day-btn" class="size-8 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-[#10E775] transition-all flex items-center justify-center cursor-pointer">
+                                        <span class="material-symbols-outlined text-base">chevron_left</span>
+                                    </button>
+                                    <span class="px-4 text-xs font-extrabold text-white font-mono tracking-wider">
+                                        ${isToday ? 'HOY · ' + selectedDate.slice(5) : new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }).toUpperCase()}
+                                    </span>
+                                    <button id="next-day-btn" class="size-8 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] text-[#10E775] transition-all flex items-center justify-center cursor-pointer">
+                                        <span class="material-symbols-outlined text-base">chevron_right</span>
+                                    </button>
+                                </div>
+                                <button id="open-calendar-btn" class="size-11 rounded-2xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.1] text-[#10E775] flex items-center justify-center transition-all cursor-pointer" title="Ver Calendario">
+                                    <span class="material-symbols-outlined text-lg">calendar_month</span>
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Date Navigation Buttons -->
-                        <div class="flex items-center gap-2">
-                            <div class="flex items-center bg-slate-900 p-1 rounded-2xl border border-slate-700">
-                                <button id="prev-day-btn" class="size-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 transition-all flex items-center justify-center shadow-xs border border-slate-700">
-                                    <span class="material-symbols-outlined text-base">chevron_left</span>
+                        <!-- AI Command Bar + Quick Chips -->
+                        <div class="mt-4 flex flex-col gap-3">
+                            <div class="flex items-center gap-2.5">
+                                <div class="flex-1 flex items-center bg-[#070A10]/90 border border-white/[0.12] rounded-2xl px-4 py-2.5 focus-within:border-[#10E775] transition-all shadow-inner">
+                                    <span class="material-symbols-outlined text-[#10E775] text-xl mr-2.5">auto_awesome</span>
+                                    <input id="quick-log-input" type="text" placeholder="¿Qué comiste hoy? Ej: 2 huevos revueltos con tostada y café..." class="w-full bg-transparent border-none outline-none text-sm font-medium text-white placeholder:text-slate-500" />
+                                </div>
+
+                                <!-- Camera AI Button -->
+                                <input type="file" id="quick-log-file" accept="image/*" class="hidden">
+                                <label for="quick-log-file" title="Analizar foto de comida con IA" class="size-11 rounded-2xl bg-white/[0.06] hover:bg-[#10E775]/20 text-[#10E775] border border-white/[0.12] hover:border-[#10E775]/40 flex items-center justify-center cursor-pointer transition-all active:scale-95">
+                                    <span class="material-symbols-outlined text-xl">photo_camera</span>
+                                </label>
+
+                                <!-- Barcode Scanner Button -->
+                                <button id="open-barcode-modal-btn" title="Escanear código de barras" class="size-11 rounded-2xl bg-white/[0.06] hover:bg-cyan-500/20 text-cyan-400 border border-white/[0.12] hover:border-cyan-400/40 flex items-center justify-center transition-all active:scale-95 cursor-pointer">
+                                    <span class="material-symbols-outlined text-xl">barcode_scanner</span>
                                 </button>
-                                <span class="px-3 text-xs font-bold text-white font-mono">
-                                    ${isToday ? 'HOY' : new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }).toUpperCase()}
-                                </span>
-                                <button id="next-day-btn" class="size-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 transition-all flex items-center justify-center shadow-xs border border-slate-700">
-                                    <span class="material-symbols-outlined text-base">chevron_right</span>
+
+                                <!-- Submit / Add Button -->
+                                <button id="quick-log-btn" class="btn-emerald px-5 h-11 text-xs font-extrabold uppercase tracking-wider">
+                                    <span class="material-symbols-outlined text-lg">add_circle</span>
+                                    <span class="hidden sm:inline">Registrar</span>
                                 </button>
                             </div>
-                            <button id="open-calendar-btn" class="size-10 rounded-2xl bg-slate-800 border border-slate-700 text-emerald-400 flex items-center justify-center hover:bg-slate-700 transition-all shadow-xs">
-                                <span class="material-symbols-outlined text-lg">calendar_month</span>
-                            </button>
+
+                            <!-- 1-Click Quick Food Chips -->
+                            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pt-0.5">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Carga rápida:</span>
+                                ${[
+                                    { label: '☕ Café con leche', query: 'Café con leche descremada' },
+                                    { label: '🥚 2 Huevos y tostada', query: '2 huevos revueltos con 1 tostada integral' },
+                                    { label: '🍗 Pollo con ensalada', query: '200g pechuga de pollo grillada con ensalada mixta' },
+                                    { label: '🥩 Bife con huevo', query: '200g bife de carne magra con 1 huevo a la plancha' },
+                                    { label: '🥣 Yogur con avena', query: 'Yogur griego natural con 30g de avena' }
+                                ].map(chip => `
+                                    <button type="button" class="quick-food-chip px-3 py-1 rounded-full bg-white/[0.04] hover:bg-[#10E775]/15 border border-white/[0.08] hover:border-[#10E775]/35 text-[11px] font-semibold text-slate-300 hover:text-white transition-all shrink-0 cursor-pointer" data-food="${chip.query}">
+                                        ${chip.label}
+                                    </button>
+                                `).join('')}
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Quick Input Bar (Food, Voice, Photo & Barcode) -->
-                    <div class="white-card p-3 md:p-4 bg-[#1E293B] border border-slate-700 shadow-sm">
-                        <div class="flex items-center gap-2">
-                            <div class="flex-1 flex items-center bg-slate-900 border border-slate-700 rounded-2xl px-3 py-2 focus-within:border-primary transition-all">
-                                <span class="material-symbols-outlined text-slate-400 text-xl mr-2">search</span>
-                                <input id="quick-log-input" type="text" placeholder="¿Qué comiste? ej. 2 huevos con tostada y café..." class="w-full bg-transparent border-none outline-none text-sm font-medium text-white placeholder:text-slate-500" />
+                    <!-- CENTERPIECE: WHOOP / OURA RINGS PERFORMANCE HUB (12-Column Bento) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                        <!-- Master Calorie Ring Card (5 Cols) -->
+                        <div class="lg:col-span-5 white-card card-glow-emerald p-6 flex flex-col justify-between">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-[10px] font-extrabold uppercase tracking-widest text-[#10E775]">Anillo de Energía Diaria</span>
+                                    <h3 class="text-lg font-display font-extrabold text-white mt-0.5">Balance Calórico</h3>
+                                </div>
+                                <span class="badge-emerald font-mono">${calProgress}% de Meta</span>
                             </div>
 
-                            <!-- Camera AI Button -->
-                            <input type="file" id="quick-log-file" accept="image/*" class="hidden">
-                            <label for="quick-log-file" title="Subir foto de comida (IA)" class="size-11 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 flex items-center justify-center cursor-pointer transition-all active:scale-95">
-                                <span class="material-symbols-outlined text-xl">photo_camera</span>
-                            </label>
+                            <div class="my-5 flex flex-col sm:flex-row items-center justify-around gap-6">
+                                ${renderPerformanceRing({
+                                    pct: calProgress,
+                                    size: 158,
+                                    stroke: 12,
+                                    color: '#10E775',
+                                    glowClass: 'ring-glow-emerald',
+                                    centerLabel: `${Math.round(stats.calories)}`,
+                                    subLabel: `de ${calGoal} kcal`
+                                })}
 
-                            <!-- Barcode Scanner Button -->
-                            <button id="open-barcode-modal-btn" title="Escanear código de barras" class="size-11 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 flex items-center justify-center transition-all active:scale-95">
-                                <span class="material-symbols-outlined text-xl">barcode_scanner</span>
-                            </button>
+                                <div class="flex flex-col gap-3 w-full sm:w-auto min-w-[155px]">
+                                    <div class="p-3 rounded-2xl bg-black/35 border border-[#10E775]/25 flex items-center justify-between gap-3">
+                                        <div>
+                                            <span class="text-[10px] font-bold uppercase text-slate-400 block">Consumidas</span>
+                                            <span class="text-lg font-mono font-extrabold text-[#10E775]">${Math.round(stats.calories)} <small class="text-[10px] font-normal text-slate-400">kcal</small></span>
+                                        </div>
+                                        <span class="material-symbols-outlined text-[#10E775] text-xl">restaurant</span>
+                                    </div>
 
-                            <!-- Submit / Add Button -->
-                            <button id="quick-log-btn" class="btn-emerald px-4 py-2.5 h-11 text-sm font-bold shadow-emerald-sm">
-                                <span class="material-symbols-outlined text-xl">add</span>
-                                <span class="hidden sm:inline">Registrar</span>
-                            </button>
+                                    <div class="p-3 rounded-2xl bg-black/35 border border-amber-500/25 flex items-center justify-between gap-3">
+                                        <div>
+                                            <span class="text-[10px] font-bold uppercase text-slate-400 block">Quemadas</span>
+                                            <span class="text-lg font-mono font-extrabold text-amber-400">${Math.round(dailyBurn.activity)} <small class="text-[10px] font-normal text-slate-400">kcal</small></span>
+                                        </div>
+                                        <span class="material-symbols-outlined text-amber-400 text-xl">local_fire_department</span>
+                                    </div>
+
+                                    <div class="p-3 rounded-2xl bg-black/35 border border-sky-500/25 flex items-center justify-between gap-3">
+                                        <div>
+                                            <span class="text-[10px] font-bold uppercase text-slate-400 block">Disponibles</span>
+                                            <span class="text-lg font-mono font-extrabold text-sky-400">${remainingCals} <small class="text-[10px] font-normal text-slate-400">kcal</small></span>
+                                        </div>
+                                        <span class="material-symbols-outlined text-sky-400 text-xl">bolt</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pt-3 border-t border-white/[0.08] flex items-center justify-between text-xs text-slate-300">
+                                <span class="flex items-center gap-1.5">
+                                    <span class="size-2 rounded-full bg-[#10E775]"></span>
+                                    Déficit metabólico controlado
+                                </span>
+                                <span class="font-mono font-bold text-[#10E775]">${stats.mealsCount || (state.dailyLog || []).filter(m => m.date === selectedDate).length} comidas hoy</span>
+                            </div>
+                        </div>
+
+                        <!-- 4 Circular Macro & Sodium Rings Grid (7 Cols) -->
+                        <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- 1. Proteína Ring Card -->
+                            <div class="white-card card-glow-emerald p-5 flex items-center justify-between gap-4">
+                                <div class="flex flex-col justify-between h-full">
+                                    <div>
+                                        <span class="px-2 py-0.5 rounded-md bg-[#10E775]/15 text-[#10E775] text-[10px] font-extrabold uppercase tracking-wider">Masa Muscular</span>
+                                        <h4 class="text-base font-display font-extrabold text-white mt-2">Proteína</h4>
+                                        <p class="text-2xl font-mono font-extrabold text-[#10E775] mt-1">
+                                            ${Math.round(stats.protein)}<span class="text-xs font-normal text-slate-400"> / ${pGoal}g</span>
+                                        </p>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 mt-3">
+                                        Restan <strong class="text-white font-mono">${Math.max(0, pGoal - Math.round(stats.protein))}g</strong> para tu meta
+                                    </p>
+                                </div>
+                                ${renderPerformanceRing({
+                                    pct: pPct,
+                                    size: 84,
+                                    stroke: 8,
+                                    color: '#10E775',
+                                    glowClass: 'ring-glow-emerald',
+                                    centerLabel: `${pPct}%`,
+                                    subLabel: 'PRO'
+                                })}
+                            </div>
+
+                            <!-- 2. Carbohidratos Ring Card -->
+                            <div class="white-card card-glow-blue p-5 flex items-center justify-between gap-4">
+                                <div class="flex flex-col justify-between h-full">
+                                    <div>
+                                        <span class="px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-400 text-[10px] font-extrabold uppercase tracking-wider">Energía Glucógeno</span>
+                                        <h4 class="text-base font-display font-extrabold text-white mt-2">Carbohidratos</h4>
+                                        <p class="text-2xl font-mono font-extrabold text-sky-400 mt-1">
+                                            ${Math.round(stats.carbs)}<span class="text-xs font-normal text-slate-400"> / ${cGoal}g</span>
+                                        </p>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 mt-3">
+                                        Restan <strong class="text-white font-mono">${Math.max(0, cGoal - Math.round(stats.carbs))}g</strong> del límite
+                                    </p>
+                                </div>
+                                ${renderPerformanceRing({
+                                    pct: cPct,
+                                    size: 84,
+                                    stroke: 8,
+                                    color: '#38BDF8',
+                                    glowClass: 'ring-glow-blue',
+                                    centerLabel: `${cPct}%`,
+                                    subLabel: 'CARB'
+                                })}
+                            </div>
+
+                            <!-- 3. Grasas Ring Card -->
+                            <div class="white-card card-glow-amber p-5 flex items-center justify-between gap-4">
+                                <div class="flex flex-col justify-between h-full">
+                                    <div>
+                                        <span class="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 text-[10px] font-extrabold uppercase tracking-wider">Soporte Hormonal</span>
+                                        <h4 class="text-base font-display font-extrabold text-white mt-2">Grasas Saludables</h4>
+                                        <p class="text-2xl font-mono font-extrabold text-amber-400 mt-1">
+                                            ${Math.round(stats.fat)}<span class="text-xs font-normal text-slate-400"> / ${fGoal}g</span>
+                                        </p>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 mt-3">
+                                        Restan <strong class="text-white font-mono">${Math.max(0, fGoal - Math.round(stats.fat))}g</strong> para hoy
+                                    </p>
+                                </div>
+                                ${renderPerformanceRing({
+                                    pct: fPct,
+                                    size: 84,
+                                    stroke: 8,
+                                    color: '#F59E0B',
+                                    glowClass: 'ring-glow-amber',
+                                    centerLabel: `${fPct}%`,
+                                    subLabel: 'FAT'
+                                })}
+                            </div>
+
+                            <!-- 4. Sodio Ring Card -->
+                            <div class="white-card ${isHighSodiumDay ? 'card-glow-rose' : 'card-glow-cyan'} p-5 flex items-center justify-between gap-4">
+                                <div class="flex flex-col justify-between h-full">
+                                    <div>
+                                        <span class="px-2 py-0.5 rounded-md ${isHighSodiumDay ? 'bg-rose-500/20 text-rose-300' : 'bg-cyan-500/15 text-cyan-300'} text-[10px] font-extrabold uppercase tracking-wider">
+                                            ${isHighSodiumDay ? '⚠️ Exceso Sodio' : 'Balance Electrolítico'}
+                                        </span>
+                                        <h4 class="text-base font-display font-extrabold text-white mt-2">Nivel de Sodio</h4>
+                                        <p class="text-2xl font-mono font-extrabold ${isHighSodiumDay ? 'text-rose-400' : 'text-cyan-400'} mt-1">
+                                            ${Math.round(stats.sodium || 0)}<span class="text-xs font-normal text-slate-400"> / ${sGoal}mg</span>
+                                        </p>
+                                    </div>
+                                    <p class="text-[11px] ${isHighSodiumDay ? 'text-rose-300 font-semibold' : 'text-slate-400'} mt-3">
+                                        ${isHighSodiumDay ? 'Aumentar ingesta de agua hoy' : `Margen: ${Math.max(0, sGoal - Math.round(stats.sodium || 0))}mg disponibles`}
+                                    </p>
+                                </div>
+                                ${renderPerformanceRing({
+                                    pct: sPct,
+                                    size: 84,
+                                    stroke: 8,
+                                    color: isHighSodiumDay ? '#F43F5E' : '#06B6D4',
+                                    glowClass: isHighSodiumDay ? 'ring-glow-rose' : 'ring-glow-cyan',
+                                    centerLabel: `${sPct}%`,
+                                    subLabel: 'SODIO'
+                                })}
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Obetide & Mi Billetera Highlight Widgets -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Obetide Clinical Card -->
-                        <div class="white-card p-5 bg-gradient-to-br from-emerald-900 to-teal-950 text-white border-0 shadow-emerald-md flex flex-col justify-between cursor-pointer" onclick="window.router.navigate('obetide')">
+                    <!-- 3-COLUMN COLOR-CODED CLINICAL, WALLET & HYDRATION ROW -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <!-- 1. Obetide GLP-1 Clinical Violet Card -->
+                        <div class="white-card card-glow-violet p-5 flex flex-col justify-between cursor-pointer" onclick="window.router.navigate('obetide')">
                             <div class="flex items-start justify-between">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="size-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-emerald-300 border border-white/10">
-                                        <span class="material-symbols-outlined text-xl">syringe</span>
+                                <div class="flex items-center gap-3">
+                                    <div class="size-11 rounded-2xl bg-purple-500/20 flex items-center justify-center text-purple-300 border border-purple-400/30 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                                        <span class="material-symbols-outlined text-xl">vaccines</span>
                                     </div>
                                     <div>
-                                        <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Tratamiento GLP-1</span>
-                                        <h3 class="text-base font-display font-black text-white uppercase">Control Obetide</h3>
+                                        <span class="text-[10px] font-extrabold uppercase tracking-widest text-purple-300">Protocolo GLP-1</span>
+                                        <h3 class="text-base font-display font-extrabold text-white">Control Obetide</h3>
                                     </div>
                                 </div>
-                                <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-400/30 text-[10px]">
-                                    ${state.obetideTreatments?.[0] ? `${state.obetideTreatments[0].dose_ml} ml` : '0.25 ml Inicio'}
+                                <span class="px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-purple-500/20 text-purple-200 border border-purple-400/35">
+                                    ${state.obetideTreatments?.[0] ? `${state.obetideTreatments[0].dose_ml} ml` : '0.25 ml'}
                                 </span>
                             </div>
 
-                            <div class="my-3 flex items-center justify-between text-xs">
+                            <div class="my-4 p-3.5 rounded-2xl bg-black/30 border border-purple-500/20 grid grid-cols-2 gap-2 text-xs">
                                 <div>
-                                    <span class="text-[10px] text-emerald-300/80 block uppercase">Última Aplicación</span>
-                                    <p class="font-mono font-bold text-white">${state.obetideTreatments?.[0]?.date || 'Pendiente'}</p>
+                                    <span class="text-[10px] text-purple-300/80 block uppercase font-bold">Última Dosis</span>
+                                    <p class="font-mono font-extrabold text-white mt-0.5">${state.obetideTreatments?.[0]?.date || 'Pendiente'}</p>
                                 </div>
                                 <div class="text-right">
-                                    <span class="text-[10px] text-emerald-300/80 block uppercase">Sitio</span>
-                                    <p class="font-bold text-white capitalize">${(state.obetideTreatments?.[0]?.injection_site || 'Abdomen').replace('_', ' ')}</p>
+                                    <span class="text-[10px] text-purple-300/80 block uppercase font-bold">Zona Aplicación</span>
+                                    <p class="font-bold text-white capitalize mt-0.5">${(state.obetideTreatments?.[0]?.injection_site || 'Abdomen Der').replace('_', ' ')}</p>
                                 </div>
                             </div>
 
-                            <div class="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-emerald-200">
-                                <span>Ver titulación & dosis</span>
+                            <div class="pt-2 border-t border-white/10 flex items-center justify-between text-xs font-bold text-purple-300">
+                                <span>Abrir seguimiento clínico</span>
                                 <span class="material-symbols-outlined text-sm">arrow_forward</span>
                             </div>
                         </div>
 
-                        <!-- Mi Billetera Card -->
-                        <div class="white-card p-5 bg-gradient-to-br from-blue-950 to-slate-900 text-white border-0 shadow-sm flex flex-col justify-between cursor-pointer" onclick="window.router.navigate('wallet')">
+                        <!-- 2. Mi Billetera Cashflow Blue Card -->
+                        <div class="white-card card-glow-blue p-5 flex flex-col justify-between cursor-pointer" onclick="window.router.navigate('wallet')">
                             <div class="flex items-start justify-between">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="size-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-blue-300 border border-white/10">
+                                <div class="flex items-center gap-3">
+                                    <div class="size-11 rounded-2xl bg-sky-500/20 flex items-center justify-center text-sky-300 border border-sky-400/30 shadow-[0_0_15px_rgba(14,165,233,0.3)]">
                                         <span class="material-symbols-outlined text-xl">account_balance_wallet</span>
                                     </div>
                                     <div>
-                                        <span class="text-[10px] font-bold uppercase tracking-wider text-blue-300">Finanzas</span>
-                                        <h3 class="text-base font-display font-black text-white uppercase">Mi Billetera</h3>
+                                        <span class="text-[10px] font-extrabold uppercase tracking-widest text-sky-300">Flujo de Caja</span>
+                                        <h3 class="text-base font-display font-extrabold text-white">Mi Billetera</h3>
                                     </div>
                                 </div>
-                                <span class="badge-emerald bg-blue-500/20 text-blue-300 border-blue-400/30 text-[10px]">
+                                <span class="px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-sky-500/20 text-sky-200 border border-sky-400/35">
                                     ${today.substring(0, 7)}
                                 </span>
                             </div>
 
-                            <div class="my-3 flex items-center justify-between text-xs">
+                            <div class="my-4 p-3.5 rounded-2xl bg-black/30 border border-sky-500/20 grid grid-cols-2 gap-2 text-xs">
                                 <div>
-                                    <span class="text-[10px] text-slate-400 block uppercase">Gastos del Mes</span>
-                                    <p class="font-mono font-black text-white text-base">
-                                        $${(state.expenses || []).filter(e => e.date?.startsWith(today.substring(0, 7))).reduce((s, e) => s + Number(e.amount), 0).toLocaleString('es-AR')}
+                                    <span class="text-[10px] text-slate-400 block uppercase font-bold">Ingresos Mes</span>
+                                    <p class="font-mono font-extrabold text-[#10E775] text-sm mt-0.5">
+                                        +$${Number(walletSummary.monthlyIncome || 0).toLocaleString('es-AR')}
                                     </p>
                                 </div>
                                 <div class="text-right">
-                                    <span class="text-[10px] text-slate-400 block uppercase">Registros</span>
-                                    <p class="font-mono font-bold text-slate-300">
-                                        ${(state.expenses || []).filter(e => e.date?.startsWith(today.substring(0, 7))).length} gastos
+                                    <span class="text-[10px] text-slate-400 block uppercase font-bold">Gastos Mes</span>
+                                    <p class="font-mono font-extrabold text-white text-sm mt-0.5">
+                                        -$${Number(walletSummary.totalSpent || 0).toLocaleString('es-AR')}
                                     </p>
                                 </div>
                             </div>
 
-                            <div class="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-blue-200">
-                                <span>Ver detalle & categorías</span>
+                            <div class="pt-2 border-t border-white/10 flex items-center justify-between text-xs font-bold text-sky-300">
+                                <span>Ingresos (Sueldo, Grow Labs) y Gastos</span>
                                 <span class="material-symbols-outlined text-sm">arrow_forward</span>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Main Metric Bento Grid -->
-                    <div class="w-full">
-                        <!-- Calorie Summary Card (Full Width) -->
-                        <div class="white-card p-6 flex flex-col justify-between">
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Balance Calórico Diario</span>
-                                    <h3 class="text-3xl font-display font-black text-emerald-400 mt-0.5">
-                                        ${Math.round(stats.calories)} <span class="text-base font-normal text-slate-400">/ ${calGoal} kcal</span>
-                                    </h3>
-                                </div>
-                                <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30">${calProgress}% Meta</span>
-                            </div>
-
-                            <!-- Progress Bar -->
-                            <div class="h-3 w-full bg-slate-900/80 rounded-full overflow-hidden border border-slate-700/70 p-0.5 mb-4">
-                                <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500 shadow-sm" style="width: ${calProgress}%"></div>
-                            </div>
-
-                            <!-- Metrics Row -->
-                            <div class="grid grid-cols-3 gap-3 pt-3 border-t border-slate-700/60 text-center">
-                                <div class="p-2.5 rounded-2xl bg-emerald-950/40 border border-emerald-800/40">
-                                    <span class="text-[10px] font-bold uppercase text-slate-400">Consumidas</span>
-                                    <p class="text-lg font-display font-black text-emerald-400">${Math.round(stats.calories)}</p>
-                                </div>
-                                <div class="p-2.5 rounded-2xl bg-orange-950/40 border border-orange-800/40">
-                                    <span class="text-[10px] font-bold uppercase text-slate-400">Quemadas</span>
-                                    <p class="text-lg font-display font-black text-orange-400">${Math.round(dailyBurn.activity)}</p>
-                                </div>
-                                <div class="p-2.5 rounded-2xl bg-slate-900/60 border border-slate-700/60">
-                                    <span class="text-[10px] font-bold uppercase text-slate-400">Restantes</span>
-                                    <p class="text-lg font-display font-black text-slate-200">${remainingCals}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Macronutrient & Sodium Split Cards -->
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <!-- Protein -->
-                        <div class="white-card p-5 border-l-4 border-l-emerald-500">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Proteína</span>
-                                <span class="text-xs font-mono font-bold text-emerald-400">${Math.round(stats.protein)} / ${pGoal}g</span>
-                            </div>
-                            <div class="h-2 w-full bg-slate-900 rounded-full overflow-hidden mb-1">
-                                <div class="h-full bg-emerald-500 rounded-full" style="width: ${pPct}%"></div>
-                            </div>
-                            <span class="text-[10px] text-slate-400 font-medium">${pPct}% completado</span>
-                        </div>
-
-                        <!-- Carbs -->
-                        <div class="white-card p-5 border-l-4 border-l-blue-500">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Carbohidratos</span>
-                                <span class="text-xs font-mono font-bold text-blue-400">${Math.round(stats.carbs)} / ${cGoal}g</span>
-                            </div>
-                            <div class="h-2 w-full bg-slate-900 rounded-full overflow-hidden mb-1">
-                                <div class="h-full bg-blue-500 rounded-full" style="width: ${cPct}%"></div>
-                            </div>
-                            <span class="text-[10px] text-slate-400 font-medium">${cPct}% completado</span>
-                        </div>
-
-                        <!-- Fats -->
-                        <div class="white-card p-5 border-l-4 border-l-amber-500">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Grasas</span>
-                                <span class="text-xs font-mono font-bold text-amber-400">${Math.round(stats.fat)} / ${fGoal}g</span>
-                            </div>
-                            <div class="h-2 w-full bg-slate-900 rounded-full overflow-hidden mb-1">
-                                <div class="h-full bg-amber-500 rounded-full" style="width: ${fPct}%"></div>
-                            </div>
-                            <span class="text-[10px] text-slate-400 font-medium">${fPct}% completado</span>
-                        </div>
-
-                        <!-- Sodium -->
-                        <div class="white-card p-5 border-l-4 ${isHighSodiumDay ? 'border-l-rose-500' : 'border-l-cyan-400'}">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Sodio</span>
-                                <span class="text-xs font-mono font-bold ${isHighSodiumDay ? 'text-rose-400' : 'text-cyan-400'}">${Math.round(stats.sodium || 0)} / ${sGoal}mg</span>
-                            </div>
-                            <div class="h-2 w-full bg-slate-900 rounded-full overflow-hidden mb-1">
-                                <div class="h-full ${isHighSodiumDay ? 'bg-rose-500' : 'bg-cyan-400'} rounded-full" style="width: ${sPct}%"></div>
-                            </div>
-                            <span class="text-[10px] ${isHighSodiumDay ? 'text-rose-400 font-bold' : 'text-slate-400 font-medium'}">${isHighSodiumDay ? '⚠️ Exceso de sodio' : `${sPct}% del límite diario`}</span>
-                        </div>
-                    </div>
-
-                    <!-- Hydration & AI Coach Row -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        
-                        <!-- Hydration Card -->
-                        <div class="white-card p-5 flex items-center justify-between">
-                            <div class="flex items-center gap-3.5">
-                                <div class="size-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
-                                    <span class="material-symbols-outlined text-2xl">water_drop</span>
-                                </div>
-                                <div>
-                                    <span class="text-[10px] font-bold uppercase text-slate-400">Hidratación</span>
-                                    <h4 class="text-xl font-display font-black text-white">${waterAmount} <span class="text-xs font-normal text-slate-400">/ ${waterGoal} ml</span></h4>
-                                    <div class="h-1.5 w-32 bg-slate-900 rounded-full overflow-hidden mt-1">
-                                        <div class="h-full bg-blue-500 rounded-full" style="width: ${waterPct}%"></div>
+                        <!-- 3. Hidratación & AI Coach Card -->
+                        <div class="white-card card-glow-cyan p-5 flex flex-col justify-between">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-3">
+                                    ${renderPerformanceRing({
+                                        pct: waterPct,
+                                        size: 62,
+                                        stroke: 6,
+                                        color: '#06B6D4',
+                                        glowClass: 'ring-glow-cyan',
+                                        centerLabel: `${waterPct}%`
+                                    })}
+                                    <div>
+                                        <span class="text-[10px] font-extrabold uppercase tracking-widest text-cyan-300">Hidratación</span>
+                                        <h4 class="text-lg font-mono font-extrabold text-white">${waterAmount} <span class="text-xs font-normal text-slate-400">/ ${waterGoal} ml</span></h4>
                                     </div>
                                 </div>
+                                <button id="add-water-btn" class="px-3.5 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/35 text-xs font-extrabold flex items-center gap-1 cursor-pointer transition-all active:scale-95">
+                                    <span class="material-symbols-outlined text-base">water_drop</span>
+                                    +250 ml
+                                </button>
                             </div>
-                            <button id="add-water-btn" class="btn-emerald-soft px-3.5 py-2 text-xs font-bold">
-                                <span class="material-symbols-outlined text-base">add</span> +250 ml
-                            </button>
-                        </div>
 
-                        <!-- AI Coach Tip Card -->
-                        <div class="white-card p-5 border-emerald-500/30 flex flex-col justify-between">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="material-symbols-outlined text-emerald-400 text-base">auto_awesome</span>
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">AI Coach Insight</span>
-                            </div>
-                            <p class="text-xs text-slate-300 font-medium italic leading-relaxed">"${displayTip}"</p>
-                        </div>
-                                  <!-- Sensations & Satiety Metrics Card -->
-                    <div class="white-card p-6 border border-slate-700/80 shadow-xl bg-gradient-to-b from-[#1E293B] to-[#151E2E]">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-700/60">
-                            <div class="flex items-center gap-3">
-                                <div class="size-11 rounded-2xl bg-[#10E775]/20 text-[#10E775] border border-[#10E775]/30 flex items-center justify-center text-xl shadow-xs">
-                                    🧠
+                            <div class="mt-4 p-3.5 rounded-2xl bg-black/30 border border-cyan-500/20">
+                                <div class="flex items-center gap-1.5 mb-1">
+                                    <span class="material-symbols-outlined text-[#10E775] text-sm">auto_awesome</span>
+                                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-[#10E775]">AI Coach Bio-Insight</span>
                                 </div>
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <h3 class="text-base font-display font-black text-white uppercase tracking-tight">Métricas de Sensaciones & Saciedad</h3>
-                                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${getSensationsMetrics().statusBg} ${getSensationsMetrics().statusColor} border border-white/5">
-                                            ${getSensationsMetrics().statusLabel}
-                                        </span>
+                                <p class="text-xs text-slate-200 leading-relaxed line-clamp-2">"${displayTip}"</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOTTOM 2-COLUMN BENTO: SENSATIONS & DAILY MEALS TIMELINE -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <!-- Sensations & Satiety Metrics Card (5 Cols) -->
+                        <div class="lg:col-span-5 white-card p-6 border border-white/[0.09] flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between gap-2 mb-5 pb-3 border-b border-white/[0.07]">
+                                    <div class="flex items-center gap-3">
+                                        <div class="size-10 rounded-2xl bg-[#10E775]/15 text-[#10E775] border border-[#10E775]/30 flex items-center justify-center text-lg">
+                                            🧠
+                                        </div>
+                                        <div>
+                                            <h3 class="text-sm font-display font-extrabold text-white uppercase tracking-wide">Saciedad & Plenitud</h3>
+                                            <p class="text-[11px] text-slate-400">Respuesta gastrointestinal y GLP-1</p>
+                                        </div>
                                     </div>
-                                    <p class="text-xs text-slate-400 mt-0.5">Control de plenitud, saciedad temprana (Dutide) y confort digestivo</p>
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${getSensationsMetrics().statusBg} ${getSensationsMetrics().statusColor} border border-white/10">
+                                        ${getSensationsMetrics().statusLabel}
+                                    </span>
                                 </div>
+
+                                <div class="grid grid-cols-3 gap-2.5 mb-5">
+                                    <div class="p-3 rounded-2xl bg-black/35 border border-white/[0.06] text-center">
+                                        <span class="text-[9px] font-bold uppercase text-slate-400 block">Promedio</span>
+                                        <p class="text-lg font-mono font-extrabold text-white mt-1">
+                                            ${getSensationsMetrics().avgScore ? `${getSensationsMetrics().avgScore}/5` : '—'}
+                                        </p>
+                                    </div>
+                                    <div class="p-3 rounded-2xl bg-black/35 border border-[#10E775]/20 text-center">
+                                        <span class="text-[9px] font-bold uppercase text-slate-400 block">En su punto</span>
+                                        <p class="text-lg font-mono font-extrabold text-[#10E775] mt-1">
+                                            ${getSensationsMetrics().distribution.groupedOptimal.pct}%
+                                        </p>
+                                    </div>
+                                    <div class="p-3 rounded-2xl bg-black/35 border border-amber-500/20 text-center">
+                                        <span class="text-[9px] font-bold uppercase text-slate-400 block">Muy Lleno</span>
+                                        <p class="text-lg font-mono font-extrabold text-amber-400 mt-1">
+                                            ${getSensationsMetrics().distribution.groupedOverfull.pct}%
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Distribution Bar -->
+                                <div class="mb-4">
+                                    <div class="flex items-center justify-between text-xs mb-1.5">
+                                        <span class="font-bold text-slate-300">Distribución Post-Comida</span>
+                                        <span class="font-mono text-slate-400">${getSensationsMetrics().ratedMealsCount} registros</span>
+                                    </div>
+                                    <div class="h-2.5 w-full bg-black/50 rounded-full overflow-hidden flex p-0.5 border border-white/[0.07] gap-0.5">
+                                        <div style="width: ${Math.max(4, getSensationsMetrics().distribution.groupedOptimal.pct)}%" class="h-full bg-[#10E775] rounded-l-full"></div>
+                                        <div style="width: ${getSensationsMetrics().distribution.groupedOverfull.pct}%" class="h-full bg-amber-400"></div>
+                                        <div style="width: ${getSensationsMetrics().distribution.groupedHungry.pct}%" class="h-full bg-sky-400 rounded-r-full"></div>
+                                    </div>
+                                </div>
+
+                                ${getSensationsMetrics().topSensations.length > 0 ? `
+                                    <div class="pt-3 border-t border-white/[0.06]">
+                                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">Sensaciones Frecuentes</span>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            ${getSensationsMetrics().topSensations.map(s => `
+                                                <span class="px-2.5 py-1 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[11px] font-semibold text-slate-200 flex items-center gap-1.5">
+                                                    <span>${s.tag}</span>
+                                                    <span class="text-[10px] font-mono font-bold text-[#10E775]">${s.count}</span>
+                                                </span>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
                             </div>
 
-                            <button onclick="window.router.navigate('insights')" class="btn-emerald-soft text-xs px-3.5 py-1.5 font-bold self-start sm:self-center flex items-center gap-1.5 cursor-pointer">
-                                <span>Ver Métricas & Historial</span>
+                            <button onclick="window.router.navigate('insights')" class="w-full mt-4 btn-ghost-light py-2.5 text-xs font-bold flex items-center justify-center gap-1.5">
+                                <span>Ver Biometría & Historial Completo</span>
                                 <span class="material-symbols-outlined text-sm">trending_up</span>
                             </button>
                         </div>
 
-                        <!-- Stats Row -->
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-                            <!-- Stat 1: Promedio de Saciedad -->
-                            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-                                <div>
-                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Nivel Promedio de Saciedad</span>
-                                    <p class="text-2xl font-mono font-black text-white mt-0.5">
-                                        ${getSensationsMetrics().avgScore ? `${getSensationsMetrics().avgScore} <span class="text-xs font-normal text-slate-400">/ 5.0</span>` : 'Sin datos'}
-                                    </p>
-                                    <span class="text-[10px] ${getSensationsMetrics().statusColor} font-medium block mt-0.5">
-                                        ${getSensationsMetrics().hasData ? getSensationsMetrics().statusLabel : 'Califica tus comidas'}
-                                    </span>
+                        <!-- Daily Meal Timeline (7 Cols) -->
+                        <div class="lg:col-span-7 white-card p-6 border border-white/[0.09] flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.07]">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="size-10 rounded-2xl bg-[#10E775]/15 text-[#10E775] border border-[#10E775]/30 flex items-center justify-center">
+                                            <span class="material-symbols-outlined text-xl">restaurant_menu</span>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-base font-display font-extrabold text-white uppercase tracking-wide">Comidas Registradas</h3>
+                                            <p class="text-[11px] text-slate-400">Desglose de calorías, macros y sodio del día</p>
+                                        </div>
+                                    </div>
+                                    <button onclick="window.router.navigate('tracker')" class="btn-emerald-soft text-xs px-3.5 py-1.5 font-bold cursor-pointer">
+                                        Diario Completo →
+                                    </button>
                                 </div>
-                                <div class="text-3xl">
-                                    ${getSensationsMetrics().avgScore >= 4 ? '🍕' : getSensationsMetrics().avgScore >= 2.5 ? '⚖️' : getSensationsMetrics().avgScore > 0 ? '🥣' : '🍽️'}
-                                </div>
-                            </div>
 
-                            <!-- Stat 2: Saciedad Óptima -->
-                            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-                                <div>
-                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Comidas "En su punto"</span>
-                                    <p class="text-2xl font-mono font-black text-[#10E775] mt-0.5">
-                                        ${getSensationsMetrics().distribution.groupedOptimal.pct}%
-                                    </p>
-                                    <span class="text-[10px] text-slate-400 block mt-0.5">
-                                        ${getSensationsMetrics().distribution.groupedOptimal.count} comidas en rango ideal
-                                    </span>
-                                </div>
-                                <div class="text-3xl">🟢</div>
-                            </div>
-
-                            <!-- Stat 3: Comidas Muy Lleno / Pesado -->
-                            <div class="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-                                <div>
-                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Exceso / Muy Lleno</span>
-                                    <p class="text-2xl font-mono font-black ${getSensationsMetrics().distribution.groupedOverfull.pct > 25 ? 'text-amber-400' : 'text-slate-300'} mt-0.5">
-                                        ${getSensationsMetrics().distribution.groupedOverfull.pct}%
-                                    </p>
-                                    <span class="text-[10px] text-slate-400 block mt-0.5">
-                                        ${getSensationsMetrics().distribution.groupedOverfull.count} con pesadez
-                                    </span>
-                                </div>
-                                <div class="text-3xl">
-                                    ${getSensationsMetrics().distribution.groupedOverfull.pct > 25 ? '🟡' : '✅'}
+                                <div class="flex flex-col gap-3 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
+                                    ${renderMealsList(state, selectedDate)}
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Distribution Bar -->
-                        <div class="mb-4">
-                            <div class="flex items-center justify-between text-xs mb-1.5">
-                                <span class="font-bold text-slate-300">Distribución de Plenitud Post-Comida</span>
-                                <span class="font-mono text-slate-400">${getSensationsMetrics().ratedMealsCount} comidas evaluadas</span>
-                            </div>
-                            <div class="h-3 w-full bg-slate-900 rounded-full overflow-hidden flex p-0.5 border border-slate-800 gap-0.5">
-                                <div style="width: ${Math.max(4, getSensationsMetrics().distribution.groupedOptimal.pct)}%" class="h-full bg-[#10E775] rounded-l-full transition-all" title="En su punto: ${getSensationsMetrics().distribution.groupedOptimal.pct}%"></div>
-                                <div style="width: ${getSensationsMetrics().distribution.groupedOverfull.pct}%" class="h-full bg-amber-400 transition-all" title="Muy lleno/Pesado: ${getSensationsMetrics().distribution.groupedOverfull.pct}%"></div>
-                                <div style="width: ${getSensationsMetrics().distribution.groupedHungry.pct}%" class="h-full bg-blue-400 rounded-r-full transition-all" title="Con hambre: ${getSensationsMetrics().distribution.groupedHungry.pct}%"></div>
-                            </div>
-                            <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-400 mt-2 gap-2 font-medium">
-                                <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-[#10E775]"></span> En su punto (${getSensationsMetrics().distribution.groupedOptimal.pct}%)</span>
-                                <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-amber-400"></span> Muy lleno / Pesado (${getSensationsMetrics().distribution.groupedOverfull.pct}%)</span>
-                                <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-blue-400"></span> Con hambre (${getSensationsMetrics().distribution.groupedHungry.pct}%)</span>
-                            </div>
-                        </div>
-
-                        <!-- Top Sensations Chips -->
-                        ${getSensationsMetrics().topSensations.length > 0 ? `
-                            <div class="pt-3 border-t border-slate-800/80">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">Sensaciones Más Frecuentes Reportadas</span>
-                                <div class="flex flex-wrap gap-2">
-                                    ${getSensationsMetrics().topSensations.map(s => `
-                                        <span class="px-3 py-1 rounded-xl bg-slate-900/90 border border-slate-700/80 text-xs font-semibold text-slate-200 flex items-center gap-2">
-                                            <span>${s.tag}</span>
-                                            <span class="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded">${s.count}</span>
-                                        </span>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-
-                    <!-- Daily Meal Timeline -->
-                    <div class="white-card p-6 border border-slate-700/80 shadow-xl">
-                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
-                            <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-emerald-400 text-xl">restaurant_menu</span>
-                                <h3 class="text-lg font-display font-black text-white uppercase tracking-tight">Comidas Registradas</h3>
-                            </div>
-                            <button onclick="window.router.navigate('tracker')" class="btn-emerald-soft text-xs px-3 py-1.5 font-bold cursor-pointer">
-                                Ver Diario Completo →
-                            </button>
-                        </div>
-
-                        <div class="flex flex-col gap-3">
-                            ${renderMealsList(state, selectedDate)}
                         </div>
                     </div>
 
@@ -477,38 +584,42 @@ const renderMealsList = (state, selectedDate) => {
 
     if (!meals.length) {
         return `
-            <div class="py-10 text-center flex flex-col items-center gap-2">
-                <div class="size-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-500">
-                    <span class="material-symbols-outlined text-2xl">restaurant</span>
+            <div class="py-12 text-center flex flex-col items-center gap-2">
+                <div class="size-14 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-slate-500">
+                    <span class="material-symbols-outlined text-3xl">restaurant</span>
                 </div>
-                <p class="text-sm font-semibold text-slate-300">No has registrado comidas para este día</p>
-                <p class="text-xs text-slate-400">Escribe lo que comiste o sube una foto con la cámara arriba.</p>
+                <p class="text-sm font-bold text-slate-300 mt-1">Sin comidas registradas en esta fecha</p>
+                <p class="text-xs text-slate-400">Usa la barra superior o toca un chip de carga rápida para empezar.</p>
             </div>
         `;
     }
 
     return meals.map(m => `
-        <div class="p-4 bg-slate-900/60 hover:bg-slate-800/80 rounded-2xl border border-slate-700/60 transition-all flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3.5">
-                    <div class="size-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">
-                        <span class="material-symbols-outlined text-lg">${m.type === 'workout' ? 'fitness_center' : 'restaurant'}</span>
+        <div class="p-4 bg-black/35 hover:bg-white/[0.04] rounded-2xl border border-white/[0.07] hover:border-white/[0.15] transition-all flex flex-col gap-2.5">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3.5 min-w-0">
+                    <div class="size-11 rounded-2xl bg-[#10E775]/15 flex items-center justify-center text-[#10E775] border border-[#10E775]/30 shrink-0">
+                        <span class="material-symbols-outlined text-xl">${m.type === 'workout' ? 'fitness_center' : 'restaurant'}</span>
                     </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h4 class="text-sm font-bold text-white capitalize">${m.name}</h4>
-                            <span class="px-2 py-0.5 rounded-full bg-slate-800 text-[9px] font-bold text-emerald-400 border border-slate-700">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h4 class="text-sm font-bold text-white capitalize truncate">${m.name}</h4>
+                            <span class="px-2 py-0.5 rounded-full bg-white/[0.06] text-[10px] font-bold text-[#10E775] border border-white/[0.08]">
                                 ${m.time || m.category || 'Comida'}
                             </span>
                         </div>
-                        <p class="text-xs font-mono text-slate-400 mt-0.5">
-                            <strong class="text-emerald-400">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g · <span class="text-cyan-400 font-semibold">Sodio: ${getMealSodium(m)}mg</span>
-                        </p>
+                        <div class="flex flex-wrap items-center gap-2 mt-1.5 text-[11px] font-mono">
+                            <span class="px-2 py-0.5 rounded-md bg-[#10E775]/15 text-[#10E775] font-bold">${m.calories} kcal</span>
+                            <span class="text-slate-300">P: <strong>${Math.round(m.macros?.protein || 0)}g</strong></span>
+                            <span class="text-sky-300">C: <strong>${Math.round(m.macros?.carbs || 0)}g</strong></span>
+                            <span class="text-amber-300">G: <strong>${Math.round(m.macros?.fat || 0)}g</strong></span>
+                            <span class="px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-300 border border-cyan-500/25 font-semibold">Na: ${getMealSodium(m)}mg</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-1">
-                    <button class="delete-meal-btn size-8 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center cursor-pointer" data-id="${m.id}" title="Eliminar comida">
+                <div class="flex items-center gap-1 shrink-0">
+                    <button class="delete-meal-btn size-8 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors flex items-center justify-center cursor-pointer" data-id="${m.id}" title="Eliminar comida">
                         <span class="material-symbols-outlined text-lg">delete</span>
                     </button>
                 </div>
@@ -534,7 +645,7 @@ export const attachDashboardEvents = () => {
     const handleAnalysis = async (text, file) => {
         if (!text && !file) return;
 
-        btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-white">refresh</span>`;
+        btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-slate-900">refresh</span>`;
         btn.disabled = true;
 
         try {
@@ -557,10 +668,21 @@ export const attachDashboardEvents = () => {
         } catch (e) {
             window.showAlert?.('Error en Análisis', e.message || 'No se pudo analizar el alimento', 'error');
         } finally {
-            btn.innerHTML = `<span class="material-symbols-outlined text-xl">add</span><span class="hidden sm:inline">Registrar</span>`;
+            btn.innerHTML = `<span class="material-symbols-outlined text-lg">add_circle</span><span class="hidden sm:inline">Registrar</span>`;
             btn.disabled = false;
         }
     };
+
+    // Quick Food Chips 1-Click
+    document.querySelectorAll('.quick-food-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const foodText = chip.dataset.food;
+            if (input && foodText) {
+                input.value = foodText;
+                handleAnalysis(foodText, null);
+            }
+        });
+    });
 
     // Barcode Scanner Modal Logic
     barcodeBtn?.addEventListener('click', () => {
@@ -569,13 +691,13 @@ export const attachDashboardEvents = () => {
 
     const showBarcodeScannerModal = () => {
         barcodeModal.innerHTML = `
-            <div class="white-card p-6 w-full max-w-md relative animate-scale-up border border-slate-700/80 shadow-2xl">
-                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
+            <div class="white-card p-6 w-full max-w-md relative animate-scale-up border border-white/15 shadow-2xl">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
                     <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-emerald-400 text-xl">barcode_scanner</span>
-                        <h3 class="text-lg font-display font-black text-white uppercase">Escanear Código de Barras</h3>
+                        <span class="material-symbols-outlined text-cyan-400 text-xl">barcode_scanner</span>
+                        <h3 class="text-lg font-display font-extrabold text-white uppercase">Escanear Código de Barras</h3>
                     </div>
-                    <button id="close-barcode-btn" class="size-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700">
+                    <button id="close-barcode-btn" class="size-8 rounded-full bg-white/10 flex items-center justify-center text-slate-300 hover:bg-white/20">
                         <span class="material-symbols-outlined text-base">close</span>
                     </button>
                 </div>
@@ -671,10 +793,10 @@ export const attachDashboardEvents = () => {
         const todayDate = getArgentinaDate();
 
         modal.innerHTML = `
-            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-2xl border border-slate-700/80">
-                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/60">
-                    <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs">Confirmar Registro</span>
-                    <button id="close-meal-modal-btn" class="size-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700">
+            <div class="white-card p-6 w-full max-w-md relative animate-scale-up shadow-2xl border border-white/15">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+                    <span class="badge-emerald text-xs">Confirmar Registro</span>
+                    <button id="close-meal-modal-btn" class="size-8 rounded-full bg-white/10 flex items-center justify-center text-slate-300 hover:bg-white/20">
                         <span class="material-symbols-outlined text-base">close</span>
                     </button>
                 </div>
@@ -688,7 +810,7 @@ export const attachDashboardEvents = () => {
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="text-xs font-bold text-slate-400 uppercase">Calorías (kcal)</label>
-                            <input id="confirm-meal-cals" type="number" value="${mealData.calories || 0}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-lg font-mono font-bold text-emerald-400 outline-none focus:border-emerald-500 mt-1" />
+                            <input id="confirm-meal-cals" type="number" value="${mealData.calories || 0}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-lg font-mono font-bold text-[#10E775] outline-none focus:border-emerald-500 mt-1" />
                         </div>
                         <div>
                             <label class="text-xs font-bold text-slate-400 uppercase">Momento</label>
@@ -698,13 +820,13 @@ export const attachDashboardEvents = () => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-4 gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-700/60">
+                    <div class="grid grid-cols-4 gap-2 p-3 bg-black/40 rounded-2xl border border-white/10">
                         <div>
-                            <span class="text-[10px] font-bold uppercase text-emerald-400">Proteína</span>
+                            <span class="text-[10px] font-bold uppercase text-[#10E775]">Proteína</span>
                             <input id="confirm-meal-p" type="number" value="${Math.round(mealData.macros?.protein || 0)}" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
                         </div>
                         <div>
-                            <span class="text-[10px] font-bold uppercase text-blue-400">Carbos</span>
+                            <span class="text-[10px] font-bold uppercase text-sky-400">Carbos</span>
                             <input id="confirm-meal-c" type="number" value="${Math.round(mealData.macros?.carbs || 0)}" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
                         </div>
                         <div>
@@ -718,10 +840,10 @@ export const attachDashboardEvents = () => {
                     </div>
 
                     <!-- Sensations & Satiety Inputs -->
-                    <div class="p-3 bg-slate-900/60 rounded-2xl border border-slate-700/60 flex flex-col gap-2">
+                    <div class="p-3 bg-black/40 rounded-2xl border border-white/10 flex flex-col gap-2">
                         <div class="flex items-center justify-between">
                             <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Sensación & Plenitud</label>
-                            <span class="text-[10px] text-emerald-400 font-mono" id="confirm-satiety-label">⚖️ En su punto (3/5)</span>
+                            <span class="text-[10px] text-[#10E775] font-mono" id="confirm-satiety-label">⚖️ En su punto (3/5)</span>
                         </div>
                         <div class="grid grid-cols-5 gap-1.5" id="quick-satiety-selector">
                             <button type="button" class="quick-satiety-btn p-2 rounded-xl border border-slate-700 bg-slate-800 text-center hover:border-blue-400 transition-all cursor-pointer" data-score="1" title="Con hambre">
@@ -749,7 +871,7 @@ export const attachDashboardEvents = () => {
                     </div>
 
                     <div class="flex gap-2 mt-2">
-                        <button id="cancel-meal-btn" class="flex-1 btn-ghost-light py-3 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 cursor-pointer">Cancelar</button>
+                        <button id="cancel-meal-btn" class="flex-1 btn-ghost-light py-3 text-xs font-bold cursor-pointer">Cancelar</button>
                         <button id="save-meal-btn" class="flex-1 btn-emerald py-3 text-xs font-bold cursor-pointer">Guardar en Diario</button>
                     </div>
                 </div>

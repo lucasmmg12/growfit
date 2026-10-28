@@ -30,18 +30,18 @@ export const renderTracker = () => {
     const dayMetrics = getSensationsMetrics(selectedDate);
 
     return `
-    <div class="flex h-screen w-full bg-[#0F172A] font-body text-slate-100 overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#070A10] font-body text-slate-100 overflow-hidden fade-in">
         ${renderSidebar('tracker')}
 
         <!-- Main Content -->
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-[#0F172A]">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
             ${renderMobileHeader('Diario de Comidas')}
 
             <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-8">
-                <div class="max-w-4xl mx-auto flex flex-col gap-6">
+                <div class="max-w-7xl mx-auto flex flex-col gap-6">
 
                     <!-- Top Header Summary Card -->
-                    <div class="white-card p-6 border border-emerald-500/30 shadow-xl bg-gradient-to-b from-[#1E293B] to-[#151E2E]">
+                    <div class="white-card card-glow-emerald p-6 shadow-xl">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
                                 <div class="flex items-center gap-2 mb-1">

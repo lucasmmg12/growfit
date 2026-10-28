@@ -52,17 +52,17 @@ export const renderObetide = () => {
 
 
     return `
-    <div class="flex h-screen w-full bg-[#0F172A] font-body text-slate-100 overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#070A10] font-body text-slate-100 overflow-hidden fade-in">
         ${renderSidebar('obetide')}
 
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-[#0F172A]">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
             ${renderMobileHeader('Tratamiento Obetide')}
 
-            <div class="flex-1 overflow-y-auto px-4 md:px-8 py-5 custom-scrollbar pb-28 lg:pb-8">
-                <div class="max-w-4xl mx-auto flex flex-col gap-6">
+            <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-8">
+                <div class="max-w-7xl mx-auto flex flex-col gap-6">
 
                     <!-- Header Clinical Card -->
-                    <div class="white-card p-6 bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white border border-emerald-500/30 shadow-2xl relative overflow-hidden">
+                    <div class="white-card card-glow-violet p-6 text-white shadow-2xl relative overflow-hidden">
                         <div class="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
                             <span class="material-symbols-outlined text-[180px]">vaccines</span>
                         </div>

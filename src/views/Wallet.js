@@ -30,17 +30,17 @@ export const renderWallet = () => {
     const isDeficit = netBalance < 0;
 
     return `
-    <div class="flex h-screen w-full bg-[#0D1117] font-sans text-[#F5F5F7] overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#070A10] font-sans text-[#F8FAFC] overflow-hidden fade-in">
         ${renderSidebar('wallet')}
 
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-[#0D1117]">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
             ${renderMobileHeader('Mi Billetera')}
 
-            <div class="flex-1 overflow-y-auto px-4 md:px-8 py-5 custom-scrollbar pb-28 lg:pb-8">
-                <div class="max-w-4xl mx-auto flex flex-col gap-6">
+            <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-10">
+                <div class="max-w-7xl mx-auto flex flex-col gap-6">
 
-                    <!-- Apple Health / iOS 18 Hero Cashflow Card -->
-                    <div class="white-card p-6 md:p-8 bg-gradient-to-b from-white/[0.06] to-white/[0.02] border border-white/[0.08] shadow-2xl relative overflow-hidden">
+                    <!-- Whoop / Oura Performance Hero Cashflow Card -->
+                    <div class="white-card card-glow-blue p-6 md:p-8 shadow-2xl relative overflow-hidden">
                         <!-- Top Metadata -->
                         <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
                             <div class="flex items-center gap-2">
@@ -200,7 +200,7 @@ export const renderWallet = () => {
                         </div>
 
                         <!-- Obetide & Health Financial Ratio -->
-                        <div class="white-card p-5 border border-white/[0.07] shadow-xl flex flex-col justify-between">
+                        <div class="white-card card-glow-violet p-5 shadow-xl flex flex-col justify-between">
                             <div>
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-400/20 text-[#BF5AF2] font-semibold">
@@ -243,7 +243,7 @@ export const renderWallet = () => {
                     </div>
 
                     <!-- Ingresos por Categoría (Sueldo, Grow Labs, Otros Ingresos) -->
-                    <div class="white-card p-5 md:p-6 border border-white/[0.07] shadow-xl">
+                    <div class="white-card card-glow-emerald p-5 md:p-6 shadow-xl">
                         <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-white/[0.06]">
                             <div>
                                 <div class="flex items-center gap-2">
