@@ -43,7 +43,7 @@ export const analyzeFood = async (input, type = 'text', context = '') => {
         {
           "name": "Short descriptive name",
           "calories": number,
-          "macros": { "protein": number, "carbs": number, "fat": number },
+          "macros": { "protein": number, "carbs": number, "fat": number, "sodium": number }, // sodium in mg (milligrams)
           "category": "Desayuno" | "Media Mañana" | "Almuerzo" | "Merienda" | "Media Tarde" | "Cena",
           "date": "YYYY-MM-DD",
           "satiety_score": number | null, // 1: Con hambre, 2: Ligero, 3: En su punto, 4: Muy lleno, 5: Pesado / empachado
@@ -254,8 +254,9 @@ export const chatWithAI = async (message, state) => {
       acc.p += (m.macros?.protein || 0);
       acc.c += (m.macros?.carbs || 0);
       acc.f += (m.macros?.fat || 0);
+      acc.na += (m.macros?.sodium || 0);
       return acc;
-    }, { cal: 0, p: 0, c: 0, f: 0 });
+    }, { cal: 0, p: 0, c: 0, f: 0, na: 0 });
 
     const workoutSum = workouts.reduce((acc, w) => {
       acc.cal += (w.calories || 0);
@@ -310,7 +311,7 @@ export const chatWithAI = async (message, state) => {
       Tu misión es ayudar a ${profile.name || 'el atleta'} a alcanzar su meta de ${profile.targetWeight || 'peso ideal'} kg.
 
       DATOS DE HOY (${todayStr}):
-      - Nutrición: ${Math.round(todaySummary.macros.cal)} kcal (P:${todaySummary.macros.p}g, C:${todaySummary.macros.c}g, F:${todaySummary.macros.f}g).
+      - Nutrición: ${Math.round(todaySummary.macros.cal)} kcal (P:${todaySummary.macros.p}g, C:${todaySummary.macros.c}g, F:${todaySummary.macros.f}g, Sodio:${Math.round(todaySummary.macros.na)}mg).
       - Comidas: ${todaySummary.mealNames || 'Nada registrado aún'}.
       - Actividad: ${todaySummary.workouts.count} entrenos (${todaySummary.workouts.cal} kcal). ${todaySummary.workoutNames ? `Ejercicios: ${todaySummary.workoutNames}` : ''}
       - Otros: ${todaySummary.water}ml agua, ${todaySummary.sleep}h sueño.

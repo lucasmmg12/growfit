@@ -1,4 +1,4 @@
-import { getState, addMeal, deleteMeal, getArgentinaDate, setSelectedDate, getSensationsMetrics } from '../state';
+import { getState, addMeal, deleteMeal, getArgentinaDate, setSelectedDate, getSensationsMetrics, getMealSodium } from '../state';
 import { analyzeFood } from '../services/openai';
 import { getProductByBarcode, searchOpenFood } from '../services/openfoodfacts';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
@@ -26,6 +26,7 @@ export const renderTracker = () => {
     const totalP = meals.reduce((s, m) => s + (m.macros?.protein || 0), 0);
     const totalC = meals.reduce((s, m) => s + (m.macros?.carbs || 0), 0);
     const totalF = meals.reduce((s, m) => s + (m.macros?.fat || 0), 0);
+    const totalSodium = meals.reduce((s, m) => s + getMealSodium(m), 0);
     const dayMetrics = getSensationsMetrics(selectedDate);
 
     return `
@@ -63,6 +64,7 @@ export const renderTracker = () => {
                                     <p class="text-emerald-400">P: ${Math.round(totalP)}g</p>
                                     <p class="text-blue-400">C: ${Math.round(totalC)}g</p>
                                     <p class="text-amber-400">G: ${Math.round(totalF)}g</p>
+                                    <p class="text-cyan-400">Sodio: ${Math.round(totalSodium)}mg</p>
                                 </div>
                             </div>
                         </div>
@@ -90,6 +92,7 @@ export const renderTracker = () => {
                             const catP = catMeals.reduce((s, m) => s + (m.macros?.protein || 0), 0);
                             const catC = catMeals.reduce((s, m) => s + (m.macros?.carbs || 0), 0);
                             const catF = catMeals.reduce((s, m) => s + (m.macros?.fat || 0), 0);
+                            const catSodium = catMeals.reduce((s, m) => s + getMealSodium(m), 0);
 
                             return `
                             <div class="white-card p-5 border border-slate-700/60">
@@ -100,7 +103,7 @@ export const renderTracker = () => {
                                         </div>
                                         <div>
                                             <h3 class="text-base font-display font-black text-white uppercase tracking-tight">${cat.label}</h3>
-                                            <p class="text-xs font-mono font-semibold text-emerald-400">${catCals} kcal ${catMeals.length ? `· P:${Math.round(catP)}g C:${Math.round(catC)}g G:${Math.round(catF)}g` : ''}</p>
+                                            <p class="text-xs font-mono font-semibold text-emerald-400">${catCals} kcal ${catMeals.length ? `· P:${Math.round(catP)}g C:${Math.round(catC)}g G:${Math.round(catF)}g · <span class="text-cyan-400">Sodio:${Math.round(catSodium)}mg</span>` : ''}</p>
                                         </div>
                                     </div>
 
@@ -117,7 +120,7 @@ export const renderTracker = () => {
                                                 <div>
                                                     <h4 class="text-sm font-bold text-white capitalize">${m.name}</h4>
                                                     <p class="text-xs font-mono text-slate-400 mt-0.5">
-                                                        <strong class="text-emerald-400">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g
+                                                        <strong class="text-emerald-400">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g · <span class="text-cyan-400 font-semibold">Sodio: ${getMealSodium(m)}mg</span>
                                                     </p>
                                                 </div>
                                                 <button class="delete-tracker-meal-btn size-7 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors cursor-pointer" data-id="${m.id}" title="Eliminar alimento">
@@ -220,7 +223,7 @@ export const attachTrackerEvents = () => {
                             <input id="manual-food-serving" type="text" placeholder="150g" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 mt-1">
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 p-3 bg-slate-900/60 rounded-xl border border-slate-700">
+                    <div class="grid grid-cols-4 gap-2 p-3 bg-slate-900/60 rounded-xl border border-slate-700">
                         <div>
                             <span class="text-[10px] font-bold text-emerald-400 uppercase">Proteína</span>
                             <input id="manual-food-p" type="number" placeholder="25" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1">
@@ -232,6 +235,10 @@ export const attachTrackerEvents = () => {
                         <div>
                             <span class="text-[10px] font-bold text-amber-400 uppercase">Grasas</span>
                             <input id="manual-food-f" type="number" placeholder="10" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1">
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-cyan-400 uppercase">Sodio (mg)</span>
+                            <input id="manual-food-na" type="number" placeholder="350" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1">
                         </div>
                     </div>
                     <button id="save-manual-food-btn" class="w-full btn-emerald py-3 text-xs font-bold mt-2">Guardar Alimento</button>
@@ -282,7 +289,7 @@ export const attachTrackerEvents = () => {
                     <div class="p-3 bg-slate-900 border border-slate-700/80 rounded-xl hover:border-emerald-500/50 transition-all flex items-center justify-between">
                         <div>
                             <h5 class="text-xs font-bold text-white">${item.name}</h5>
-                            <p class="text-[10px] font-mono text-slate-400">${item.calories} kcal/100g · P:${item.protein}g C:${item.carbs}g G:${item.fat}g</p>
+                            <p class="text-[10px] font-mono text-slate-400">${item.calories} kcal/100g · P:${item.protein}g C:${item.carbs}g G:${item.fat}g · Sodio:${item.sodium || 0}mg</p>
                         </div>
                         <button class="select-search-item btn-emerald px-3 py-1.5 text-xs font-bold" data-item='${JSON.stringify(item).replace(/'/g, "&apos;")}'>
                             Seleccionar
@@ -299,7 +306,7 @@ export const attachTrackerEvents = () => {
                             category: category,
                             time: category,
                             date: state.selectedDate || getArgentinaDate(),
-                            macros: { protein: itm.protein, carbs: itm.carbs, fat: itm.fat }
+                            macros: { protein: itm.protein, carbs: itm.carbs, fat: itm.fat, sodium: itm.sodium || 0 }
                         });
                         modal.classList.add('hidden');
                         window.router.navigate('tracker');
@@ -320,6 +327,8 @@ export const attachTrackerEvents = () => {
             const protein = parseInt(document.getElementById('manual-food-p').value) || 0;
             const carbs = parseInt(document.getElementById('manual-food-c').value) || 0;
             const fat = parseInt(document.getElementById('manual-food-f').value) || 0;
+            const sodiumVal = document.getElementById('manual-food-na')?.value;
+            const sodium = sodiumVal !== '' && sodiumVal !== undefined ? parseInt(sodiumVal) : undefined;
 
             if (!name || calories <= 0) {
                 alert('Por favor ingresa un nombre y calorías válidas.');
@@ -332,7 +341,7 @@ export const attachTrackerEvents = () => {
                 category,
                 time: category,
                 date: state.selectedDate || getArgentinaDate(),
-                macros: { protein, carbs, fat }
+                macros: { protein, carbs, fat, ...(sodium !== undefined ? { sodium } : {}) }
             });
 
             modal.classList.add('hidden');

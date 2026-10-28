@@ -283,4 +283,18 @@ INSERT INTO public.growfit_profiles (user_id, username, password, display_name, 
 VALUES ('lmarinero', 'lmarinero', '123456', 'Lucas Marinero', 'owner', 'Lucas Marinero', 175, 104, 70, 2000, 'ARS')
 ON CONFLICT (user_id) DO NOTHING;
 
+-- Completar nivel de sodio (mg) en comidas históricas que aún no tengan macros.sodium
+UPDATE public.meals
+SET macros = COALESCE(macros, '{"protein":0,"carbs":0,"fat":0}'::jsonb) || jsonb_build_object(
+  'sodium',
+  CASE
+    WHEN LOWER(COALESCE(name,'')) ~ '(jamon|jamón|queso|pizza|empanada|taco|hamburguesa|salchicha|fiambre|salsa|soja|caldo|sopa|pancho|milanesa|sandwich|sándwich|lomito|choripan|asado|factura|medialuna|snack|papas fritas|picada|aceituna|atun|atún)'
+      THEN ROUND(COALESCE(calories, 200) * 1.75)
+    WHEN LOWER(COALESCE(name,'')) ~ '(fruta|banana|manzana|naranja|pera|avena|yogur|leche|cafe|café|te|té|mate|helado|banasplit|licuado|nuez|almendra|agua)'
+      THEN ROUND(COALESCE(calories, 200) * 0.45)
+    ELSE ROUND(COALESCE(calories, 200) * 1.05)
+  END
+)
+WHERE macros IS NULL OR (macros->>'sodium') IS NULL;
+
 NOTIFY pgrst, 'reload schema';

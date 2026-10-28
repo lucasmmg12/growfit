@@ -85,7 +85,7 @@ export const renderProfile = () => {
                                 <input id="profile-cal-goal" type="number" value="${profile.calorieGoal || 2000}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-base font-mono font-bold text-emerald-400 outline-none focus:border-emerald-500 mt-1">
                             </div>
 
-                            <div class="grid grid-cols-3 gap-3">
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 <div>
                                     <label class="text-[10px] font-bold text-emerald-400 uppercase">Proteína (g)</label>
                                     <input id="profile-p-goal" type="number" value="${profile.proteinGoal || 150}" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-emerald-500 mt-1">
@@ -97,6 +97,10 @@ export const renderProfile = () => {
                                 <div>
                                     <label class="text-[10px] font-bold text-amber-400 uppercase">Grasas (g)</label>
                                     <input id="profile-f-goal" type="number" value="${profile.fatGoal || 65}" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-emerald-500 mt-1">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-cyan-400 uppercase">Sodio Máx (mg)</label>
+                                    <input id="profile-sodium-goal" type="number" value="${profile.sodiumGoal || 2000}" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm font-mono font-bold outline-none focus:border-emerald-500 mt-1">
                                 </div>
                             </div>
                         </div>
@@ -169,6 +173,7 @@ export const attachProfileEvents = () => {
         state.profile.proteinGoal = parseInt(document.getElementById('profile-p-goal').value) || 150;
         state.profile.carbsGoal = parseInt(document.getElementById('profile-c-goal').value) || 200;
         state.profile.fatGoal = parseInt(document.getElementById('profile-f-goal').value) || 65;
+        state.profile.sodiumGoal = parseInt(document.getElementById('profile-sodium-goal')?.value) || 2000;
         state.profile.height = parseInt(document.getElementById('profile-height').value) || 175;
         state.profile.age = parseInt(document.getElementById('profile-age').value) || 30;
 

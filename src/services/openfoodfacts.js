@@ -34,7 +34,8 @@ export const getProductByBarcode = async (barcode) => {
         const carbs100g = Number(nutriments.carbohydrates_100g || nutriments.carbohydrates || 0);
         const fat100g = Number(nutriments.fat_100g || nutriments.fat || 0);
         const fiber100g = Number(nutriments.fiber_100g || 0);
-        const sodiumMg = Math.round(Number(nutriments.sodium_100g || 0) * 1000);
+        const rawSodiumGrams = Number(nutriments.sodium_100g || (nutriments.salt_100g ? nutriments.salt_100g / 2.5 : 0));
+        const sodiumMg = Math.round(rawSodiumGrams * 1000);
 
         return {
             barcode: cleanCode,
@@ -78,6 +79,7 @@ export const searchOpenFood = async (query) => {
                 (nutriments['energy-kj_100g'] ? nutriments['energy-kj_100g'] / 4.184 : 0) ?? 0
             );
 
+            const rawSodiumGrams = Number(nutriments.sodium_100g || (nutriments.salt_100g ? nutriments.salt_100g / 2.5 : 0));
             return {
                 barcode: p.code,
                 name: p.product_name_es || p.product_name || 'Alimento',
@@ -86,7 +88,8 @@ export const searchOpenFood = async (query) => {
                 calories: calories,
                 protein: Math.round(Number(nutriments.proteins_100g || 0)),
                 carbs: Math.round(Number(nutriments.carbohydrates_100g || 0)),
-                fat: Math.round(Number(nutriments.fat_100g || 0))
+                fat: Math.round(Number(nutriments.fat_100g || 0)),
+                sodium: Math.round(rawSodiumGrams * 1000)
             };
         });
     } catch (e) {

@@ -25,6 +25,24 @@ export const getArgentinaDate = () => {
     return new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' });
 };
 
+// Helper to get or estimate sodium (mg) for any meal
+export const getMealSodium = (meal) => {
+    if (!meal) return 0;
+    if (meal.macros?.sodium !== undefined && meal.macros?.sodium !== null && !Number.isNaN(Number(meal.macros.sodium))) {
+        return Math.round(Number(meal.macros.sodium));
+    }
+    if (meal.sodium !== undefined && meal.sodium !== null && !Number.isNaN(Number(meal.sodium))) {
+        return Math.round(Number(meal.sodium));
+    }
+    const name = (meal.name || '').toLowerCase();
+    const cals = Number(meal.calories) || 200;
+    const highSodium = /jam[oó]n|queso|pizza|empanada|taco|hamburguesa|salchicha|fiambre|salsa|soja|caldo|sopa|pancho|milanesa|s[aá]ndwich|lomito|chorip[aá]n|asado|factura|medialuna|snack|papas fritas|picada|aceituna|at[uú]n/.test(name);
+    const lowSodium = /fruta|banana|manzana|naranja|pera|avena|yogur|leche|caf[eé]|t[eé]|mate|helado|banasplit|licuado|nuez|almendra|agua/.test(name);
+    if (highSodium) return Math.round(cals * 1.75);
+    if (lowSodium) return Math.round(cals * 0.45);
+    return Math.round(cals * 1.05);
+};
+
 const defaultState = {
     profile: {
         name: 'Usuario',
@@ -33,6 +51,7 @@ const defaultState = {
         proteinGoal: 150,
         carbsGoal: 200,
         fatGoal: 65,
+        sodiumGoal: 2000,
         height: 175,
         gender: 'male',
         checkinFrequency: 15,
@@ -55,7 +74,7 @@ const defaultState = {
             category: 'Almuerzo',
             time: 'Almuerzo',
             date: '2026-10-26',
-            macros: { protein: 42, carbs: 30, fat: 12 },
+            macros: { protein: 42, carbs: 30, fat: 12, sodium: 480 },
             satiety_score: 3,
             sensations: ['Saciedad temprana', 'Digestión ligera'],
             opinion: 'Sentí saciedad en la mitad del plato por efecto de Dutide. Cómodo y sin pesadez.'
@@ -67,7 +86,7 @@ const defaultState = {
             category: 'Desayuno',
             time: 'Desayuno',
             date: '2026-10-26',
-            macros: { protein: 22, carbs: 4, fat: 18 },
+            macros: { protein: 22, carbs: 4, fat: 18, sodium: 390 },
             satiety_score: 3,
             sensations: ['Energía óptima', 'Digestión ligera'],
             opinion: 'Excelente saciedad para arrancar la mañana.'
@@ -79,7 +98,7 @@ const defaultState = {
             category: 'Cena',
             time: 'Cena',
             date: '2026-10-25',
-            macros: { protein: 36, carbs: 12, fat: 8 },
+            macros: { protein: 36, carbs: 12, fat: 8, sodium: 320 },
             satiety_score: 2,
             sensations: ['Digestión ligera'],
             opinion: 'Muy liviano, ideal para descansar bien sin reflujo.'
@@ -807,8 +826,17 @@ export const addMeal = async (meal) => {
     const isHealthy = (meal.macros?.protein || 0) > (meal.macros?.fat || 0);
     const xp = isHealthy ? 25 : 15;
 
+    const finalSodium = getMealSodium(meal);
+    const finalMacros = {
+        protein: Number(meal.macros?.protein || 0),
+        carbs: Number(meal.macros?.carbs || 0),
+        fat: Number(meal.macros?.fat || 0),
+        sodium: finalSodium
+    };
+
     const finalMeal = { 
         ...meal, 
+        macros: finalMacros,
         date: mealDate, 
         time: mealTime, 
         id: tempId,
@@ -1049,8 +1077,9 @@ export const getDailyStats = (dateStr) => {
         acc.protein += (meal.macros?.protein || 0);
         acc.carbs += (meal.macros?.carbs || 0);
         acc.fat += (meal.macros?.fat || 0);
+        acc.sodium += getMealSodium(meal);
         return acc;
-    }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+    }, { calories: 0, protein: 0, carbs: 0, fat: 0, sodium: 0 });
 };
 
 export const getLatestMeasurement = () => {

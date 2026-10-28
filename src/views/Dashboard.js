@@ -11,7 +11,8 @@ import {
     setDailyHabits, 
     setSelectedDate, 
     getArgentinaDate,
-    getSensationsMetrics
+    getSensationsMetrics,
+    getMealSodium
 } from '../state';
 import { analyzeFood, generateDailyTip, generateSmartHabits } from '../services/openai';
 import { getProductByBarcode } from '../services/openfoodfacts';
@@ -48,6 +49,7 @@ export const renderDashboard = () => {
     const pGoal = state.profile.proteinGoal || 150;
     const cGoal = state.profile.carbsGoal || 200;
     const fGoal = state.profile.fatGoal || 65;
+    const sGoal = state.profile.sodiumGoal || 2000;
 
     const calProgress = Math.min(100, Math.round((stats.calories / calGoal) * 100));
     const remainingCals = Math.max(0, calGoal - stats.calories);
@@ -55,6 +57,8 @@ export const renderDashboard = () => {
     const pPct = Math.min(100, Math.round((stats.protein / pGoal) * 100));
     const cPct = Math.min(100, Math.round((stats.carbs / cGoal) * 100));
     const fPct = Math.min(100, Math.round((stats.fat / fGoal) * 100));
+    const sPct = Math.min(100, Math.round(((stats.sodium || 0) / sGoal) * 100));
+    const isHighSodiumDay = (stats.sodium || 0) > sGoal;
 
     const displayTip = (state.dailyTip?.date === selectedDate && state.dailyTip?.content)
         ? state.dailyTip.content
@@ -248,8 +252,8 @@ export const renderDashboard = () => {
                         </div>
                     </div>
 
-                    <!-- Macronutrient Split Cards -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- Macronutrient & Sodium Split Cards -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <!-- Protein -->
                         <div class="white-card p-5 border-l-4 border-l-emerald-500">
                             <div class="flex justify-between items-center mb-2">
@@ -284,6 +288,18 @@ export const renderDashboard = () => {
                                 <div class="h-full bg-amber-500 rounded-full" style="width: ${fPct}%"></div>
                             </div>
                             <span class="text-[10px] text-slate-400 font-medium">${fPct}% completado</span>
+                        </div>
+
+                        <!-- Sodium -->
+                        <div class="white-card p-5 border-l-4 ${isHighSodiumDay ? 'border-l-rose-500' : 'border-l-cyan-400'}">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">Sodio</span>
+                                <span class="text-xs font-mono font-bold ${isHighSodiumDay ? 'text-rose-400' : 'text-cyan-400'}">${Math.round(stats.sodium || 0)} / ${sGoal}mg</span>
+                            </div>
+                            <div class="h-2 w-full bg-slate-900 rounded-full overflow-hidden mb-1">
+                                <div class="h-full ${isHighSodiumDay ? 'bg-rose-500' : 'bg-cyan-400'} rounded-full" style="width: ${sPct}%"></div>
+                            </div>
+                            <span class="text-[10px] ${isHighSodiumDay ? 'text-rose-400 font-bold' : 'text-slate-400 font-medium'}">${isHighSodiumDay ? '⚠️ Exceso de sodio' : `${sPct}% del límite diario`}</span>
                         </div>
                     </div>
 
@@ -486,7 +502,7 @@ const renderMealsList = (state, selectedDate) => {
                             </span>
                         </div>
                         <p class="text-xs font-mono text-slate-400 mt-0.5">
-                            <strong class="text-emerald-400">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g
+                            <strong class="text-emerald-400">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g · <span class="text-cyan-400 font-semibold">Sodio: ${getMealSodium(m)}mg</span>
                         </p>
                     </div>
                 </div>
@@ -603,7 +619,8 @@ export const attachDashboardEvents = () => {
                     macros: {
                         protein: product.per100g.protein,
                         carbs: product.per100g.carbs,
-                        fat: product.per100g.fat
+                        fat: product.per100g.fat,
+                        sodium: product.per100g.sodium || 0
                     }
                 });
             } catch (err) {
@@ -681,7 +698,7 @@ export const attachDashboardEvents = () => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-700/60">
+                    <div class="grid grid-cols-4 gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-700/60">
                         <div>
                             <span class="text-[10px] font-bold uppercase text-emerald-400">Proteína</span>
                             <input id="confirm-meal-p" type="number" value="${Math.round(mealData.macros?.protein || 0)}" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
@@ -693,6 +710,10 @@ export const attachDashboardEvents = () => {
                         <div>
                             <span class="text-[10px] font-bold uppercase text-amber-400">Grasas</span>
                             <input id="confirm-meal-f" type="number" value="${Math.round(mealData.macros?.fat || 0)}" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold uppercase text-cyan-400">Sodio (mg)</span>
+                            <input id="confirm-meal-na" type="number" value="${getMealSodium(mealData)}" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs font-mono font-bold mt-1" />
                         </div>
                     </div>
 
@@ -775,6 +796,7 @@ export const attachDashboardEvents = () => {
             const protein = parseInt(document.getElementById('confirm-meal-p').value) || 0;
             const carbs = parseInt(document.getElementById('confirm-meal-c').value) || 0;
             const fat = parseInt(document.getElementById('confirm-meal-f').value) || 0;
+            const sodium = parseInt(document.getElementById('confirm-meal-na')?.value) || 0;
             const opinion = document.getElementById('confirm-meal-opinion')?.value?.trim() || null;
 
             let sensations = mealData.sensations || [];
@@ -790,7 +812,7 @@ export const attachDashboardEvents = () => {
                 category,
                 time: category,
                 date: state.selectedDate || todayDate,
-                macros: { protein, carbs, fat },
+                macros: { protein, carbs, fat, sodium },
                 satiety_score: selectedSatietyScore,
                 sensations: sensations,
                 opinion: opinion
