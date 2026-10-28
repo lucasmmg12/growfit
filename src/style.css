@@ -329,6 +329,8 @@ p, span, div, label, input, button {
 /* Circular Timer & Performance Rings */
 .timer-ring-circle {
   transition: stroke-dashoffset 0.7s cubic-bezier(0.2, 1, 0.3, 1);
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
 }
 
 /* Floating Green Graphics Animations (Alimentos & Pesas) */
@@ -360,9 +362,4 @@ p, span, div, label, input, button {
 
 .graphic-green-glow {
   filter: drop-shadow(0 0 14px rgba(16, 231, 117, 0.28));
-}
-
-  transition: stroke-dashoffset 0.7s cubic-bezier(0.2, 1, 0.3, 1);
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
 }
