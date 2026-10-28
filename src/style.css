@@ -1,22 +1,21 @@
-/* GrowFit — Whoop 4.0 / Oura Ring / Apple Fitness+ Performance Design System */
+/* GrowFit — Monochromatic Green Performance Design System (Gamas de Verdes) */
 :root {
-  --primary: #10E775; /* Electric Neon Mint */
-  --primary-dark: #05B354;
-  --primary-deep: #034D24;
+  --primary: #10E775;       /* Verde Neón / Mint Principal */
+  --primary-dark: #059669;  /* Verde Esmeralda Oscuro */
+  --primary-deep: #022C22;  /* Verde Bosque Profundo */
   --primary-light: rgba(16, 231, 117, 0.14);
-  --apple-blue: #0A84FF;
-  --apple-cyan: #06B6D4;
-  --apple-amber: #FF9F0A;
-  --apple-red: #FF453A;
-  --apple-purple: #A855F7;
-  --bg-main: #070A10; /* Deep Obsidian Biometric Background */
-  --surface: rgba(19, 27, 42, 0.78);
-  --surface-hover: rgba(28, 39, 60, 0.88);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-emerald: rgba(16, 231, 117, 0.32);
-  --text-main: #F8FAFC;
+  --green-emerald: #10B981; /* Esmeralda Puro */
+  --green-jade: #14B8A6;    /* Verde Jade / Teal */
+  --green-lime: #4ADE80;    /* Verde Primavera / Lima Suave */
+  --green-sage: #6EE7B7;    /* Verde Salvia Claro */
+  --bg-main: #050C09;       /* Obsidiana Verde Profundo */
+  --surface: rgba(10, 26, 19, 0.82);
+  --surface-hover: rgba(14, 38, 28, 0.90);
+  --border: rgba(52, 211, 153, 0.14);
+  --border-emerald: rgba(16, 231, 117, 0.35);
+  --text-main: #F0FDF4;
   --text-emerald: #10E775;
-  --text-muted: #94A3B8;
+  --text-muted: #86EFAC;
 }
 
 body {
@@ -26,9 +25,9 @@ body {
   margin: 0;
   overflow-x: hidden;
   background-image:
-    radial-gradient(circle at 15% 5%, rgba(16, 231, 117, 0.08) 0%, transparent 38%),
-    radial-gradient(circle at 85% 15%, rgba(168, 85, 247, 0.07) 0%, transparent 35%),
-    radial-gradient(circle at 80% 85%, rgba(10, 132, 255, 0.08) 0%, transparent 40%);
+    radial-gradient(circle at 15% 5%, rgba(16, 231, 117, 0.10) 0%, transparent 40%),
+    radial-gradient(circle at 85% 15%, rgba(20, 184, 166, 0.08) 0%, transparent 38%),
+    radial-gradient(circle at 80% 85%, rgba(5, 150, 105, 0.10) 0%, transparent 42%);
   background-attachment: fixed;
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
@@ -42,127 +41,141 @@ body {
   background-color: transparent;
 }
 
-/* Whoop / Oura Translucent Obsidian Cards (No !important so colored cards shine) */
+/* Base Cards in Deep Forest Glass */
 .white-card {
-  background: linear-gradient(155deg, rgba(22, 31, 48, 0.82) 0%, rgba(12, 17, 27, 0.92) 100%);
+  background: linear-gradient(155deg, rgba(11, 29, 21, 0.86) 0%, rgba(6, 16, 12, 0.94) 100%);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.14);
   border-radius: 26px;
-  color: #F8FAFC;
-  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.65), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  color: #F0FDF4;
+  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(16, 231, 117, 0.10);
   transition: all 0.25s cubic-bezier(0.2, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
 }
 
 .white-card:hover {
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 18px 42px -8px rgba(0, 0, 0, 0.75), inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  border-color: rgba(16, 231, 117, 0.30);
+  box-shadow: 0 18px 42px -8px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(16, 231, 117, 0.18);
   transform: translateY(-2px);
 }
 
-/* Color-Coded Biometric Glow Cards */
+/* Gamas de Verdes para todas las tarjetas (Mint, Esmeralda, Jade, Lima, Pino) */
 .card-glow-emerald {
-  background: linear-gradient(145deg, rgba(6, 48, 35, 0.65) 0%, rgba(12, 19, 31, 0.94) 65%) !important;
-  border: 1px solid rgba(16, 231, 117, 0.28) !important;
-  box-shadow: 0 12px 32px -8px rgba(16, 231, 117, 0.14), inset 0 1px 0 0 rgba(16, 231, 117, 0.2);
+  background: linear-gradient(145deg, rgba(6, 58, 38, 0.72) 0%, rgba(7, 19, 14, 0.95) 70%) !important;
+  border: 1px solid rgba(16, 231, 117, 0.34) !important;
+  box-shadow: 0 12px 32px -8px rgba(16, 231, 117, 0.16), inset 0 1px 0 0 rgba(16, 231, 117, 0.24);
 }
 
 .card-glow-emerald:hover {
-  border-color: rgba(16, 231, 117, 0.5) !important;
-  box-shadow: 0 16px 40px -6px rgba(16, 231, 117, 0.22), inset 0 1px 0 0 rgba(16, 231, 117, 0.3);
+  border-color: rgba(16, 231, 117, 0.58) !important;
+  box-shadow: 0 16px 40px -6px rgba(16, 231, 117, 0.25), inset 0 1px 0 0 rgba(16, 231, 117, 0.34);
 }
 
-.card-glow-violet {
-  background: linear-gradient(145deg, rgba(59, 21, 97, 0.68) 0%, rgba(14, 18, 32, 0.95) 70%) !important;
-  border: 1px solid rgba(168, 85, 247, 0.34) !important;
-  box-shadow: 0 12px 32px -8px rgba(168, 85, 247, 0.18), inset 0 1px 0 0 rgba(192, 132, 252, 0.22);
+/* Verde Jade / Teal Oscuro (ej. Obetide / Salud) */
+.card-glow-violet,
+.card-glow-jade {
+  background: linear-gradient(145deg, rgba(10, 62, 54, 0.72) 0%, rgba(7, 19, 15, 0.95) 70%) !important;
+  border: 1px solid rgba(45, 212, 191, 0.32) !important;
+  box-shadow: 0 12px 32px -8px rgba(20, 184, 166, 0.16), inset 0 1px 0 0 rgba(45, 212, 191, 0.22);
 }
 
-.card-glow-violet:hover {
-  border-color: rgba(192, 132, 252, 0.55) !important;
-  box-shadow: 0 16px 40px -6px rgba(168, 85, 247, 0.28), inset 0 1px 0 0 rgba(192, 132, 252, 0.32);
+.card-glow-violet:hover,
+.card-glow-jade:hover {
+  border-color: rgba(45, 212, 191, 0.55) !important;
+  box-shadow: 0 16px 40px -6px rgba(20, 184, 166, 0.24), inset 0 1px 0 0 rgba(45, 212, 191, 0.32);
 }
 
-.card-glow-blue {
-  background: linear-gradient(145deg, rgba(12, 45, 94, 0.7) 0%, rgba(12, 18, 31, 0.95) 70%) !important;
-  border: 1px solid rgba(56, 189, 248, 0.3) !important;
-  box-shadow: 0 12px 32px -8px rgba(14, 165, 233, 0.16), inset 0 1px 0 0 rgba(56, 189, 248, 0.22);
+/* Verde Esmeralda Medio (ej. Billetera / Carbos) */
+.card-glow-blue,
+.card-glow-mint {
+  background: linear-gradient(145deg, rgba(6, 78, 59, 0.68) 0%, rgba(7, 18, 13, 0.95) 70%) !important;
+  border: 1px solid rgba(52, 211, 153, 0.32) !important;
+  box-shadow: 0 12px 32px -8px rgba(16, 185, 129, 0.16), inset 0 1px 0 0 rgba(52, 211, 153, 0.22);
 }
 
-.card-glow-blue:hover {
-  border-color: rgba(56, 189, 248, 0.55) !important;
-  box-shadow: 0 16px 40px -6px rgba(14, 165, 233, 0.26), inset 0 1px 0 0 rgba(56, 189, 248, 0.3);
+.card-glow-blue:hover,
+.card-glow-mint:hover {
+  border-color: rgba(52, 211, 153, 0.55) !important;
+  box-shadow: 0 16px 40px -6px rgba(16, 185, 129, 0.24), inset 0 1px 0 0 rgba(52, 211, 153, 0.32);
 }
 
-.card-glow-amber {
-  background: linear-gradient(145deg, rgba(78, 42, 9, 0.6) 0%, rgba(14, 19, 30, 0.95) 70%) !important;
-  border: 1px solid rgba(245, 158, 11, 0.3) !important;
-  box-shadow: 0 12px 32px -8px rgba(245, 158, 11, 0.14), inset 0 1px 0 0 rgba(251, 191, 36, 0.2);
+/* Verde Lima / Primavera (ej. Grasas / Energía) */
+.card-glow-amber,
+.card-glow-lime {
+  background: linear-gradient(145deg, rgba(20, 66, 28, 0.68) 0%, rgba(7, 18, 12, 0.95) 70%) !important;
+  border: 1px solid rgba(132, 204, 22, 0.32) !important;
+  box-shadow: 0 12px 32px -8px rgba(132, 204, 22, 0.14), inset 0 1px 0 0 rgba(163, 230, 53, 0.22);
 }
 
-.card-glow-cyan {
-  background: linear-gradient(145deg, rgba(8, 55, 68, 0.65) 0%, rgba(13, 19, 31, 0.95) 70%) !important;
-  border: 1px solid rgba(6, 182, 212, 0.32) !important;
-  box-shadow: 0 12px 32px -8px rgba(6, 182, 212, 0.15), inset 0 1px 0 0 rgba(34, 211, 238, 0.2);
+/* Verde Agua / Salvia (ej. Hidratación / Sodio) */
+.card-glow-cyan,
+.card-glow-sage {
+  background: linear-gradient(145deg, rgba(13, 64, 52, 0.68) 0%, rgba(7, 19, 14, 0.95) 70%) !important;
+  border: 1px solid rgba(110, 231, 183, 0.32) !important;
+  box-shadow: 0 12px 32px -8px rgba(52, 211, 153, 0.15), inset 0 1px 0 0 rgba(110, 231, 183, 0.22);
 }
 
+/* Verde Oliva Intenso (Alerta de exceso dentro de la gama verde) */
 .card-glow-rose {
-  background: linear-gradient(145deg, rgba(76, 15, 36, 0.68) 0%, rgba(14, 19, 30, 0.95) 70%) !important;
-  border: 1px solid rgba(244, 63, 94, 0.38) !important;
-  box-shadow: 0 12px 32px -8px rgba(244, 63, 94, 0.18), inset 0 1px 0 0 rgba(251, 113, 133, 0.22);
+  background: linear-gradient(145deg, rgba(36, 74, 20, 0.72) 0%, rgba(8, 19, 12, 0.95) 70%) !important;
+  border: 1px solid rgba(163, 230, 53, 0.45) !important;
+  box-shadow: 0 12px 32px -8px rgba(132, 204, 22, 0.2), inset 0 1px 0 0 rgba(163, 230, 53, 0.28);
 }
 
-/* SVG Ring Glow Filters */
+/* SVG Ring Glow Filters (All Green Spectrum) */
 .ring-glow-emerald {
-  filter: drop-shadow(0 0 8px rgba(16, 231, 117, 0.55));
+  filter: drop-shadow(0 0 8px rgba(16, 231, 117, 0.58));
 }
-.ring-glow-blue {
-  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.55));
+.ring-glow-blue,
+.ring-glow-mint {
+  filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.55));
 }
-.ring-glow-amber {
-  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.55));
+.ring-glow-amber,
+.ring-glow-lime {
+  filter: drop-shadow(0 0 8px rgba(132, 204, 22, 0.55));
 }
-.ring-glow-cyan {
-  filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.55));
+.ring-glow-cyan,
+.ring-glow-jade {
+  filter: drop-shadow(0 0 8px rgba(45, 212, 191, 0.55));
 }
 .ring-glow-violet {
-  filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.55));
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.55));
 }
 .ring-glow-rose {
-  filter: drop-shadow(0 0 8px rgba(244, 63, 94, 0.6));
+  filter: drop-shadow(0 0 8px rgba(163, 230, 53, 0.65));
 }
 
-/* iOS Glass Navigation and Modals */
+/* Glass Navigation and Modals */
 .glass-white {
-  background: rgba(14, 20, 32, 0.92) !important;
+  background: rgba(7, 19, 14, 0.94) !important;
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #F8FAFC !important;
+  border: 1px solid rgba(52, 211, 153, 0.16) !important;
+  color: #F0FDF4 !important;
 }
 
 .glass-nav-light {
-  background: rgba(8, 12, 20, 0.92) !important;
+  background: rgba(5, 14, 10, 0.94) !important;
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.65);
+  border-top: 1px solid rgba(52, 211, 153, 0.15) !important;
+  box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.7);
 }
 
-/* Universal Inputs & Selects Dark Form Styling */
+/* Universal Inputs & Selects Dark Green Form Styling */
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 select,
 textarea {
-  background-color: rgba(10, 15, 26, 0.85) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  color: #F8FAFC !important;
+  background-color: rgba(5, 16, 11, 0.9) !important;
+  border-color: rgba(52, 211, 153, 0.18) !important;
+  color: #F0FDF4 !important;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #64748B !important;
+  color: rgba(134, 239, 172, 0.45) !important;
 }
 
 input:focus,
@@ -170,23 +183,23 @@ select:focus,
 textarea:focus {
   border-color: #10E775 !important;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(16, 231, 117, 0.18);
+  box-shadow: 0 0 0 3px rgba(16, 231, 117, 0.2);
 }
 
 /* Inner sub-containers */
 .bg-slate-50, .bg-slate-100 {
-  background-color: #0F172A !important;
-  border-color: #334155 !important;
-  color: #F8FAFC !important;
+  background-color: #06150E !important;
+  border-color: rgba(52, 211, 153, 0.2) !important;
+  color: #F0FDF4 !important;
 }
 
-/* Whoop / Apple Fitness Electric Mint Accents & Buttons */
+/* Primary Green Buttons */
 .btn-emerald {
-  background: linear-gradient(135deg, #14F580 0%, #06B6D4 100%) !important;
+  background: linear-gradient(135deg, #10E775 0%, #059669 100%) !important;
   color: #022010 !important;
   font-weight: 800;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid rgba(167, 243, 208, 0.4) !important;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -197,7 +210,7 @@ textarea:focus {
 }
 
 .btn-emerald:hover {
-  background: linear-gradient(135deg, #28FF8E 0%, #22D3EE 100%) !important;
+  background: linear-gradient(135deg, #34F58E 0%, #10B981 100%) !important;
   box-shadow: 0 8px 28px rgba(16, 231, 117, 0.45);
   transform: translateY(-1.5px);
 }
@@ -209,7 +222,7 @@ textarea:focus {
 .btn-emerald-soft {
   background: rgba(16, 231, 117, 0.12) !important;
   color: #10E775 !important;
-  border: 1px solid rgba(16, 231, 117, 0.28) !important;
+  border: 1px solid rgba(16, 231, 117, 0.3) !important;
   font-weight: 700;
   border-radius: 14px;
   cursor: pointer;
@@ -222,21 +235,21 @@ textarea:focus {
 
 .btn-emerald-soft:hover {
   background: rgba(16, 231, 117, 0.22) !important;
-  color: #4ADE80 !important;
-  border-color: rgba(16, 231, 117, 0.48) !important;
+  color: #6EE7B7 !important;
+  border-color: rgba(16, 231, 117, 0.5) !important;
 }
 
 .btn-ghost-light {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #F8FAFC !important;
+  background: rgba(16, 185, 129, 0.07) !important;
+  border: 1px solid rgba(52, 211, 153, 0.18) !important;
+  color: #D1FAE5 !important;
   border-radius: 16px;
   transition: all 0.2s ease-in-out;
   cursor: pointer;
 }
 
 .btn-ghost-light:hover {
-  background: rgba(255, 255, 255, 0.11) !important;
+  background: rgba(16, 185, 129, 0.15) !important;
   color: #FFFFFF !important;
 }
 
@@ -244,7 +257,7 @@ textarea:focus {
 .badge-emerald {
   background: rgba(16, 231, 117, 0.14);
   color: #10E775;
-  border: 1px solid rgba(16, 231, 117, 0.3);
+  border: 1px solid rgba(16, 231, 117, 0.32);
   border-radius: 9999px;
   padding: 4px 12px;
   font-weight: 700;
@@ -271,12 +284,12 @@ textarea:focus {
   animation: slideUp 0.35s cubic-bezier(0.2, 1, 0.3, 1) forwards;
 }
 
-/* Typography — Modern Performance Sans + Tabular Numbers (No Slashed Zeros) */
+/* Typography */
 h1, h2, h3, h4, .font-display {
   font-family: "Plus Jakarta Sans", "Space Grotesk", "Inter", sans-serif !important;
   font-weight: 800;
   letter-spacing: -0.025em;
-  color: #F8FAFC;
+  color: #F0FDF4;
 }
 
 .font-mono {
@@ -289,7 +302,7 @@ p, span, div, label, input, button {
   font-family: "Plus Jakarta Sans", "Inter", -apple-system, sans-serif;
 }
 
-/* Dark Custom Scrollbar */
+/* Dark Green Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -300,7 +313,7 @@ p, span, div, label, input, button {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #1E293B;
+  background: #064E3B;
   border-radius: 10px;
 }
 

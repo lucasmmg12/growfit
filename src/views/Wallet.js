@@ -30,7 +30,7 @@ export const renderWallet = () => {
     const isDeficit = netBalance < 0;
 
     return `
-    <div class="flex h-screen w-full bg-[#070A10] font-sans text-[#F8FAFC] overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#050C09] font-sans text-[#ECFDF5] overflow-hidden fade-in">
         ${renderSidebar('wallet')}
 
         <main class="flex-1 flex flex-col h-full overflow-hidden relative">
@@ -40,7 +40,7 @@ export const renderWallet = () => {
                 <div class="max-w-7xl mx-auto flex flex-col gap-6">
 
                     <!-- Whoop / Oura Performance Hero Cashflow Card -->
-                    <div class="white-card card-glow-blue p-6 md:p-8 shadow-2xl relative overflow-hidden">
+                    <div class="white-card card-glow-emerald p-6 md:p-8 shadow-2xl relative overflow-hidden">
                         <!-- Top Metadata -->
                         <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
                             <div class="flex items-center gap-2">
@@ -48,7 +48,7 @@ export const renderWallet = () => {
                                     <span class="size-1.5 rounded-full bg-[#10E775] animate-pulse"></span>
                                     Flujo de Caja · Octubre 2026
                                 </span>
-                                <span class="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 text-[#0A84FF] font-medium flex items-center gap-1">
+                                <span class="text-xs px-2.5 py-1 rounded-full bg-teal-500/10 border border-teal-400/20 text-[#2DD4BF] font-medium flex items-center gap-1">
                                     <span class="material-symbols-outlined text-sm">account_balance_wallet</span>
                                     Ingresos: ${summary.incomeSource}
                                 </span>
@@ -76,13 +76,13 @@ export const renderWallet = () => {
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <h4 class="text-sm md:text-base font-bold text-white tracking-tight">¡Octubre 100% Pagado y Cumplido!</h4>
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#10E775] text-[#0D1117] uppercase tracking-wider">Al día</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#10E775] text-[#04120B] uppercase tracking-wider">Al día</span>
                                     </div>
-                                    <p class="text-xs text-slate-300 mt-1">Has cancelado y cumplido todos tus compromisos del mes (${summary.paidCount} conceptos por ${formatMoney(summary.totalPaid)}). Sin deudas pendientes.</p>
+                                    <p class="text-xs text-emerald-200/80 mt-1">Has cancelado y cumplido todos tus compromisos del mes (${summary.paidCount} conceptos por ${formatMoney(summary.totalPaid)}). Sin deudas pendientes.</p>
                                 </div>
                             </div>
                             <div class="hidden sm:flex flex-col items-end shrink-0">
-                                <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400 font-mono">Pendiente</span>
+                                <span class="text-[10px] uppercase tracking-wider font-semibold text-emerald-400/70 font-mono">Pendiente</span>
                                 <span class="text-lg font-mono font-bold text-[#10E775]">$0</span>
                             </div>
                         </div>
@@ -91,8 +91,8 @@ export const renderWallet = () => {
                         <!-- 3 Hero KPIs (Apple Rings Grid) -->
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
                             <!-- Income -->
-                            <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col justify-between">
-                                <span class="text-[11px] font-medium text-slate-400 flex items-center justify-between">
+                            <div class="p-4 rounded-2xl bg-emerald-950/30 border border-emerald-500/15 flex flex-col justify-between">
+                                <span class="text-[11px] font-medium text-emerald-300/75 flex items-center justify-between">
                                     Ingresos Totales
                                     <span class="material-symbols-outlined text-base text-[#10E775]">trending_up</span>
                                 </span>
@@ -100,23 +100,23 @@ export const renderWallet = () => {
                                     <h3 class="text-2xl md:text-2xl font-bold font-mono tracking-tight text-[#10E775]">
                                         ${formatMoney(monthlyIncome)}
                                     </h3>
-                                    <p class="text-[10px] text-slate-400 mt-0.5 truncate" title="${summary.incomeSource}">
+                                    <p class="text-[10px] text-emerald-300/70 mt-0.5 truncate" title="${summary.incomeSource}">
                                         ${summary.incomeCount || 1} ${(summary.incomeCount || 1) === 1 ? 'ingreso' : 'ingresos'} · ${summary.incomeSource}
                                     </p>
                                 </div>
                             </div>
 
                             <!-- Expenses / Paid -->
-                            <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex flex-col justify-between">
-                                <span class="text-[11px] font-medium text-slate-400 flex items-center justify-between">
+                            <div class="p-4 rounded-2xl bg-emerald-950/30 border border-emerald-500/15 flex flex-col justify-between">
+                                <span class="text-[11px] font-medium text-emerald-300/75 flex items-center justify-between">
                                     Total Pagado y Cumplido
-                                    <span class="material-symbols-outlined text-base text-[#10E775]">task_alt</span>
+                                    <span class="material-symbols-outlined text-base text-[#34D399]">task_alt</span>
                                 </span>
                                 <div class="mt-2">
                                     <h3 class="text-2xl md:text-2xl font-bold font-mono tracking-tight text-white">
                                         ${formatMoney(summary.totalPaid)}
                                     </h3>
-                                    <p class="text-[10px] ${summary.isAllPaid ? 'text-[#10E775]' : 'text-slate-400'} font-medium mt-0.5 flex items-center gap-1">
+                                    <p class="text-[10px] ${summary.isAllPaid ? 'text-[#10E775]' : 'text-emerald-300/70'} font-medium mt-0.5 flex items-center gap-1">
                                         <span class="material-symbols-outlined text-xs">check</span>
                                         ${summary.paidCount} de ${summary.paidCount + summary.pendingCount} pagados (${summary.isAllPaid ? '100% al día' : `${formatMoney(summary.totalPending)} pendiente`})
                                     </p>
@@ -124,18 +124,18 @@ export const renderWallet = () => {
                             </div>
 
                             <!-- Net Cash Balance / Status -->
-                            <div class="p-4 rounded-2xl ${summary.isAllPaid ? 'bg-[#10E775]/[0.08] border-[#10E775]/25' : isDeficit ? 'bg-red-500/[0.06] border-red-500/20' : 'bg-emerald-500/[0.06] border-emerald-500/20'} border flex flex-col justify-between">
-                                <span class="text-[11px] font-medium ${summary.isAllPaid ? 'text-emerald-300' : isDeficit ? 'text-red-300' : 'text-emerald-300'} flex items-center justify-between">
+                            <div class="p-4 rounded-2xl ${summary.isAllPaid ? 'bg-[#10E775]/[0.08] border-[#10E775]/25' : isDeficit ? 'bg-lime-500/[0.08] border-lime-500/25' : 'bg-emerald-500/[0.08] border-emerald-500/25'} border flex flex-col justify-between">
+                                <span class="text-[11px] font-medium ${summary.isAllPaid ? 'text-emerald-300' : isDeficit ? 'text-lime-300' : 'text-emerald-300'} flex items-center justify-between">
                                     ${summary.isAllPaid ? 'Estado de Compromisos' : isDeficit ? 'Brecha / Déficit' : 'Saldo Disponible'}
-                                    <span class="material-symbols-outlined text-base ${summary.isAllPaid ? 'text-[#10E775]' : isDeficit ? 'text-[#FF453A]' : 'text-[#10E775]'}">
-                                        ${summary.isAllPaid ? 'verified' : isDeficit ? 'error' : 'check_circle'}
+                                    <span class="material-symbols-outlined text-base ${summary.isAllPaid ? 'text-[#10E775]' : isDeficit ? 'text-[#84CC16]' : 'text-[#10E775]'}">
+                                        ${summary.isAllPaid ? 'verified' : isDeficit ? 'info' : 'check_circle'}
                                     </span>
                                 </span>
                                 <div class="mt-2">
-                                    <h3 class="text-2xl md:text-2xl font-bold font-mono tracking-tight ${summary.isAllPaid ? 'text-[#10E775]' : isDeficit ? 'text-[#FF453A]' : 'text-[#10E775]'}">
+                                    <h3 class="text-2xl md:text-2xl font-bold font-mono tracking-tight ${summary.isAllPaid ? 'text-[#10E775]' : isDeficit ? 'text-[#A3E635]' : 'text-[#10E775]'}">
                                         ${summary.isAllPaid ? '100% Cubierto' : formatMoney(netBalance)}
                                     </h3>
-                                    <p class="text-[10px] ${summary.isAllPaid ? 'text-emerald-300/80' : isDeficit ? 'text-red-300/80' : 'text-emerald-300/80'} mt-0.5">
+                                    <p class="text-[10px] ${summary.isAllPaid ? 'text-emerald-300/80' : isDeficit ? 'text-lime-300/80' : 'text-emerald-300/80'} mt-0.5">
                                         ${summary.isAllPaid ? 'Ingresos + Fondos Propios integrados' : isDeficit ? 'Obligaciones superan los ingresos' : 'Superávit positivo'}
                                     </p>
                                 </div>
@@ -143,19 +143,19 @@ export const renderWallet = () => {
                         </div>
 
                         <!-- Cashflow Coverage Meter (Apple iOS Bar) -->
-                        <div class="mt-5 pt-4 border-t border-white/[0.06]">
+                        <div class="mt-5 pt-4 border-t border-emerald-500/15">
                             <div class="flex items-center justify-between text-xs mb-1.5 font-medium">
-                                <span class="text-slate-400">Estado de Liquidación y Cumplimiento</span>
+                                <span class="text-emerald-300/75">Estado de Liquidación y Cumplimiento</span>
                                 <span class="text-[#10E775] font-mono font-semibold flex items-center gap-1">
                                     <span class="material-symbols-outlined text-xs">task_alt</span>
                                     ${summary.isAllPaid ? `100% Abonado (${summary.paidCount} de ${summary.paidCount} conceptos)` : `${coveragePercent}% cubierto con ingresos`}
                                 </span>
                             </div>
-                            <div class="h-2 w-full bg-white/[0.06] rounded-full overflow-hidden">
+                            <div class="h-2 w-full bg-emerald-950/60 rounded-full overflow-hidden">
                                 <div class="h-full rounded-full transition-all duration-700 bg-[#10E775]" style="width: ${summary.isAllPaid ? '100' : Math.min(100, coveragePercent)}%"></div>
                             </div>
-                            <p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-sm text-[#0A84FF]">info</span>
+                            <p class="text-[11px] text-emerald-300/70 mt-2 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-sm text-[#34D399]">info</span>
                                 Ingresos registrados (${summary.incomeSource}) suman ${formatMoney(monthlyIncome)} (${coveragePercent}%)${isDeficit ? ` · El saldo complementario de ${formatMoney(Math.abs(netBalance))} fue cubierto con fondos personales.` : ' · Superávit disponible a favor.'}
                             </p>
                         </div>
@@ -171,7 +171,7 @@ export const renderWallet = () => {
                             <span class="material-symbols-outlined text-lg">add_card</span>
                             Agregar Gasto
                         </button>
-                        <button id="open-new-cat-direct-btn" class="py-3 px-4 rounded-2xl bg-[#0A84FF]/15 hover:bg-[#0A84FF]/25 border border-[#0A84FF]/30 text-[#0A84FF] flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer transition-colors">
+                        <button id="open-new-cat-direct-btn" class="py-3 px-4 rounded-2xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-400/30 text-[#2DD4BF] flex items-center justify-center gap-2 text-xs font-semibold cursor-pointer transition-colors">
                             <span class="material-symbols-outlined text-base">create_new_folder</span>
                             Nueva Categoría
                         </button>
@@ -184,11 +184,11 @@ export const renderWallet = () => {
                     <!-- Chart & Health Impact (Bento 2.0) -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <!-- Chart -->
-                        <div class="white-card p-5 border border-white/[0.07] shadow-xl flex flex-col">
+                        <div class="white-card card-glow-mint p-5 shadow-xl flex flex-col">
                             <div class="flex items-center justify-between mb-3">
                                 <div>
                                     <h3 class="text-sm font-semibold text-white">Distribución de Gastos</h3>
-                                    <p class="text-[11px] text-slate-400">Desglose porcentual mensual</p>
+                                    <p class="text-[11px] text-emerald-300/70">Desglose porcentual mensual</p>
                                 </div>
                                 <span class="text-xs font-mono font-semibold text-[#10E775] bg-[#10E775]/10 px-2.5 py-0.5 rounded-full border border-[#10E775]/20">
                                     ${formatMoney(totalSpent)}
@@ -200,32 +200,32 @@ export const renderWallet = () => {
                         </div>
 
                         <!-- Obetide & Health Financial Ratio -->
-                        <div class="white-card card-glow-violet p-5 shadow-xl flex flex-col justify-between">
+                        <div class="white-card card-glow-jade p-5 shadow-xl flex flex-col justify-between">
                             <div>
                                 <div class="flex items-center justify-between mb-2">
-                                    <span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-400/20 text-[#BF5AF2] font-semibold">
+                                    <span class="text-xs px-2.5 py-0.5 rounded-full bg-teal-500/10 border border-teal-400/20 text-[#2DD4BF] font-semibold">
                                         Tratamiento & Salud
                                     </span>
-                                    <span class="text-xs text-slate-400 font-mono font-medium">GLP-1</span>
+                                    <span class="text-xs text-emerald-400/70 font-mono font-medium">GLP-1</span>
                                 </div>
                                 <h3 class="text-sm font-semibold text-white">Inversión en Bienestar</h3>
-                                <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                                <p class="text-xs text-emerald-200/70 mt-1 leading-relaxed">
                                     Control de compras de Obetide, consultas médicas y nutricionales en Sanatorio Argentino.
                                 </p>
                             </div>
 
-                            <div class="my-4 p-4 rounded-2xl bg-purple-500/[0.05] border border-purple-500/20 flex items-center justify-between">
+                            <div class="my-4 p-4 rounded-2xl bg-teal-500/[0.06] border border-teal-500/20 flex items-center justify-between">
                                 <div class="flex items-center gap-3">
-                                    <div class="size-11 rounded-2xl bg-purple-500/20 text-[#BF5AF2] flex items-center justify-center text-xl">
+                                    <div class="size-11 rounded-2xl bg-teal-500/20 text-[#2DD4BF] flex items-center justify-center text-xl">
                                         💉
                                     </div>
                                     <div>
                                         <p class="text-xs font-semibold text-white">Tratamiento Dutide & Tiroides</p>
-                                        <span class="text-[10px] text-purple-300">Dutide ($100.000) + Levotiroxina ($15.000)</span>
+                                        <span class="text-[10px] text-teal-300">Dutide ($100.000) + Levotiroxina ($15.000)</span>
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <span class="font-mono font-bold text-[#BF5AF2] text-lg">
+                                    <span class="font-mono font-bold text-[#2DD4BF] text-lg">
                                         ${formatMoney(
                                             (state.expenses || [])
                                                 .filter(e => e.date?.startsWith(currentMonth) && (e.category_id === 'salud-obetide' || e.category_name?.toLowerCase().includes('salud') || e.name?.toLowerCase().includes('dutide') || e.name?.toLowerCase().includes('levotiroxina') || e.category_name?.toLowerCase().includes('obetide')))
@@ -235,8 +235,8 @@ export const renderWallet = () => {
                                 </div>
                             </div>
 
-                            <p class="text-[11px] text-slate-400 flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-purple-400 text-sm">verified_user</span>
+                            <p class="text-[11px] text-emerald-300/70 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[#2DD4BF] text-sm">verified_user</span>
                                 Inversión prioritaria: control metabólico, saciedad temprana y soporte endocrino.
                             </p>
                         </div>
@@ -244,7 +244,7 @@ export const renderWallet = () => {
 
                     <!-- Ingresos por Categoría (Sueldo, Grow Labs, Otros Ingresos) -->
                     <div class="white-card card-glow-emerald p-5 md:p-6 shadow-xl">
-                        <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-white/[0.06]">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-emerald-500/15">
                             <div>
                                 <div class="flex items-center gap-2">
                                     <h3 class="text-base font-semibold text-white">Ingresos por Categoría</h3>
@@ -252,10 +252,10 @@ export const renderWallet = () => {
                                         ${formatMoney(monthlyIncome)}
                                     </span>
                                 </div>
-                                <p class="text-xs text-slate-400 mt-0.5">Sueldo, Grow Labs y otras fuentes de ingreso del mes</p>
+                                <p class="text-xs text-emerald-300/70 mt-0.5">Sueldo, Grow Labs y otras fuentes de ingreso del mes</p>
                             </div>
                             <div class="flex items-center gap-2">
-                                <button id="open-new-income-cat-btn" class="px-2.5 py-1.5 rounded-xl bg-[#0A84FF]/10 hover:bg-[#0A84FF]/20 border border-[#0A84FF]/25 text-[#0A84FF] text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors">
+                                <button id="open-new-income-cat-btn" class="px-2.5 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 border border-teal-400/25 text-[#2DD4BF] text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors">
                                     <span class="material-symbols-outlined text-xs">create_new_folder</span>
                                     + Categoría Ingreso
                                 </button>
@@ -327,7 +327,7 @@ export const renderWallet = () => {
                                                         ${inc.is_recurring ? '<span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-slate-400 font-mono shrink-0">Fijo</span>' : ''}
                                                     </div>
                                                     <div class="flex items-center gap-2.5 shrink-0">
-                                                        <button class="toggle-income-received-btn flex items-center gap-1 px-2 py-0.5 rounded-lg ${isReceived ? 'bg-[#10E775]/15 border border-[#10E775]/30 text-[#10E775] hover:bg-[#10E775]/25' : 'bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25'} text-[10px] font-semibold transition-all cursor-pointer" data-id="${inc.id}" title="${isReceived ? 'Marcar como pendiente de cobro' : 'Marcar como cobrado'}">
+                                                        <button class="toggle-income-received-btn flex items-center gap-1 px-2 py-0.5 rounded-lg ${isReceived ? 'bg-[#10E775]/15 border border-[#10E775]/30 text-[#10E775] hover:bg-[#10E775]/25' : 'bg-lime-500/15 border border-lime-500/30 text-lime-300 hover:bg-lime-500/25'} text-[10px] font-semibold transition-all cursor-pointer" data-id="${inc.id}" title="${isReceived ? 'Marcar como pendiente de cobro' : 'Marcar como cobrado'}">
                                                             <span class="material-symbols-outlined text-xs">${isReceived ? 'check_circle' : 'schedule'}</span>
                                                             ${isReceived ? 'Cobrado' : 'Pendiente'}
                                                         </button>
@@ -394,7 +394,7 @@ export const renderWallet = () => {
                                     <!-- Category Header (Click to expand) -->
                                     <button class="toggle-cat-accordion-btn w-full p-4 flex items-center justify-between text-left cursor-pointer hover:bg-white/[0.02] transition-colors" data-catid="${cat.id}">
                                         <div class="flex items-center gap-3 min-w-0">
-                                            <div class="size-10 rounded-2xl flex items-center justify-center text-xl shrink-0" style="background-color: ${cat.color || '#0A84FF'}15; border: 1px solid ${cat.color || '#0A84FF'}30;">
+                                            <div class="size-10 rounded-2xl flex items-center justify-center text-xl shrink-0" style="background-color: ${cat.color || '#10E775'}15; border: 1px solid ${cat.color || '#10E775'}30;">
                                                 ${cat.icon || '🏷️'}
                                             </div>
                                             <div class="min-w-0">
@@ -436,12 +436,12 @@ export const renderWallet = () => {
                                                 return `
                                                 <div class="py-2.5 flex items-center justify-between text-xs gap-2">
                                                     <div class="flex items-center gap-2 min-w-0">
-                                                        <span class="size-1.5 rounded-full shrink-0" style="background-color: ${cat.color || '#0A84FF'};"></span>
+                                                        <span class="size-1.5 rounded-full shrink-0" style="background-color: ${cat.color || '#10E775'};"></span>
                                                         <span class="text-slate-200 font-medium truncate">${exp.name || exp.description}</span>
                                                         ${exp.is_recurring ? '<span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-slate-400 font-mono shrink-0">Fijo</span>' : ''}
                                                     </div>
                                                     <div class="flex items-center gap-2.5 shrink-0">
-                                                        <button class="toggle-expense-paid-btn flex items-center gap-1 px-2 py-0.5 rounded-lg ${isPaid ? 'bg-[#10E775]/15 border border-[#10E775]/30 text-[#10E775] hover:bg-[#10E775]/25' : 'bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25'} text-[10px] font-semibold transition-all cursor-pointer" data-id="${exp.id}" title="${isPaid ? 'Marcar como pendiente' : 'Marcar como pagado'}">
+                                                        <button class="toggle-expense-paid-btn flex items-center gap-1 px-2 py-0.5 rounded-lg ${isPaid ? 'bg-[#10E775]/15 border border-[#10E775]/30 text-[#10E775] hover:bg-[#10E775]/25' : 'bg-lime-500/15 border border-lime-500/30 text-lime-300 hover:bg-lime-500/25'} text-[10px] font-semibold transition-all cursor-pointer" data-id="${exp.id}" title="${isPaid ? 'Marcar como pendiente' : 'Marcar como pagado'}">
                                                             <span class="material-symbols-outlined text-xs">${isPaid ? 'check_circle' : 'schedule'}</span>
                                                             ${isPaid ? 'Pagado' : 'Pendiente'}
                                                         </button>
@@ -629,10 +629,10 @@ export const renderWallet = () => {
                     </div>
 
                     <div>
-                        <label class="text-[11px] font-medium text-slate-400 mb-1 block">Color Identificador</label>
+                        <label class="text-[11px] font-medium text-slate-400 mb-1 block">Color Identificador (Gama Verde)</label>
                         <input type="hidden" id="new-inc-cat-color" value="#10E775">
                         <div class="flex items-center gap-2">
-                            ${['#10E775', '#0A84FF', '#BF5AF2', '#FF9F0A', '#06B6D4', '#FF453A'].map((color, idx) => `
+                            ${['#10E775', '#10B981', '#34D399', '#2DD4BF', '#84CC16', '#059669'].map((color, idx) => `
                                 <button type="button" class="preset-inc-color-btn size-7 rounded-full border-2 ${idx === 0 ? 'border-white scale-110' : 'border-transparent'} transition-transform cursor-pointer" style="background-color: ${color};" data-color="${color}"></button>
                             `).join('')}
                         </div>
@@ -813,10 +813,10 @@ export const renderWallet = () => {
                     </div>
 
                     <div>
-                        <label class="text-[11px] font-medium text-slate-400 mb-1 block">Color Identificador</label>
-                        <input type="hidden" id="new-cat-color" value="#0A84FF">
+                        <label class="text-[11px] font-medium text-slate-400 mb-1 block">Color Identificador (Gama Verde)</label>
+                        <input type="hidden" id="new-cat-color" value="#10E775">
                         <div class="flex items-center gap-2">
-                            ${['#0A84FF', '#10E775', '#FF9F0A', '#BF5AF2', '#FF453A', '#06B6D4'].map((color, idx) => `
+                            ${['#10E775', '#10B981', '#34D399', '#2DD4BF', '#84CC16', '#059669'].map((color, idx) => `
                                 <button type="button" class="preset-color-btn size-7 rounded-full border-2 ${idx === 0 ? 'border-white scale-110' : 'border-transparent'} transition-transform cursor-pointer" style="background-color: ${color};" data-color="${color}"></button>
                             `).join('')}
                         </div>
@@ -1228,7 +1228,7 @@ export const attachWalletEvents = () => {
         e.preventDefault();
         const name = document.getElementById('new-cat-name').value.trim();
         const icon = document.getElementById('new-cat-icon').value.trim() || '🏷️';
-        const color = document.getElementById('new-cat-color')?.value || '#0A84FF';
+        const color = document.getElementById('new-cat-color')?.value || '#10E775';
         const monthly_budget = Number(document.getElementById('new-cat-budget').value) || 0;
 
         if (!name) return;
@@ -1301,7 +1301,10 @@ const initWalletChart = () => {
     const categoriesWithSpend = summary.byCategory.filter(c => c.spent > 0);
     const labels = categoriesWithSpend.length ? categoriesWithSpend.map(c => c.category.name) : ['Sin gastos'];
     const dataValues = categoriesWithSpend.length ? categoriesWithSpend.map(c => c.spent) : [1];
-    const colors = categoriesWithSpend.length ? categoriesWithSpend.map(c => c.category.color || '#0A84FF') : ['rgba(255,255,255,0.1)'];
+    const greenChartPalette = ['#10E775', '#34D399', '#84CC16', '#2DD4BF', '#10B981', '#059669'];
+    const colors = categoriesWithSpend.length
+        ? categoriesWithSpend.map((c, idx) => greenChartPalette[idx % greenChartPalette.length])
+        : ['rgba(16, 231, 117, 0.15)'];
 
     walletChartInstance = new Chart(canvas, {
         type: 'doughnut',
@@ -1311,7 +1314,7 @@ const initWalletChart = () => {
                 data: dataValues,
                 backgroundColor: colors,
                 borderWidth: 3,
-                borderColor: '#0D1117',
+                borderColor: '#050C09',
                 hoverOffset: 4
             }]
         },

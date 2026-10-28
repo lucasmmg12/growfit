@@ -132,8 +132,8 @@ const defaultState = {
     incomeSource: 'Sanatorio Argentino',
     incomeCategories: [
         { id: 'inc-cat-sueldo', slug: 'inc-cat-sueldo', name: 'Sueldo', icon: '🏦', color: '#10E775' },
-        { id: 'inc-cat-growlabs', slug: 'inc-cat-growlabs', name: 'Grow Labs', icon: '🚀', color: '#0A84FF' },
-        { id: 'inc-cat-otros', slug: 'inc-cat-otros', name: 'Otros Ingresos', icon: '💼', color: '#BF5AF2' }
+        { id: 'inc-cat-growlabs', slug: 'inc-cat-growlabs', name: 'Grow Labs', icon: '🚀', color: '#34D399' },
+        { id: 'inc-cat-otros', slug: 'inc-cat-otros', name: 'Otros Ingresos', icon: '💼', color: '#2DD4BF' }
     ],
     incomes: [
         {
@@ -153,7 +153,7 @@ const defaultState = {
             id: 'vivienda-servicios',
             name: 'Vivienda y Servicios',
             icon: '🏠',
-            color: '#0A84FF',
+            color: '#10E775',
             monthly_budget: 1401000,
             items: [
                 { name: 'Alquiler casa actual', amount: 1056000 },
@@ -168,7 +168,7 @@ const defaultState = {
             id: 'compromisos-cuotas',
             name: 'Compromisos y Cuotas',
             icon: '💳',
-            color: '#FF9F0A',
+            color: '#34D399',
             monthly_budget: 1855000,
             items: [
                 { name: 'Cuota Florencia', amount: 500000 },
@@ -182,7 +182,7 @@ const defaultState = {
             id: 'operativos-vida',
             name: 'Operativos y Vida Diaria',
             icon: '🛒',
-            color: '#10E775',
+            color: '#84CC16',
             monthly_budget: 605000,
             items: [
                 { name: 'Niñera', amount: 200000 },
@@ -196,7 +196,7 @@ const defaultState = {
             id: 'salud-obetide',
             name: 'Salud & Medicación',
             icon: '💉',
-            color: '#BF5AF2',
+            color: '#2DD4BF',
             monthly_budget: 115000,
             items: [
                 { name: 'Dutide', amount: 100000 },
@@ -367,6 +367,25 @@ export const getState = () => {
                     { id: 'exp-18', name: 'Levotiroxina', amount: 15000, category_id: 'salud-obetide', category_name: 'Salud & Medicación', date: '2026-10-21', is_recurring: true, is_paid: true }
                 );
             }
+            localStorage.setItem(key, JSON.stringify(state));
+        }
+
+        // Normalize category colors to green spectrum
+        const greenPalette = ['#10E775', '#34D399', '#84CC16', '#2DD4BF', '#10B981', '#059669'];
+        let colorsNormalized = false;
+        (state.expenseCategories || []).forEach((cat, idx) => {
+            if (!cat.color || ['#0A84FF', '#FF9F0A', '#BF5AF2', '#FF453A', '#06B6D4'].includes(cat.color.toUpperCase())) {
+                cat.color = greenPalette[idx % greenPalette.length];
+                colorsNormalized = true;
+            }
+        });
+        (state.incomeCategories || []).forEach((cat, idx) => {
+            if (!cat.color || ['#0A84FF', '#FF9F0A', '#BF5AF2', '#FF453A', '#06B6D4'].includes(cat.color.toUpperCase())) {
+                cat.color = greenPalette[idx % greenPalette.length];
+                colorsNormalized = true;
+            }
+        });
+        if (colorsNormalized) {
             localStorage.setItem(key, JSON.stringify(state));
         }
 

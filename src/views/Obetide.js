@@ -52,7 +52,7 @@ export const renderObetide = () => {
 
 
     return `
-    <div class="flex h-screen w-full bg-[#070A10] font-body text-slate-100 overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#050C09] font-body text-[#ECFDF5] overflow-hidden fade-in">
         ${renderSidebar('obetide')}
 
         <main class="flex-1 flex flex-col h-full overflow-hidden relative">
@@ -62,7 +62,7 @@ export const renderObetide = () => {
                 <div class="max-w-7xl mx-auto flex flex-col gap-6">
 
                     <!-- Header Clinical Card -->
-                    <div class="white-card card-glow-violet p-6 text-white shadow-2xl relative overflow-hidden">
+                    <div class="white-card card-glow-emerald p-6 text-white shadow-2xl relative overflow-hidden">
                         <div class="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
                             <span class="material-symbols-outlined text-[180px]">vaccines</span>
                         </div>
@@ -182,18 +182,18 @@ export const renderObetide = () => {
 
                         <div class="flex flex-col gap-3">
                             ${treatments.length ? treatments.map(t => {
-                                const siteLabels = {
-                                    'abdomen_der': 'Abdomen Derecho',
-                                    'abdomen_izq': 'Abdomen Izquierdo',
-                                    'muslo_der': 'Muslo Derecho',
-                                    'muslo_izq': 'Muslo Izquierdo',
-                                    'brazo_der': 'Brazo Derecho',
-                                    'brazo_izq': 'Brazo Izquierdo'
-                                };
-                                const siteName = siteLabels[t.injection_site] || t.injection_site || 'Abdomen';
-                                const effects = Array.isArray(t.side_effects) ? t.side_effects : [];
+        const siteLabels = {
+            'abdomen_der': 'Abdomen Derecho',
+            'abdomen_izq': 'Abdomen Izquierdo',
+            'muslo_der': 'Muslo Derecho',
+            'muslo_izq': 'Muslo Izquierdo',
+            'brazo_der': 'Brazo Derecho',
+            'brazo_izq': 'Brazo Izquierdo'
+        };
+        const siteName = siteLabels[t.injection_site] || t.injection_site || 'Abdomen';
+        const effects = Array.isArray(t.side_effects) ? t.side_effects : [];
 
-                                return `
+        return `
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-slate-900/60 border border-slate-700/60 hover:border-slate-600 transition-all gap-3">
                                     <div class="flex items-center gap-3.5">
                                         <div class="size-11 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-mono font-black text-sm border border-emerald-500/30">
@@ -222,7 +222,7 @@ export const renderObetide = () => {
                                     </button>
                                 </div>
                                 `;
-                            }).join('') : `
+    }).join('') : `
                                 <div class="text-center py-10">
                                     <span class="material-symbols-outlined text-4xl text-slate-600 mb-2">vaccines</span>
                                     <p class="text-sm font-bold text-slate-300">Aún no has registrado tu primera dosis</p>
@@ -508,7 +508,7 @@ const initObetideChart = () => {
 
     const sortedDates = Array.from(datesMap.keys()).sort();
     const labels = sortedDates.length ? sortedDates : ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'];
-    
+
     // Carry over values if sparse
     let lastWeight = state.profile.startingWeight || (measurements[0]?.weight) || 104;
     let lastDose = 0.25;

@@ -30,7 +30,7 @@ export const renderTracker = () => {
     const dayMetrics = getSensationsMetrics(selectedDate);
 
     return `
-    <div class="flex h-screen w-full bg-[#070A10] font-body text-slate-100 overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#050C09] font-body text-[#ECFDF5] overflow-hidden fade-in">
         ${renderSidebar('tracker')}
 
         <!-- Main Content -->
@@ -46,38 +46,38 @@ export const renderTracker = () => {
                             <div>
                                 <div class="flex items-center gap-2 mb-1">
                                     <span class="badge-emerald bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs">Diario Nutricional</span>
-                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${dayMetrics.statusBg} ${dayMetrics.statusColor} border border-white/5">
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${dayMetrics.statusBg} ${dayMetrics.statusColor} border border-emerald-500/20">
                                         ${dayMetrics.statusLabel}
                                     </span>
                                 </div>
                                 <h2 class="text-3xl font-display font-black text-white uppercase tracking-tight">Registro de Alimentos</h2>
-                                <p class="text-xs text-slate-400 mt-0.5">Control de calorías, macros y sensaciones de plenitud.</p>
+                                <p class="text-xs text-emerald-300/70 mt-0.5">Control de calorías, macros y sensaciones de plenitud.</p>
                             </div>
 
                             <div class="flex items-center gap-3">
                                 <div class="text-right">
-                                    <span class="text-[10px] font-bold uppercase text-slate-400">Total Diario</span>
-                                    <p class="text-2xl font-display font-black text-emerald-400">${totalCals} <span class="text-xs font-normal text-slate-400">kcal</span></p>
+                                    <span class="text-[10px] font-bold uppercase text-emerald-400/70">Total Diario</span>
+                                    <p class="text-2xl font-display font-black text-[#10E775]">${totalCals} <span class="text-xs font-normal text-emerald-300/70">kcal</span></p>
                                 </div>
-                                <div class="h-10 w-px bg-slate-700"></div>
+                                <div class="h-10 w-px bg-emerald-500/20"></div>
                                 <div class="text-xs font-mono font-bold space-y-0.5">
-                                    <p class="text-emerald-400">P: ${Math.round(totalP)}g</p>
-                                    <p class="text-blue-400">C: ${Math.round(totalC)}g</p>
-                                    <p class="text-amber-400">G: ${Math.round(totalF)}g</p>
-                                    <p class="text-cyan-400">Sodio: ${Math.round(totalSodium)}mg</p>
+                                    <p class="text-[#10E775]">P: ${Math.round(totalP)}g</p>
+                                    <p class="text-[#34D399]">C: ${Math.round(totalC)}g</p>
+                                    <p class="text-[#84CC16]">G: ${Math.round(totalF)}g</p>
+                                    <p class="text-[#2DD4BF]">Sodio: ${Math.round(totalSodium)}mg</p>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Mini Satiety Day Strip -->
-                        <div class="mt-4 pt-3 border-t border-slate-700/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div class="mt-4 pt-3 border-t border-emerald-500/20 flex flex-wrap items-center justify-between gap-2 text-xs">
                             <div class="flex items-center gap-2">
                                 <span class="text-lg">🧠</span>
-                                <span class="text-slate-300 font-semibold">Saciedad del Día:</span>
+                                <span class="text-emerald-200 font-semibold">Saciedad del Día:</span>
                                 <span class="font-mono font-bold text-white">${dayMetrics.avgScore ? `${dayMetrics.avgScore} / 5.0` : 'Sin registrar'}</span>
                                 <span class="text-[11px] ${dayMetrics.statusColor}">(${dayMetrics.statusLabel})</span>
                             </div>
-                            <button onclick="window.router.navigate('insights')" class="text-emerald-400 hover:text-emerald-300 text-xs font-bold flex items-center gap-1 cursor-pointer">
+                            <button onclick="window.router.navigate('insights')" class="text-[#10E775] hover:text-emerald-300 text-xs font-bold flex items-center gap-1 cursor-pointer">
                                 <span>Ver Métricas & Estadísticas</span>
                                 <span class="material-symbols-outlined text-xs">arrow_forward</span>
                             </button>
@@ -95,15 +95,15 @@ export const renderTracker = () => {
                             const catSodium = catMeals.reduce((s, m) => s + getMealSodium(m), 0);
 
                             return `
-                            <div class="white-card p-5 border border-slate-700/60">
-                                <div class="flex items-center justify-between pb-3 border-b border-slate-700/60">
+                            <div class="white-card p-5 border border-emerald-500/15">
+                                <div class="flex items-center justify-between pb-3 border-b border-emerald-500/15">
                                     <div class="flex items-center gap-3">
-                                        <div class="size-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                                        <div class="size-10 rounded-2xl bg-emerald-500/20 text-[#10E775] flex items-center justify-center border border-emerald-500/30">
                                             <span class="material-symbols-outlined text-xl">${cat.icon}</span>
                                         </div>
                                         <div>
                                             <h3 class="text-base font-display font-black text-white uppercase tracking-tight">${cat.label}</h3>
-                                            <p class="text-xs font-mono font-semibold text-emerald-400">${catCals} kcal ${catMeals.length ? `· P:${Math.round(catP)}g C:${Math.round(catC)}g G:${Math.round(catF)}g · <span class="text-cyan-400">Sodio:${Math.round(catSodium)}mg</span>` : ''}</p>
+                                            <p class="text-xs font-mono font-semibold text-[#10E775]">${catCals} kcal ${catMeals.length ? `· P:${Math.round(catP)}g C:${Math.round(catC)}g G:${Math.round(catF)}g · <span class="text-[#2DD4BF]">Sodio:${Math.round(catSodium)}mg</span>` : ''}</p>
                                         </div>
                                     </div>
 
@@ -115,15 +115,15 @@ export const renderTracker = () => {
                                 <!-- Meals List inside Category -->
                                 <div class="mt-3 flex flex-col gap-2">
                                     ${catMeals.length ? catMeals.map(m => `
-                                        <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-700/60 hover:border-slate-600 transition-all flex flex-col gap-1.5">
+                                        <div class="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/15 hover:border-emerald-500/35 transition-all flex flex-col gap-1.5">
                                             <div class="flex items-center justify-between">
                                                 <div>
                                                     <h4 class="text-sm font-bold text-white capitalize">${m.name}</h4>
-                                                    <p class="text-xs font-mono text-slate-400 mt-0.5">
-                                                        <strong class="text-emerald-400">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g · <span class="text-cyan-400 font-semibold">Sodio: ${getMealSodium(m)}mg</span>
+                                                    <p class="text-xs font-mono text-emerald-300/75 mt-0.5">
+                                                        <strong class="text-[#10E775]">${m.calories} kcal</strong> · P:${Math.round(m.macros?.protein || 0)}g C:${Math.round(m.macros?.carbs || 0)}g G:${Math.round(m.macros?.fat || 0)}g · <span class="text-[#2DD4BF] font-semibold">Sodio: ${getMealSodium(m)}mg</span>
                                                     </p>
                                                 </div>
-                                                <button class="delete-tracker-meal-btn size-7 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors cursor-pointer" data-id="${m.id}" title="Eliminar alimento">
+                                                <button class="delete-tracker-meal-btn size-7 rounded-lg text-emerald-400/50 hover:text-emerald-200 hover:bg-emerald-500/15 flex items-center justify-center transition-colors cursor-pointer" data-id="${m.id}" title="Eliminar alimento">
                                                     <span class="material-symbols-outlined text-base">delete</span>
                                                 </button>
                                             </div>
@@ -131,7 +131,7 @@ export const renderTracker = () => {
                                             ${renderSatietyBadge(m)}
                                         </div>
                                     `).join('') : `
-                                        <p class="text-xs text-slate-500 italic py-2 text-center">Sin registros en ${cat.label}</p>
+                                        <p class="text-xs text-emerald-400/50 italic py-2 text-center">Sin registros en ${cat.label}</p>
                                     `}
                                 </div>
                             </div>
