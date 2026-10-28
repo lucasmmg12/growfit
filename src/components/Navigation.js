@@ -1,6 +1,118 @@
 import { getState } from '../state';
 import { getCurrentUser } from '../services/auth';
 
+export const renderAmbientGreenGraphics = () => {
+    return `
+    <!-- Ambient Green Background Graphics: Alimentos Saludables & Pesas (Gamas de Verdes) -->
+    <div class="fixed inset-0 pointer-events-none z-[1] overflow-hidden select-none" aria-hidden="true">
+        <!-- 1. Top Right: Mancuerna Hexagonal Grande (Verde Neón #10E775) -->
+        <div class="absolute -top-6 right-8 md:right-16 text-[#10E775] opacity-[0.11] animate-float-slow graphic-green-glow">
+            <svg width="190" height="190" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" class="-rotate-12">
+                <!-- Left Hex Weight -->
+                <polygon points="18,36 30,28 38,36 38,84 30,92 18,84" fill="currentColor" fill-opacity="0.18"/>
+                <polygon points="8,44 18,38 18,82 8,76" fill="currentColor" fill-opacity="0.28"/>
+                <!-- Knurled Handle -->
+                <line x1="38" y1="55" x2="82" y2="55"/>
+                <line x1="38" y1="65" x2="82" y2="65"/>
+                <line x1="48" y1="55" x2="54" y2="65" stroke-width="2"/>
+                <line x1="58" y1="55" x2="64" y2="65" stroke-width="2"/>
+                <line x1="68" y1="55" x2="74" y2="65" stroke-width="2"/>
+                <!-- Right Hex Weight -->
+                <polygon points="82,36 90,28 102,36 102,84 90,92 82,84" fill="currentColor" fill-opacity="0.18"/>
+                <polygon points="102,38 112,44 112,76 102,82" fill="currentColor" fill-opacity="0.28"/>
+            </svg>
+        </div>
+
+        <!-- 2. Top Left (unto Sidebar): Manzana & Hoja Nutricional (Verde Lima #84CC16) -->
+        <div class="absolute top-14 left-6 lg:left-80 text-[#84CC16] opacity-[0.11] animate-float-reverse graphic-green-glow">
+            <svg width="145" height="145" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="rotate-12">
+                <!-- Apple Body -->
+                <path d="M50 32 C35 28, 18 38, 20 58 C22 76, 36 90, 46 88 C49 87, 51 87, 54 88 C64 90, 78 76, 80 58 C82 38, 65 28, 50 32 Z" fill="currentColor" fill-opacity="0.15"/>
+                <!-- Stem -->
+                <path d="M50 32 C50 22, 55 15, 62 12"/>
+                <!-- Leaf -->
+                <path d="M52 24 C42 14, 30 18, 34 28 C40 30, 48 28, 52 24 Z" fill="currentColor" fill-opacity="0.28"/>
+            </svg>
+        </div>
+
+        <!-- 3. Upper Center-Right: Pesa Rusa / Kettlebell (Verde Menta #34D399) -->
+        <div class="absolute top-1/4 right-1/3 text-[#34D399] opacity-[0.09] animate-float-slow graphic-green-glow">
+            <svg width="150" height="150" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="rotate-6">
+                <!-- Kettlebell Handle -->
+                <path d="M32 36 C32 18, 68 18, 68 36" stroke-width="5"/>
+                <!-- Kettlebell Body -->
+                <circle cx="50" cy="60" r="26" fill="currentColor" fill-opacity="0.16"/>
+                <!-- Flat Base -->
+                <path d="M34 82 L66 82" stroke-width="4"/>
+                <!-- Weight Label -->
+                <text x="50" y="65" text-anchor="middle" fill="currentColor" font-size="13" font-weight="bold" stroke="none">16KG</text>
+            </svg>
+        </div>
+
+        <!-- 4. Middle Left: Palta / Aguacate Fit (Verde Jade #2DD4BF) -->
+        <div class="absolute top-1/2 left-4 lg:left-76 text-[#2DD4BF] opacity-[0.10] animate-float-slow graphic-green-glow">
+            <svg width="140" height="140" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="-rotate-12">
+                <!-- Avocado Outer -->
+                <path d="M50 14 C36 14, 24 42, 24 62 C24 80, 36 90, 50 90 C64 90, 76 80, 76 62 C76 42, 64 14, 50 14 Z" fill="currentColor" fill-opacity="0.14"/>
+                <!-- Avocado Seed -->
+                <circle cx="50" cy="62" r="13" fill="currentColor" fill-opacity="0.32"/>
+            </svg>
+        </div>
+
+        <!-- 5. Middle Right: Bowl de Proteína & Ensalada (Verde Esmeralda #10E775) -->
+        <div class="absolute top-[52%] right-6 md:right-12 text-[#10E775] opacity-[0.10] animate-float-reverse graphic-green-glow">
+            <svg width="165" height="165" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="rotate-6">
+                <!-- Bowl Rim & Base -->
+                <path d="M18 58 L102 58 C100 84, 82 98, 60 98 C38 98, 20 84, 18 58 Z" fill="currentColor" fill-opacity="0.16"/>
+                <path d="M44 102 L76 102" stroke-width="4"/>
+                <!-- Salad Leaves & Egg/Protein on Top -->
+                <path d="M28 58 C28 42, 46 40, 52 54"/>
+                <path d="M48 58 C52 38, 72 38, 76 58" fill="currentColor" fill-opacity="0.22"/>
+                <path d="M70 58 C76 42, 94 44, 92 58"/>
+                <!-- Chopsticks / Fork accent -->
+                <line x1="78" y1="26" x2="96" y2="54"/>
+            </svg>
+        </div>
+
+        <!-- 6. Bottom Left: Barra Olímpica con Discos (Verde Esmeralda #10B981) -->
+        <div class="absolute bottom-10 left-10 lg:left-80 text-[#10B981] opacity-[0.11] animate-float-reverse graphic-green-glow">
+            <svg width="220" height="110" viewBox="0 0 180 90" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" class="-rotate-6">
+                <!-- Barbell Bar -->
+                <line x1="6" y1="45" x2="174" y2="45" stroke-width="4"/>
+                <!-- Left Plates -->
+                <rect x="18" y="24" width="8" height="42" rx="3" fill="currentColor" fill-opacity="0.26"/>
+                <rect x="29" y="14" width="10" height="62" rx="3" fill="currentColor" fill-opacity="0.20"/>
+                <rect x="42" y="20" width="8" height="50" rx="3" fill="currentColor" fill-opacity="0.15"/>
+                <!-- Right Plates -->
+                <rect x="130" y="20" width="8" height="50" rx="3" fill="currentColor" fill-opacity="0.15"/>
+                <rect x="141" y="14" width="10" height="62" rx="3" fill="currentColor" fill-opacity="0.20"/>
+                <rect x="154" y="24" width="8" height="42" rx="3" fill="currentColor" fill-opacity="0.26"/>
+            </svg>
+        </div>
+
+        <!-- 7. Bottom Right: Shaker de Proteína + Brócoli/Vegetal (Verde Lima #84CC16) -->
+        <div class="absolute bottom-12 right-14 md:right-24 text-[#84CC16] opacity-[0.10] animate-float-slow graphic-green-glow">
+            <svg width="150" height="150" viewBox="0 0 110 110" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="rotate-12">
+                <!-- Shaker Bottle -->
+                <path d="M34 36 L76 36 L70 94 C70 98, 66 100, 62 100 L48 100 C44 100, 40 98, 40 94 Z" fill="currentColor" fill-opacity="0.15"/>
+                <rect x="30" y="26" width="50" height="10" rx="4" fill="currentColor" fill-opacity="0.28"/>
+                <path d="M46 26 L46 16 L64 16 L64 26"/>
+                <!-- Lightning / Protein emblem -->
+                <polygon points="56,50 46,66 55,66 52,82 64,62 55,62" fill="currentColor" fill-opacity="0.35"/>
+            </svg>
+        </div>
+
+        <!-- 8. Scattered Mini Fitness & Food Icons in Green Spectrum -->
+        <span class="material-symbols-outlined absolute top-[18%] left-[46%] text-[54px] text-[#10E775] opacity-[0.06] -rotate-12">fitness_center</span>
+        <span class="material-symbols-outlined absolute top-[38%] left-[28%] text-[48px] text-[#84CC16] opacity-[0.06] rotate-12">nutrition</span>
+        <span class="material-symbols-outlined absolute top-[68%] left-[52%] text-[56px] text-[#34D399] opacity-[0.06] -rotate-6">exercise</span>
+        <span class="material-symbols-outlined absolute top-[82%] left-[36%] text-[44px] text-[#2DD4BF] opacity-[0.06] rotate-12">egg_alt</span>
+        <span class="material-symbols-outlined absolute top-[12%] right-[28%] text-[46px] text-[#34D399] opacity-[0.06] rotate-6">restaurant</span>
+        <span class="material-symbols-outlined absolute bottom-[28%] right-[35%] text-[50px] text-[#84CC16] opacity-[0.06] -rotate-12">eco</span>
+    </div>
+    `;
+};
+
 export const renderSidebar = (activeRoute = 'dashboard') => {
     const state = getState();
     const { profile } = state;
@@ -25,7 +137,15 @@ export const renderSidebar = (activeRoute = 'dashboard') => {
     ];
 
     return `
-    <aside class="hidden lg:flex w-72 flex-col justify-between border-r border-emerald-500/15 bg-[#040B08]/95 backdrop-blur-2xl p-5 relative z-30 shadow-2xl">
+    ${renderAmbientGreenGraphics()}
+    <aside class="hidden lg:flex w-72 flex-col justify-between border-r border-emerald-500/15 bg-[#040B08]/95 backdrop-blur-2xl p-5 relative z-30 shadow-2xl overflow-hidden">
+        <!-- Subtle Sidebar Green Food & Dumbbell Watermarks -->
+        <div class="pointer-events-none select-none absolute -right-8 top-28 text-[#10E775] opacity-[0.06] rotate-12">
+            <span class="material-symbols-outlined text-[110px]">fitness_center</span>
+        </div>
+        <div class="pointer-events-none select-none absolute -left-6 bottom-36 text-[#84CC16] opacity-[0.06] -rotate-12">
+            <span class="material-symbols-outlined text-[100px]">nutrition</span>
+        </div>
         <div class="flex flex-col gap-6">
             <!-- Brand & Biometric Athlete Header -->
             <div class="flex items-center justify-between px-2 pt-1">

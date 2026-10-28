@@ -34,14 +34,21 @@ export const renderTracker = () => {
         ${renderSidebar('tracker')}
 
         <!-- Main Content -->
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative z-10">
             ${renderMobileHeader('Diario de Comidas')}
 
             <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-8">
                 <div class="max-w-7xl mx-auto flex flex-col gap-6">
 
                     <!-- Top Header Summary Card -->
-                    <div class="white-card card-glow-emerald p-6 shadow-xl">
+                    <div class="white-card card-glow-emerald p-6 shadow-xl relative overflow-hidden">
+                        <!-- Green Food & Dumbbell Watermarks -->
+                        <div class="pointer-events-none select-none absolute -right-4 -top-6 text-[#10E775] opacity-[0.09] rotate-12">
+                            <span class="material-symbols-outlined text-[130px]">nutrition</span>
+                        </div>
+                        <div class="pointer-events-none select-none absolute right-48 -bottom-6 text-[#84CC16] opacity-[0.08] -rotate-12">
+                            <span class="material-symbols-outlined text-[110px]">fitness_center</span>
+                        </div>
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
                                 <div class="flex items-center gap-2 mb-1">

@@ -33,7 +33,7 @@ export const renderWallet = () => {
     <div class="flex h-screen w-full bg-[#050C09] font-sans text-[#ECFDF5] overflow-hidden fade-in">
         ${renderSidebar('wallet')}
 
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative z-10">
             ${renderMobileHeader('Mi Billetera')}
 
             <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-10">

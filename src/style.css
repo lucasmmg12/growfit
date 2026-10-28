@@ -329,6 +329,40 @@ p, span, div, label, input, button {
 /* Circular Timer & Performance Rings */
 .timer-ring-circle {
   transition: stroke-dashoffset 0.7s cubic-bezier(0.2, 1, 0.3, 1);
+}
+
+/* Floating Green Graphics Animations (Alimentos & Pesas) */
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(4deg);
+  }
+}
+
+@keyframes floatReverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(10px) rotate(-4deg);
+  }
+}
+
+.animate-float-slow {
+  animation: floatSlow 9s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: floatReverse 11s ease-in-out infinite;
+}
+
+.graphic-green-glow {
+  filter: drop-shadow(0 0 14px rgba(16, 231, 117, 0.28));
+}
+
+  transition: stroke-dashoffset 0.7s cubic-bezier(0.2, 1, 0.3, 1);
   transform: rotate(-90deg);
   transform-origin: 50% 50%;
 }

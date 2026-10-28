@@ -99,7 +99,7 @@ export const renderDashboard = () => {
         ${renderSidebar('dashboard')}
 
         <!-- Main Workspace -->
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative z-10">
             ${renderMobileHeader('GrowFit')}
 
             <!-- Scrollable Content Area (Full Width Green Bento) -->
@@ -107,7 +107,28 @@ export const renderDashboard = () => {
                 <div class="max-w-7xl mx-auto flex flex-col gap-6">
 
                     <!-- HERO BAR: Biometric Status, Date & Quick Command Bar -->
-                    <div class="white-card card-glow-emerald p-5 md:p-6 shadow-2xl">
+                    <div class="white-card card-glow-emerald p-5 md:p-6 shadow-2xl relative overflow-hidden">
+                        <!-- Background Green Graphics: Dumbbell + Healthy Apple/Bowl Watermarks -->
+                        <div class="pointer-events-none select-none absolute -right-4 -top-6 text-[#10E775] opacity-[0.10] -rotate-12">
+                            <svg width="150" height="150" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="18,36 30,28 38,36 38,84 30,92 18,84" fill="currentColor" fill-opacity="0.2"/>
+                                <polygon points="8,44 18,38 18,82 8,76" fill="currentColor" fill-opacity="0.3"/>
+                                <line x1="38" y1="55" x2="82" y2="55"/>
+                                <line x1="38" y1="65" x2="82" y2="65"/>
+                                <polygon points="82,36 90,28 102,36 102,84 90,92 82,84" fill="currentColor" fill-opacity="0.2"/>
+                                <polygon points="102,38 112,44 112,76 102,82" fill="currentColor" fill-opacity="0.3"/>
+                            </svg>
+                        </div>
+                        <div class="pointer-events-none select-none absolute right-44 -bottom-6 text-[#84CC16] opacity-[0.09] rotate-12">
+                            <svg width="115" height="115" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M50 32 C35 28, 18 38, 20 58 C22 76, 36 90, 46 88 C49 87, 51 87, 54 88 C64 90, 78 76, 80 58 C82 38, 65 28, 50 32 Z" fill="currentColor" fill-opacity="0.18"/>
+                                <path d="M50 32 C50 22, 55 15, 62 12"/>
+                                <path d="M52 24 C42 14, 30 18, 34 28 C40 30, 48 28, 52 24 Z" fill="currentColor" fill-opacity="0.3"/>
+                            </svg>
+                        </div>
+                        <div class="pointer-events-none select-none absolute left-1/3 top-2 text-[#34D399] opacity-[0.07] -rotate-6">
+                            <span class="material-symbols-outlined text-[95px]">nutrition</span>
+                        </div>
                         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-emerald-500/15">
                             <div>
                                 <div class="flex flex-wrap items-center gap-2 mb-2">
@@ -195,8 +216,15 @@ export const renderDashboard = () => {
                     <!-- CENTERPIECE: MONOCHROMATIC GREEN RINGS PERFORMANCE HUB (12-Column Bento) -->
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
                         <!-- Master Calorie Ring Card (5 Cols - Verde Neón Principal) -->
-                        <div class="lg:col-span-5 white-card card-glow-emerald p-6 flex flex-col justify-between">
-                            <div class="flex items-center justify-between">
+                        <div class="lg:col-span-5 white-card card-glow-emerald p-6 flex flex-col justify-between relative overflow-hidden">
+                            <!-- Background Green Graphics: Protein Bowl & Kettlebell -->
+                            <div class="pointer-events-none select-none absolute -left-6 -bottom-6 text-[#10E775] opacity-[0.08] rotate-12">
+                                <span class="material-symbols-outlined text-[130px]">restaurant</span>
+                            </div>
+                            <div class="pointer-events-none select-none absolute -right-4 top-10 text-[#34D399] opacity-[0.08] -rotate-12">
+                                <span class="material-symbols-outlined text-[120px]">fitness_center</span>
+                            </div>
+                            <div class="flex items-center justify-between relative z-10">
                                 <div>
                                     <span class="text-[10px] font-extrabold uppercase tracking-widest text-[#10E775]">Anillo de Energía Diaria</span>
                                     <h3 class="text-lg font-display font-extrabold text-white mt-0.5">Balance Calórico</h3>
@@ -254,8 +282,15 @@ export const renderDashboard = () => {
                         <!-- 4 Circular Macro & Sodium Rings Grid (7 Cols - 4 Gamas de Verde) -->
                         <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <!-- 1. Proteína Ring Card (Verde Neón #10E775) -->
-                            <div class="white-card card-glow-emerald p-5 flex items-center justify-between gap-4">
-                                <div class="flex flex-col justify-between h-full">
+                            <div class="white-card card-glow-emerald p-5 flex items-center justify-between gap-4 relative overflow-hidden">
+                                <!-- Background Green Graphic: Dumbbell & Egg/Protein -->
+                                <div class="pointer-events-none select-none absolute right-24 -bottom-4 text-[#10E775] opacity-[0.09] -rotate-12">
+                                    <span class="material-symbols-outlined text-[86px]">fitness_center</span>
+                                </div>
+                                <div class="pointer-events-none select-none absolute -left-3 -top-3 text-[#34D399] opacity-[0.07] rotate-12">
+                                    <span class="material-symbols-outlined text-[68px]">egg_alt</span>
+                                </div>
+                                <div class="flex flex-col justify-between h-full relative z-10">
                                     <div>
                                         <span class="px-2 py-0.5 rounded-md bg-[#10E775]/15 text-[#10E775] text-[10px] font-extrabold uppercase tracking-wider">Masa Muscular</span>
                                         <h4 class="text-base font-display font-extrabold text-white mt-2">Proteína</h4>
@@ -279,8 +314,15 @@ export const renderDashboard = () => {
                             </div>
 
                             <!-- 2. Carbohidratos Ring Card (Verde Esmeralda Medio #34D399) -->
-                            <div class="white-card card-glow-mint p-5 flex items-center justify-between gap-4">
-                                <div class="flex flex-col justify-between h-full">
+                            <div class="white-card card-glow-mint p-5 flex items-center justify-between gap-4 relative overflow-hidden">
+                                <!-- Background Green Graphic: Apple / Nutrition & Energy -->
+                                <div class="pointer-events-none select-none absolute right-24 -bottom-4 text-[#34D399] opacity-[0.09] rotate-12">
+                                    <span class="material-symbols-outlined text-[86px]">nutrition</span>
+                                </div>
+                                <div class="pointer-events-none select-none absolute -left-3 -top-3 text-[#10E775] opacity-[0.07] -rotate-12">
+                                    <span class="material-symbols-outlined text-[68px]">bakery_dining</span>
+                                </div>
+                                <div class="flex flex-col justify-between h-full relative z-10">
                                     <div>
                                         <span class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider">Energía Glucógeno</span>
                                         <h4 class="text-base font-display font-extrabold text-white mt-2">Carbohidratos</h4>
@@ -304,8 +346,15 @@ export const renderDashboard = () => {
                             </div>
 
                             <!-- 3. Grasas Ring Card (Verde Lima / Primavera #84CC16) -->
-                            <div class="white-card card-glow-lime p-5 flex items-center justify-between gap-4">
-                                <div class="flex flex-col justify-between h-full">
+                            <div class="white-card card-glow-lime p-5 flex items-center justify-between gap-4 relative overflow-hidden">
+                                <!-- Background Green Graphic: Avocado / Eco Leaf -->
+                                <div class="pointer-events-none select-none absolute right-24 -bottom-4 text-[#84CC16] opacity-[0.10] -rotate-12">
+                                    <span class="material-symbols-outlined text-[86px]">eco</span>
+                                </div>
+                                <div class="pointer-events-none select-none absolute -left-3 -top-3 text-[#84CC16] opacity-[0.07] rotate-12">
+                                    <span class="material-symbols-outlined text-[68px]">spa</span>
+                                </div>
+                                <div class="flex flex-col justify-between h-full relative z-10">
                                     <div>
                                         <span class="px-2 py-0.5 rounded-md bg-lime-500/15 text-lime-300 text-[10px] font-extrabold uppercase tracking-wider">Soporte Hormonal</span>
                                         <h4 class="text-base font-display font-extrabold text-white mt-2">Grasas Saludables</h4>
@@ -329,8 +378,15 @@ export const renderDashboard = () => {
                             </div>
 
                             <!-- 4. Sodio Ring Card (Verde Jade / Teal #2DD4BF) -->
-                            <div class="white-card card-glow-jade p-5 flex items-center justify-between gap-4">
-                                <div class="flex flex-col justify-between h-full">
+                            <div class="white-card card-glow-jade p-5 flex items-center justify-between gap-4 relative overflow-hidden">
+                                <!-- Background Green Graphic: Kettlebell / Electrolytes -->
+                                <div class="pointer-events-none select-none absolute right-24 -bottom-4 text-[#2DD4BF] opacity-[0.09] rotate-12">
+                                    <span class="material-symbols-outlined text-[86px]">exercise</span>
+                                </div>
+                                <div class="pointer-events-none select-none absolute -left-3 -top-3 text-[#2DD4BF] opacity-[0.07] -rotate-12">
+                                    <span class="material-symbols-outlined text-[68px]">water_drop</span>
+                                </div>
+                                <div class="flex flex-col justify-between h-full relative z-10">
                                     <div>
                                         <span class="px-2 py-0.5 rounded-md bg-teal-500/15 text-teal-300 text-[10px] font-extrabold uppercase tracking-wider">
                                             ${isHighSodiumDay ? '⚠️ Sodio Elevado' : 'Balance Electrolítico'}
