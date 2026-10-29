@@ -1,9 +1,12 @@
-import { getState, addWorkout, deleteWorkout, saveGymSession, calculate1RM, getArgentinaDate, getLatestMeasurement } from '../state';
+import { getState, addWorkout, deleteWorkout, saveGymSession, calculate1RM, getArgentinaDate, getLatestMeasurement, calculateBodyIndices } from '../state';
+import { analyzeWorkoutWithAI } from '../services/openai';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
 
-let activeWorkoutTab = 'gym'; // 'gym' | 'routines'
+let activeWorkoutTab = 'ai'; // 'ai' | 'gym'
 let restTimerInterval = null;
 let restSecondsRemaining = 0;
+let lastAiWorkoutResult = null;
+let lastAiQuery = '';
 
 let currentSession = {
     name: 'Rutina de Fuerza (A)',
@@ -30,6 +33,8 @@ let currentSession = {
 export const renderWorkouts = () => {
     const state = getState();
     const workouts = state.workouts || [];
+    const latestMeas = getLatestMeasurement();
+    const indices = calculateBodyIndices(latestMeas || {}, state.profile);
 
     const currentMonthKey = getArgentinaDate().slice(0, 7);
     const thisMonthWorkouts = workouts.filter(w => (w.date || '').startsWith(currentMonthKey));
@@ -42,65 +47,122 @@ export const renderWorkouts = () => {
 
         <!-- Main Content -->
         <main class="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-            ${renderMobileHeader('Entrenamientos')}
+            ${renderMobileHeader('Entrenamientos IA')}
 
             <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-10">
                 <div class="max-w-7xl mx-auto flex flex-col gap-6">
 
-                    <!-- Top KPI & Quick Add Exercise Banner -->
-                    <div class="white-card card-glow-emerald p-6 shadow-2xl relative overflow-hidden">
+                    <!-- HERO AI WORKOUT ANALYZER: "¿Qué ejercicio has hecho hoy?" -->
+                    <div class="white-card card-glow-emerald p-6 md:p-7 shadow-2xl relative overflow-hidden">
                         <div class="pointer-events-none select-none absolute -right-4 -top-6 text-[#10E775] opacity-[0.09] -rotate-12">
-                            <span class="material-symbols-outlined text-[130px]">fitness_center</span>
+                            <span class="material-symbols-outlined text-[140px]">fitness_center</span>
+                        </div>
+                        <div class="pointer-events-none select-none absolute right-52 -bottom-8 text-[#84CC16] opacity-[0.08] rotate-12">
+                            <span class="material-symbols-outlined text-[110px]">bolt</span>
                         </div>
 
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+                        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-emerald-500/15 relative z-10">
                             <div>
-                                <span class="badge-emerald mb-1.5">
-                                    <span class="size-1.5 rounded-full bg-[#10E775] animate-pulse"></span>
-                                    Módulo de Rendimiento & Fuerza
-                                </span>
+                                <div class="flex flex-wrap items-center gap-2 mb-2">
+                                    <span class="badge-emerald">
+                                        <span class="material-symbols-outlined text-xs">auto_awesome</span>
+                                        Fisiología del Ejercicio con IA
+                                    </span>
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/25">
+                                        Perfil Activo: ${indices.weight} kg · ${indices.height} cm · Masa Magra ${indices.leanMass} kg · ${indices.bodyFat}% Grasa
+                                    </span>
+                                </div>
                                 <h2 class="text-2xl md:text-3xl font-display font-extrabold text-white tracking-tight">
-                                    Entrenamientos & Ejercicio
+                                    ¿Qué ejercicio has hecho hoy?
                                 </h2>
-                                <p class="text-xs text-emerald-300/75 mt-0.5">
-                                    Registra ejercicios de pesas, deportes o cardio con cálculo automático de calorías y 1RM.
+                                <p class="text-xs text-emerald-300/75 mt-1">
+                                    Escribe tu actividad (ej. <em>"1 hora de funcional"</em>) y la IA calculará tus calorías quemadas, endorfinas liberadas, grasa oxidada e impacto metabólico según tu cuerpo.
                                 </p>
                             </div>
 
-                            <div class="flex flex-wrap items-center gap-3">
-                                <div class="p-3 bg-[#040B08]/75 rounded-2xl border border-emerald-500/25 text-center">
-                                    <span class="text-[10px] font-bold uppercase text-emerald-300/70 block">Este Mes</span>
+                            <div class="flex items-center gap-3 shrink-0">
+                                <div class="p-3 bg-[#040B08]/80 rounded-2xl border border-emerald-500/25 text-center">
+                                    <span class="text-[10px] font-bold uppercase text-emerald-300/70 block">Quemado Mes</span>
                                     <p class="text-lg font-mono font-extrabold text-[#10E775]">${totalBurnedMonth} <span class="text-xs font-normal text-emerald-300/60">kcal</span></p>
                                 </div>
-                                <div class="p-3 bg-[#040B08]/75 rounded-2xl border border-emerald-500/25 text-center">
+                                <div class="p-3 bg-[#040B08]/80 rounded-2xl border border-emerald-500/25 text-center">
                                     <span class="text-[10px] font-bold uppercase text-emerald-300/70 block">Días Activos</span>
                                     <p class="text-lg font-mono font-extrabold text-emerald-300">${daysTrainedMonth} <span class="text-xs font-normal text-emerald-300/60">días</span></p>
                                 </div>
-                                <button id="open-add-workout-modal-btn" class="btn-emerald px-5 py-3.5 text-xs font-extrabold uppercase tracking-wider cursor-pointer">
-                                    <span class="material-symbols-outlined text-lg">add_circle</span>
-                                    + Agregar Ejercicio
-                                </button>
                             </div>
                         </div>
 
-                        <!-- Tab Switcher (Gym Logbook vs Quick Routines) -->
-                        <div class="flex gap-2 p-1.5 bg-[#040B08]/80 border border-emerald-500/20 rounded-2xl mt-5 text-xs font-bold relative z-10">
-                            <button id="tab-gym-btn" class="flex-1 py-2.5 rounded-xl transition-all cursor-pointer ${
-                                activeWorkoutTab === 'gym' ? 'btn-emerald shadow-sm' : 'text-emerald-300/70 hover:text-white'
-                            }">
-                                <span class="material-symbols-outlined text-base align-middle mr-1">fitness_center</span> Bitácora de Pesas & 1RM
-                            </button>
-                            <button id="tab-routines-btn" class="flex-1 py-2.5 rounded-xl transition-all cursor-pointer ${
-                                activeWorkoutTab === 'routines' ? 'btn-emerald shadow-sm' : 'text-emerald-300/70 hover:text-white'
-                            }">
-                                <span class="material-symbols-outlined text-base align-middle mr-1">sprint</span> Cardio, Deportes & Rutinas
-                            </button>
+                        <!-- AI Prompt Input Bar -->
+                        <div class="mt-5 flex flex-col gap-3 relative z-10">
+                            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                                <div class="flex-1 flex items-center bg-[#040B08]/90 border border-emerald-500/30 rounded-2xl px-4 py-3.5 focus-within:border-[#10E775] transition-all shadow-inner">
+                                    <span class="material-symbols-outlined text-[#10E775] text-2xl mr-3">psychology</span>
+                                    <input id="ai-workout-input" type="text" value="${lastAiQuery}" placeholder="Ej: 1 hora de funcional, 45 min de pesas de pecho y espalda, jugué 1 hora de fútbol..." class="w-full bg-transparent border-none outline-none text-sm font-semibold text-white placeholder:text-emerald-300/40" />
+                                </div>
+                                <button id="analyze-workout-ai-btn" class="btn-emerald px-6 py-3.5 text-xs font-extrabold uppercase tracking-wider shrink-0 cursor-pointer">
+                                    <span class="material-symbols-outlined text-lg">auto_awesome</span>
+                                    <span>Calcular con IA</span>
+                                </button>
+                            </div>
+
+                            <!-- 1-Click Example Workout Chips -->
+                            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pt-0.5">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400/75 shrink-0">Ejemplos rápidos:</span>
+                                ${[
+                                    '⚡ 1 hora de funcional intenso',
+                                    '🏋️ 50 min de musculación y pesas',
+                                    '⚽ 1 hora de fútbol',
+                                    '🚴 45 min de ciclismo / bici fija',
+                                    '🚶 45 min de caminata rápida',
+                                    '🏃 30 min de trote y cardio HIIT'
+                                ].map(sample => `
+                                    <button type="button" class="ai-workout-sample-chip px-3 py-1 rounded-full bg-emerald-950/60 hover:bg-[#10E775]/20 border border-emerald-500/20 hover:border-[#10E775]/45 text-[11px] font-semibold text-emerald-100/85 hover:text-white transition-all shrink-0 cursor-pointer" data-query="${sample.replace(/^[^\s]+\s/, '')}">
+                                        ${sample}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Dynamic AI Result Container -->
+                        <div id="ai-workout-result-container" class="${lastAiWorkoutResult ? 'mt-6' : 'hidden'} relative z-10">
+                            ${lastAiWorkoutResult ? renderAiWorkoutAnalysisCard(lastAiWorkoutResult, indices) : ''}
                         </div>
                     </div>
 
-                    <!-- TAB 1: GYM LOGBOOK & 1RM -->
+                    <!-- Mode Switcher: Historial IA vs Bitácora de Series Gym -->
+                    <div class="flex gap-2 p-1.5 bg-[#040B08]/80 border border-emerald-500/20 rounded-2xl text-xs font-bold">
+                        <button id="tab-ai-btn" class="flex-1 py-2.5 rounded-xl transition-all cursor-pointer ${
+                            activeWorkoutTab === 'ai' ? 'btn-emerald shadow-sm' : 'text-emerald-300/70 hover:text-white'
+                        }">
+                            <span class="material-symbols-outlined text-base align-middle mr-1">auto_awesome</span> Historial de Entrenamientos & Métricas IA
+                        </button>
+                        <button id="tab-gym-btn" class="flex-1 py-2.5 rounded-xl transition-all cursor-pointer ${
+                            activeWorkoutTab === 'gym' ? 'btn-emerald shadow-sm' : 'text-emerald-300/70 hover:text-white'
+                        }">
+                            <span class="material-symbols-outlined text-base align-middle mr-1">fitness_center</span> Bitácora de Series & Calculadora 1RM
+                        </button>
+                    </div>
+
+                    <!-- TAB 1: WORKOUT HISTORY WITH AI BIO-METRICS -->
+                    <div id="ai-history-view" class="${activeWorkoutTab === 'ai' ? 'flex' : 'hidden'} flex-col gap-6">
+                        <div class="white-card p-6 border border-emerald-500/20">
+                            <div class="flex items-center justify-between mb-4 pb-3 border-b border-emerald-500/15">
+                                <div>
+                                    <h3 class="text-base font-display font-extrabold text-white uppercase">
+                                        Mis Entrenamientos Registrados
+                                    </h3>
+                                    <p class="text-xs text-emerald-300/70">Desglose de calorías, endorfinas, oxidación de grasa e impacto metabólico</p>
+                                </div>
+                                <span class="badge-emerald font-mono">${workouts.length} sesiones</span>
+                            </div>
+                            <div class="flex flex-col gap-3">
+                                ${renderWorkoutHistory(workouts)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: GYM LOGBOOK & 1RM -->
                     <div id="gym-logbook-view" class="${activeWorkoutTab === 'gym' ? 'flex' : 'hidden'} flex-col gap-6">
-                        
                         <!-- Rest Timer Widget Card -->
                         <div class="white-card card-glow-mint p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
@@ -148,36 +210,6 @@ export const renderWorkouts = () => {
                         </div>
                     </div>
 
-                    <!-- TAB 2: ROUTINES & CARDIO -->
-                    <div id="routines-view" class="${activeWorkoutTab === 'routines' ? 'flex' : 'hidden'} flex-col gap-5">
-                        <div class="white-card card-glow-mint p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
-                                <h3 class="text-base font-display font-extrabold text-white uppercase tracking-tight">Deportes, Cardio & Rutinas Rápidas</h3>
-                                <p class="text-xs text-emerald-300/70">Registra tu actividad favorita con 1 toque o carga un ejercicio personalizado.</p>
-                            </div>
-                            <button id="custom-cardio-btn" class="btn-emerald text-xs px-4 py-2.5 font-extrabold flex items-center justify-center gap-1.5 cursor-pointer">
-                                <span class="material-symbols-outlined text-base">add_circle</span> + Ejercicio Personalizado
-                            </button>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            ${renderRoutinesCards()}
-                        </div>
-                    </div>
-
-                    <!-- History / Recent Sessions -->
-                    <div class="white-card p-6 border border-emerald-500/20">
-                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-emerald-500/15">
-                            <h3 class="text-base font-display font-extrabold text-white uppercase">
-                                Historial de Ejercicios y Entrenamientos
-                            </h3>
-                            <span class="badge-emerald font-mono">${workouts.length} sesiones</span>
-                        </div>
-                        <div class="flex flex-col gap-3">
-                            ${renderWorkoutHistory(workouts)}
-                        </div>
-                    </div>
-
                 </div>
             </div>
 
@@ -187,6 +219,128 @@ export const renderWorkouts = () => {
         <!-- Add Exercise / Workout Modal -->
         <div id="workout-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"></div>
     </div>
+    `;
+};
+
+export const renderAiWorkoutAnalysisCard = (ai, indices) => {
+    return `
+        <div class="p-5 md:p-6 rounded-3xl bg-gradient-to-br from-[#06291B]/95 via-[#04140D]/95 to-[#051F15]/95 border-2 border-[#10E775]/45 shadow-[0_0_35px_rgba(16,231,117,0.18)] animate-scale-up">
+            <!-- Header -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-emerald-500/20">
+                <div class="flex items-center gap-3">
+                    <div class="size-12 rounded-2xl bg-[#10E775]/20 text-[#10E775] border border-[#10E775]/40 flex items-center justify-center shadow-[0_0_15px_rgba(16,231,117,0.25)]">
+                        <span class="material-symbols-outlined text-2xl">${ai.icon || 'bolt'}</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-[#10E775]/20 text-[#10E775] border border-[#10E775]/35">
+                                Análisis Biológico IA
+                            </span>
+                            <span class="text-xs font-mono text-emerald-300/80">${ai.duration} min · ${ai.met_value || 7} METs</span>
+                        </div>
+                        <h3 class="text-xl font-display font-extrabold text-white mt-0.5">${ai.name}</h3>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button id="save-ai-workout-btn" class="btn-emerald px-5 py-3 text-xs font-extrabold uppercase tracking-wider cursor-pointer shadow-lg">
+                        <span class="material-symbols-outlined text-lg">check_circle</span>
+                        Guardar en mi Historial (+50 XP)
+                    </button>
+                </div>
+            </div>
+
+            <!-- 6 Physiological & Neurochemical KPIs -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+                <!-- 1. Calorías Directas -->
+                <div class="p-3.5 rounded-2xl bg-[#040B08]/80 border border-[#10E775]/35">
+                    <span class="text-[10px] font-extrabold uppercase text-emerald-300/75 flex items-center justify-between">
+                        Calorías Sesión
+                        <span class="material-symbols-outlined text-sm text-[#10E775]">local_fire_department</span>
+                    </span>
+                    <p class="text-2xl font-mono font-extrabold text-[#10E775] mt-1">${ai.calories} <small class="text-xs font-normal">kcal</small></p>
+                    <span class="text-[10px] text-emerald-300/70">Para tus ${indices.weight} kg</span>
+                </div>
+
+                <!-- 2. Efecto Afterburn (EPOC) -->
+                <div class="p-3.5 rounded-2xl bg-[#040B08]/80 border border-lime-500/30">
+                    <span class="text-[10px] font-extrabold uppercase text-lime-300/80 flex items-center justify-between">
+                        Afterburn EPOC
+                        <span class="material-symbols-outlined text-sm text-lime-400">bolt</span>
+                    </span>
+                    <p class="text-2xl font-mono font-extrabold text-lime-400 mt-1">+${ai.epoc_calories || Math.round(ai.calories * 0.14)} <small class="text-xs font-normal">kcal</small></p>
+                    <span class="text-[10px] text-emerald-300/70">Total: ${ai.total_metabolic_burn || (ai.calories + (ai.epoc_calories || 0))} kcal</span>
+                </div>
+
+                <!-- 3. Endorfinas & Dopamina -->
+                <div class="p-3.5 rounded-2xl bg-[#040B08]/80 border border-teal-500/35 col-span-2 sm:col-span-1 lg:col-span-2">
+                    <span class="text-[10px] font-extrabold uppercase text-teal-300 flex items-center justify-between">
+                        Endorfinas & Neuroquímica
+                        <span class="material-symbols-outlined text-sm text-teal-300">mood</span>
+                    </span>
+                    <p class="text-sm font-mono font-extrabold text-teal-200 mt-1.5 leading-snug">${ai.endorphins_score}</p>
+                    <span class="text-[10px] text-emerald-300/70 block mt-0.5">β-Endorfinas · Serotonina · ↓ Cortisol</span>
+                </div>
+
+                <!-- 4. Grasa Oxidada & Glucógeno -->
+                <div class="p-3.5 rounded-2xl bg-[#040B08]/80 border border-emerald-500/25">
+                    <span class="text-[10px] font-extrabold uppercase text-emerald-300/75 flex items-center justify-between">
+                        Grasa Oxidada
+                        <span class="material-symbols-outlined text-sm text-[#34D399]">water_drop</span>
+                    </span>
+                    <p class="text-xl font-mono font-extrabold text-[#34D399] mt-1">${ai.fat_oxidized_g}g <small class="text-[10px] font-normal text-emerald-300/70">grasa</small></p>
+                    <span class="text-[10px] text-emerald-300/70">Glucógeno: ${ai.glycogen_used_g}g</span>
+                </div>
+
+                <!-- 5. Sudoración & Recuperación -->
+                <div class="p-3.5 rounded-2xl bg-[#040B08]/80 border border-emerald-500/25">
+                    <span class="text-[10px] font-extrabold uppercase text-emerald-300/75 flex items-center justify-between">
+                        Rehidratación
+                        <span class="material-symbols-outlined text-sm text-teal-300">water_full</span>
+                    </span>
+                    <p class="text-xl font-mono font-extrabold text-white mt-1">${ai.hydration_loss_ml} <small class="text-xs font-normal">ml</small></p>
+                    <span class="text-[10px] text-emerald-300/70">Recup: ${ai.recovery_hours}</span>
+                </div>
+            </div>
+
+            <!-- Detailed Neuro-Endocrine & Metabolic Insights -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div class="p-4 rounded-2xl bg-[#040B08]/70 border border-teal-500/25">
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <span class="text-base">🧠</span>
+                        <h4 class="text-xs font-extrabold uppercase tracking-wider text-teal-300">Liberación de Endorfinas y Bienestar</h4>
+                    </div>
+                    <p class="text-xs text-emerald-100/90 leading-relaxed">${ai.endorphins_detail}</p>
+                    <div class="mt-2.5 pt-2 border-t border-emerald-500/15 flex items-center justify-between text-[11px]">
+                        <span class="text-emerald-300/75 font-semibold">Zona Cardíaca Estimada:</span>
+                        <span class="font-mono font-bold text-[#10E775]">${ai.heart_rate_zone}</span>
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-[#040B08]/70 border border-emerald-500/25">
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <span class="text-base">🧬</span>
+                        <h4 class="text-xs font-extrabold uppercase tracking-wider text-[#10E775]">Impacto en tu Composición Corporal y Nutrición</h4>
+                    </div>
+                    <p class="text-xs text-emerald-100/90 leading-relaxed">${ai.metabolic_impact}</p>
+                    <p class="text-[11px] text-lime-300 font-semibold mt-2 pt-2 border-t border-emerald-500/15">
+                        🥗 Post-Entreno: ${ai.post_workout_nutrition}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Activated Muscle Groups -->
+            ${Array.isArray(ai.muscle_groups) && ai.muscle_groups.length ? `
+                <div class="mt-3.5 pt-3 border-t border-emerald-500/15 flex flex-wrap items-center gap-2">
+                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">Músculos y Sistemas Activados:</span>
+                    ${ai.muscle_groups.map(m => `
+                        <span class="px-2.5 py-1 rounded-xl bg-emerald-950/80 border border-emerald-500/25 text-[11px] font-semibold text-emerald-200">
+                            💪 ${m}
+                        </span>
+                    `).join('')}
+                </div>
+            ` : ''}
+        </div>
     `;
 };
 
@@ -205,7 +359,6 @@ const renderExercises = (exercises) => {
                 </button>
             </div>
 
-            <!-- Sets Table -->
             <div class="overflow-x-auto">
                 <table class="w-full text-xs text-left">
                     <thead>
@@ -249,84 +402,89 @@ const renderExercises = (exercises) => {
     `).join('');
 };
 
-const renderRoutinesCards = () => {
-    const routines = [
-        { name: 'Entrenamiento de Pesas / Gym', duration: 45, calories: 340, category: 'Fuerza & Hipertrofia', icon: 'fitness_center', badge: 'Popular' },
-        { name: 'Ciclismo / Bicicleta', duration: 45, calories: 420, category: 'Cardio & Resistencia', icon: 'directions_bike', badge: 'Favorito' },
-        { name: 'Fútbol (Partido / Picado)', duration: 60, calories: 550, category: 'Deporte & Resistencia', icon: 'sports_soccer', badge: 'Favorito' },
-        { name: 'Caminata Rápida / Cinta', duration: 40, calories: 230, category: 'Quema Grasa Zona 2', icon: 'directions_walk' },
-        { name: 'Running & Trote Mixto', duration: 30, calories: 310, category: 'Resistencia', icon: 'sprint' },
-        { name: 'HIIT Circuito Funcional', duration: 25, calories: 260, category: 'Cardio Intenso', icon: 'bolt' }
-    ];
-
-    return routines.map(r => `
-        <div class="white-card card-glow-emerald p-5 flex flex-col justify-between transition-all">
-            <div>
-                <div class="flex items-center justify-between mb-3">
-                    <div class="size-10 rounded-xl bg-[#10E775]/15 text-[#10E775] flex items-center justify-center border border-[#10E775]/30">
-                        <span class="material-symbols-outlined text-xl">${r.icon}</span>
-                    </div>
-                    ${r.badge ? `<span class="badge-emerald text-[10px] py-0.5 px-2 font-bold">${r.badge}</span>` : ''}
-                </div>
-                <span class="text-[10px] font-bold uppercase text-emerald-300/70">${r.category}</span>
-                <h4 class="text-base font-display font-extrabold text-white tracking-tight mt-0.5">${r.name}</h4>
-                <p class="text-xs font-mono text-[#10E775] mt-1 font-bold">~${r.calories} kcal · ${r.duration} min</p>
-            </div>
-
-            <button class="log-quick-routine-btn btn-emerald w-full py-2.5 text-xs font-extrabold mt-4 cursor-pointer" data-name="${r.name}" data-duration="${r.duration}" data-calories="${r.calories}" data-icon="${r.icon}">
-                Registrar Realizado
-            </button>
-        </div>
-    `).join('');
-};
-
 const getWorkoutIcon = (workout) => {
     if (workout.icon) return workout.icon;
     const name = (workout.name || workout.type || '').toLowerCase();
     if (name.includes('bici') || name.includes('cicl')) return 'directions_bike';
     if (name.includes('futbol') || name.includes('fútbol') || name.includes('soccer') || name.includes('pelota')) return 'sports_soccer';
     if (name.includes('run') || name.includes('trote') || name.includes('correr') || name.includes('caminata')) return 'sprint';
-    if (name.includes('hiit') || name.includes('quema')) return 'bolt';
+    if (name.includes('funcional') || name.includes('hiit') || name.includes('quema')) return 'bolt';
     return 'fitness_center';
 };
 
 const renderWorkoutHistory = (workouts) => {
-    if (!workouts.length) return `<p class="text-xs text-emerald-300/50 italic py-4 text-center">Sin entrenamientos recientes. Usa el botón "+ Agregar Ejercicio" para registrar hoy.</p>`;
+    if (!workouts.length) return `<p class="text-xs text-emerald-300/50 italic py-6 text-center">Sin entrenamientos recientes. Escribe arriba qué ejercicio hiciste hoy (ej. "1 hora de funcional") para calcularlo con IA.</p>`;
 
-    return workouts.slice(-10).reverse().map(w => `
-        <div class="flex items-center justify-between p-3.5 bg-[#040B08]/70 rounded-2xl border border-emerald-500/15 hover:border-emerald-500/35 transition-all">
-            <div class="flex items-center gap-3">
-                <div class="size-10 rounded-xl bg-[#10E775]/15 text-[#10E775] flex items-center justify-center border border-[#10E775]/30">
-                    <span class="material-symbols-outlined text-lg">${getWorkoutIcon(w)}</span>
+    return workouts.slice(-12).reverse().map(w => {
+        const details = w.details || {};
+        return `
+        <div class="p-4 bg-[#040B08]/75 rounded-2xl border border-emerald-500/20 hover:border-emerald-500/40 transition-all flex flex-col gap-2.5">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="size-11 rounded-2xl bg-[#10E775]/15 text-[#10E775] flex items-center justify-center border border-[#10E775]/30 shrink-0">
+                        <span class="material-symbols-outlined text-xl">${getWorkoutIcon(w)}</span>
+                    </div>
+                    <div>
+                        <h5 class="text-sm font-bold text-white capitalize">${w.name || w.type}</h5>
+                        <p class="text-[11px] font-mono text-emerald-300/70">${w.date || 'Hoy'} · ${w.duration || 30} min</p>
+                    </div>
                 </div>
-                <div>
-                    <h5 class="text-xs font-bold text-white capitalize">${w.name || w.type}</h5>
-                    <p class="text-[10px] font-mono text-emerald-300/70">${w.date || 'Hoy'} · ${w.duration || 30} min</p>
+                <div class="flex items-center gap-3">
+                    <div class="text-right">
+                        <span class="text-sm font-mono font-extrabold text-[#10E775] block">-${w.calories} kcal</span>
+                        ${details.epoc_calories ? `<span class="text-[10px] font-mono text-lime-400">+${details.epoc_calories} kcal EPOC</span>` : ''}
+                    </div>
+                    <button class="delete-workout-btn text-emerald-300/50 hover:text-lime-300 transition-colors p-1 cursor-pointer" data-id="${w.id}" title="Eliminar registro">
+                        <span class="material-symbols-outlined text-base">delete</span>
+                    </button>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
-                <span class="text-xs font-mono font-extrabold text-[#10E775]">-${w.calories} kcal</span>
-                <button class="delete-workout-btn text-emerald-300/50 hover:text-lime-300 transition-colors p-1 cursor-pointer" data-id="${w.id}" title="Eliminar registro">
-                    <span class="material-symbols-outlined text-base">delete</span>
-                </button>
-            </div>
+
+            ${details.endorphins_score || details.fat_oxidized_g ? `
+                <div class="pt-2 border-t border-emerald-500/15 flex flex-wrap items-center gap-2 text-[11px]">
+                    ${details.endorphins_score ? `
+                        <span class="px-2.5 py-0.5 rounded-lg bg-teal-500/15 border border-teal-500/30 text-teal-300 font-semibold">
+                            🧠 Endorfinas: ${details.endorphins_score}
+                        </span>
+                    ` : ''}
+                    ${details.fat_oxidized_g ? `
+                        <span class="px-2.5 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-mono">
+                            🔥 ${details.fat_oxidized_g}g grasa oxidada
+                        </span>
+                    ` : ''}
+                    ${details.hydration_loss_ml ? `
+                        <span class="px-2.5 py-0.5 rounded-lg bg-emerald-950/80 border border-emerald-500/20 text-emerald-200 font-mono">
+                            💧 Sudoración: ${details.hydration_loss_ml} ml
+                        </span>
+                    ` : ''}
+                    ${details.heart_rate_zone ? `
+                        <span class="px-2.5 py-0.5 rounded-lg bg-emerald-950/80 border border-emerald-500/20 text-emerald-300/80 font-mono">
+                            ❤️ ${details.heart_rate_zone}
+                        </span>
+                    ` : ''}
+                </div>
+            ` : ''}
         </div>
-    `).join('');
+        `;
+    }).join('');
 };
 
 export const openAddWorkoutModal = (modalContainer, onSavedCallback) => {
     const state = getState();
     const latestM = getLatestMeasurement();
-    const currentWeight = latestM ? latestM.weight : (state.profile?.startingWeight || 80);
+    const indices = calculateBodyIndices(latestM || {}, state.profile);
+    let modalAiResult = null;
 
     modalContainer.innerHTML = `
-        <div class="white-card card-glow-emerald p-6 w-full max-w-md relative animate-scale-up shadow-2xl border border-emerald-500/35 my-6">
+        <div class="white-card card-glow-emerald p-6 w-full max-w-2xl relative animate-scale-up shadow-2xl border border-emerald-500/35 my-6 max-h-[90dvh] overflow-y-auto custom-scrollbar">
             <div class="flex items-center justify-between mb-4 pb-3 border-b border-emerald-500/15">
-                <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-[#10E775] text-xl">fitness_center</span>
+                <div class="flex items-center gap-2.5">
+                    <div class="size-10 rounded-2xl bg-[#10E775]/20 text-[#10E775] border border-[#10E775]/35 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-xl">psychology</span>
+                    </div>
                     <div>
-                        <h3 class="text-base font-display font-extrabold text-white uppercase">Agregar Ejercicio / Entreno</h3>
-                        <p class="text-[11px] text-emerald-300/70">Cálculo automático de calorías según tu peso (${currentWeight} kg)</p>
+                        <h3 class="text-base font-display font-extrabold text-white uppercase">¿Qué ejercicio has hecho hoy?</h3>
+                        <p class="text-[11px] text-emerald-300/70">IA personalizada a tu peso (${indices.weight} kg), masa magra (${indices.leanMass} kg) y metabolismo</p>
                     </div>
                 </div>
                 <button id="close-workout-modal" class="size-8 rounded-full bg-emerald-950 flex items-center justify-center text-emerald-300 hover:bg-emerald-900 cursor-pointer">
@@ -334,124 +492,176 @@ export const openAddWorkoutModal = (modalContainer, onSavedCallback) => {
                 </button>
             </div>
 
-            <!-- Preset Exercise Chips -->
-            <div class="mb-3">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-300/70 block mb-1.5">Selección rápida:</span>
+            <!-- AI Input inside Modal -->
+            <div class="flex flex-col gap-3">
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input id="modal-ai-wo-input" type="text" placeholder="Ej: 1 hora de funcional, 45 min de pesas, 1 hora de fútbol..." class="flex-1 rounded-2xl px-4 py-3 text-sm font-bold text-white outline-none">
+                    <button id="modal-analyze-wo-btn" class="btn-emerald px-5 py-3 text-xs font-extrabold uppercase tracking-wider shrink-0 cursor-pointer">
+                        <span class="material-symbols-outlined text-base">auto_awesome</span>
+                        Calcular con IA
+                    </button>
+                </div>
+
                 <div class="flex flex-wrap gap-1.5">
                     ${[
-                        { name: 'Musculación / Pesas', met: 5.5, min: 45, icon: 'fitness_center' },
-                        { name: 'Caminata Rápida', met: 4.3, min: 40, icon: 'directions_walk' },
-                        { name: 'Ciclismo / Bici', met: 7.5, min: 45, icon: 'directions_bike' },
-                        { name: 'Fútbol', met: 8.0, min: 60, icon: 'sports_soccer' },
-                        { name: 'Running / Trote', met: 9.0, min: 30, icon: 'sprint' },
-                        { name: 'Funcional / HIIT', met: 8.5, min: 30, icon: 'bolt' }
-                    ].map(p => `
-                        <button type="button" class="workout-preset-chip px-2.5 py-1 rounded-xl bg-emerald-950/70 hover:bg-[#10E775]/20 border border-emerald-500/25 text-[11px] font-semibold text-emerald-100 cursor-pointer transition-all" data-name="${p.name}" data-met="${p.met}" data-min="${p.min}" data-icon="${p.icon}">
-                            ${p.name}
+                        '1 hora de funcional',
+                        '45 min de musculación y pesas',
+                        '1 hora de fútbol',
+                        '45 min de ciclismo',
+                        '40 min de caminata rápida'
+                    ].map(q => `
+                        <button type="button" class="modal-wo-sample-chip px-2.5 py-1 rounded-xl bg-emerald-950/70 hover:bg-[#10E775]/20 border border-emerald-500/25 text-[11px] font-semibold text-emerald-100 cursor-pointer" data-query="${q}">
+                            ⚡ ${q}
                         </button>
                     `).join('')}
                 </div>
-            </div>
 
-            <div class="flex flex-col gap-3.5">
-                <div>
-                    <label class="text-[10px] font-bold text-[#10E775] uppercase">Ejercicio o Actividad *</label>
-                    <input id="wo-name-input" type="text" value="Musculación / Pesas" placeholder="Ej: Pesas, Cinta, Fútbol, Pádel..." class="w-full rounded-xl px-3 py-2.5 text-sm font-bold text-white outline-none mt-1">
-                </div>
-
-                <div class="grid grid-cols-3 gap-2.5">
-                    <div>
-                        <label class="text-[10px] font-bold text-emerald-300/80 uppercase">Duración (min)</label>
-                        <input id="wo-duration-input" type="number" value="45" min="5" max="300" class="w-full rounded-xl px-3 py-2 text-sm font-mono font-bold text-white outline-none mt-1">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-emerald-300/80 uppercase">Intensidad</label>
-                        <select id="wo-intensity-select" class="w-full rounded-xl px-2.5 py-2 text-xs font-bold text-white outline-none mt-1 cursor-pointer">
-                            <option value="4.0">Moderada</option>
-                            <option value="6.0" selected>Media / Fuerte</option>
-                            <option value="8.5">Intensa / Alta</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-[#10E775] uppercase">Calorías (kcal)</label>
-                        <input id="wo-calories-input" type="number" value="${Math.round(6.0 * currentWeight * (45 / 60))}" class="w-full rounded-xl px-3 py-2 text-sm font-mono font-extrabold text-[#10E775] outline-none mt-1">
-                    </div>
-                </div>
-
-                <button id="save-wo-modal-btn" class="btn-emerald py-3.5 text-xs font-extrabold uppercase tracking-wider mt-1 cursor-pointer">
-                    <span class="material-symbols-outlined text-lg">check_circle</span>
-                    Guardar Ejercicio Realizado
-                </button>
+                <div id="modal-ai-wo-result" class="hidden mt-2"></div>
             </div>
         </div>
     `;
     modalContainer.classList.remove('hidden');
 
-    let selectedIcon = 'fitness_center';
+    const inputEl = document.getElementById('modal-ai-wo-input');
+    const analyzeBtn = document.getElementById('modal-analyze-wo-btn');
+    const resultBox = document.getElementById('modal-ai-wo-result');
 
-    const recalcCalories = () => {
-        const mins = Number(document.getElementById('wo-duration-input')?.value) || 30;
-        const met = Number(document.getElementById('wo-intensity-select')?.value) || 6.0;
-        const est = Math.round(met * currentWeight * (mins / 60));
-        const calInp = document.getElementById('wo-calories-input');
-        if (calInp) calInp.value = est;
+    const runModalAnalysis = async (queryText) => {
+        const text = (queryText || inputEl?.value || '').trim();
+        if (!text) return;
+
+        analyzeBtn.disabled = true;
+        analyzeBtn.innerHTML = `<span class="material-symbols-outlined animate-spin text-base">refresh</span> Calculando...`;
+
+        try {
+            modalAiResult = await analyzeWorkoutWithAI(text, state);
+            resultBox.innerHTML = renderAiWorkoutAnalysisCard(modalAiResult, indices);
+            resultBox.classList.remove('hidden');
+
+            resultBox.querySelector('#save-ai-workout-btn')?.addEventListener('click', async () => {
+                const saved = await addWorkout({
+                    name: modalAiResult.name,
+                    duration: modalAiResult.duration,
+                    calories: modalAiResult.calories,
+                    icon: modalAiResult.icon || 'bolt',
+                    type: 'ai_workout',
+                    details: modalAiResult
+                });
+                modalContainer.classList.add('hidden');
+                window.showAlert?.(
+                    '¡Entrenamiento IA Guardado!',
+                    `${modalAiResult.name}: -${modalAiResult.calories} kcal (+${modalAiResult.epoc_calories} EPOC) · ${modalAiResult.endorphins_score}`,
+                    'success'
+                );
+                if (onSavedCallback) onSavedCallback(saved);
+            });
+        } finally {
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = `<span class="material-symbols-outlined text-base">auto_awesome</span> Calcular con IA`;
+        }
     };
 
-    document.getElementById('wo-duration-input')?.addEventListener('input', recalcCalories);
-    document.getElementById('wo-intensity-select')?.addEventListener('change', recalcCalories);
+    analyzeBtn?.addEventListener('click', () => runModalAnalysis());
+    inputEl?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') runModalAnalysis();
+    });
 
-    modalContainer.querySelectorAll('.workout-preset-chip').forEach(chip => {
+    modalContainer.querySelectorAll('.modal-wo-sample-chip').forEach(chip => {
         chip.addEventListener('click', () => {
-            const name = chip.dataset.name;
-            const met = Number(chip.dataset.met) || 6.0;
-            const min = Number(chip.dataset.min) || 45;
-            selectedIcon = chip.dataset.icon || 'fitness_center';
-            document.getElementById('wo-name-input').value = name;
-            document.getElementById('wo-duration-input').value = min;
-            document.getElementById('wo-calories-input').value = Math.round(met * currentWeight * (min / 60));
+            if (inputEl) inputEl.value = chip.dataset.query;
+            runModalAnalysis(chip.dataset.query);
         });
     });
 
     document.getElementById('close-workout-modal').onclick = () => modalContainer.classList.add('hidden');
-
-    document.getElementById('save-wo-modal-btn').onclick = async () => {
-        const name = document.getElementById('wo-name-input').value.trim() || 'Entrenamiento';
-        const duration = Number(document.getElementById('wo-duration-input').value) || 30;
-        const calories = Number(document.getElementById('wo-calories-input').value) || 200;
-
-        const saved = await addWorkout({
-            name,
-            duration,
-            calories,
-            icon: selectedIcon,
-            type: 'workout'
-        });
-
-        modalContainer.classList.add('hidden');
-        window.showAlert?.('¡Ejercicio Registrado!', `${name} · ${duration} min (-${calories} kcal quemadas)`, 'success');
-        if (onSavedCallback) onSavedCallback(saved);
-    };
 };
 
 export const attachWorkoutsEvents = () => {
+    const state = getState();
     const modal = document.getElementById('workout-modal');
+    const aiInput = document.getElementById('ai-workout-input');
+    const analyzeBtn = document.getElementById('analyze-workout-ai-btn');
+    const resultContainer = document.getElementById('ai-workout-result-container');
+
+    const latestMeas = getLatestMeasurement();
+    const indices = calculateBodyIndices(latestMeas || {}, state.profile);
+
+    const bindSaveAiResult = () => {
+        document.getElementById('save-ai-workout-btn')?.addEventListener('click', async () => {
+            if (!lastAiWorkoutResult) return;
+            await addWorkout({
+                name: lastAiWorkoutResult.name,
+                duration: lastAiWorkoutResult.duration,
+                calories: lastAiWorkoutResult.calories,
+                icon: lastAiWorkoutResult.icon || 'bolt',
+                type: 'ai_workout',
+                details: lastAiWorkoutResult
+            });
+            const savedCopy = lastAiWorkoutResult;
+            lastAiWorkoutResult = null;
+            lastAiQuery = '';
+            window.showAlert?.(
+                '¡Entrenamiento Registrado!',
+                `${savedCopy.name} (-${savedCopy.calories} kcal · ${savedCopy.endorphins_score}) guardado en tu historial.`,
+                'success'
+            );
+            window.router.navigate('workouts');
+        });
+    };
+
+    if (lastAiWorkoutResult) {
+        bindSaveAiResult();
+    }
+
+    const triggerAiWorkoutAnalysis = async (customText) => {
+        const query = (customText !== undefined ? customText : aiInput?.value || '').trim();
+        if (!query) return;
+        lastAiQuery = query;
+
+        if (analyzeBtn) {
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = `<span class="material-symbols-outlined animate-spin text-lg">refresh</span><span>Calculando...</span>`;
+        }
+
+        try {
+            const analysis = await analyzeWorkoutWithAI(query, state);
+            lastAiWorkoutResult = analysis;
+            if (resultContainer) {
+                resultContainer.innerHTML = renderAiWorkoutAnalysisCard(analysis, indices);
+                resultContainer.classList.remove('hidden');
+                bindSaveAiResult();
+            }
+        } catch (err) {
+            window.showAlert?.('Error de Análisis', err.message || 'No se pudo analizar el entrenamiento.', 'error');
+        } finally {
+            if (analyzeBtn) {
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = `<span class="material-symbols-outlined text-lg">auto_awesome</span><span>Calcular con IA</span>`;
+            }
+        }
+    };
+
+    analyzeBtn?.addEventListener('click', () => triggerAiWorkoutAnalysis());
+    aiInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') triggerAiWorkoutAnalysis();
+    });
+
+    document.querySelectorAll('.ai-workout-sample-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const q = chip.dataset.query;
+            if (aiInput) aiInput.value = q;
+            triggerAiWorkoutAnalysis(q);
+        });
+    });
+
+    document.getElementById('tab-ai-btn')?.addEventListener('click', () => {
+        activeWorkoutTab = 'ai';
+        window.router.navigate('workouts');
+    });
 
     document.getElementById('tab-gym-btn')?.addEventListener('click', () => {
         activeWorkoutTab = 'gym';
         window.router.navigate('workouts');
-    });
-
-    document.getElementById('tab-routines-btn')?.addEventListener('click', () => {
-        activeWorkoutTab = 'routines';
-        window.router.navigate('workouts');
-    });
-
-    document.getElementById('open-add-workout-modal-btn')?.addEventListener('click', () => {
-        openAddWorkoutModal(modal, () => window.router.navigate('workouts'));
-    });
-
-    document.getElementById('custom-cardio-btn')?.addEventListener('click', () => {
-        openAddWorkoutModal(modal, () => window.router.navigate('workouts'));
     });
 
     document.querySelectorAll('.exercise-name-input').forEach(inp => {
@@ -560,26 +770,6 @@ export const attachWorkoutsEvents = () => {
         await saveGymSession(currentSession);
         window.showAlert?.('¡Entrenamiento Guardado!', 'Se calculó tu volumen levantado y calorías quemadas.', 'success');
         window.router.navigate('workouts');
-    });
-
-    document.querySelectorAll('.log-quick-routine-btn').forEach(btn => {
-        btn.onclick = async (e) => {
-            const name = e.currentTarget.dataset.name;
-            const duration = parseInt(e.currentTarget.dataset.duration);
-            const calories = parseInt(e.currentTarget.dataset.calories);
-            const icon = e.currentTarget.dataset.icon;
-
-            await addWorkout({
-                name,
-                duration,
-                calories,
-                icon,
-                type: 'routine'
-            });
-
-            window.showAlert?.('¡Entrenamiento Registrado!', `${name} (-${calories} kcal quemadas)`, 'success');
-            window.router.navigate('workouts');
-        };
     });
 
     document.querySelectorAll('.delete-workout-btn').forEach(btn => {

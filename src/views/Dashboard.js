@@ -528,62 +528,80 @@ export const renderDashboard = () => {
                                 <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-emerald-500/15">
                                     <div class="flex items-center gap-3">
                                         <div class="size-10 rounded-2xl bg-[#10E775]/15 text-[#10E775] border border-[#10E775]/30 flex items-center justify-center">
-                                            <span class="material-symbols-outlined text-xl">fitness_center</span>
+                                            <span class="material-symbols-outlined text-xl">auto_awesome</span>
                                         </div>
                                         <div>
-                                            <h3 class="text-base font-display font-extrabold text-white uppercase tracking-wide">Entrenamientos & Ejercicio</h3>
-                                            <p class="text-[11px] text-emerald-300/70">Quemadas hoy: <strong class="text-lime-400 font-mono">${Math.round(dailyBurn.activity)} kcal</strong> · Basal: ${dailyBurn.bmr} kcal</p>
+                                            <h3 class="text-base font-display font-extrabold text-white uppercase tracking-wide">Entrenamientos IA & Fisiología</h3>
+                                            <p class="text-[11px] text-emerald-300/70">Quemadas hoy: <strong class="text-lime-400 font-mono">${Math.round(dailyBurn.activity)} kcal</strong> · Peso base: <strong class="text-white font-mono">${bodyIndices.weight} kg</strong></p>
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <button id="dash-open-workout-modal-btn" class="btn-emerald px-3.5 py-2 text-xs font-extrabold uppercase tracking-wider cursor-pointer">
-                                            <span class="material-symbols-outlined text-base">add_circle</span>
-                                            + Agregar Ejercicio
+                                            <span class="material-symbols-outlined text-base">auto_awesome</span>
+                                            + Ejercicio IA
                                         </button>
-                                        <button onclick="window.router.navigate('workouts')" class="btn-ghost-light px-2.5 py-2 text-xs font-bold cursor-pointer" title="Ir a Bitácora Gym">
+                                        <button onclick="window.router.navigate('workouts')" class="btn-ghost-light px-2.5 py-2 text-xs font-bold cursor-pointer" title="Ir a Entrenamientos IA">
                                             <span class="material-symbols-outlined text-base">open_in_new</span>
                                         </button>
                                     </div>
                                 </div>
 
-                                <!-- 1-Click Quick Exercise Chips -->
-                                <div class="mb-4">
-                                    <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400/75 block mb-1.5">Registrar con 1 toque:</span>
-                                    <div class="flex flex-wrap gap-1.5">
+                                <!-- Inline Question: ¿Qué ejercicio has hecho hoy? -->
+                                <div class="mb-3">
+                                    <label class="text-[10px] font-bold uppercase tracking-wider text-lime-400 block mb-1.5">¿Qué ejercicio has hecho hoy?</label>
+                                    <div class="flex gap-2">
+                                        <input id="dash-ai-workout-input" type="text" placeholder="Ej: 1 hora de funcional intenso..." class="flex-1 rounded-xl px-3 py-2 text-xs font-semibold text-white bg-[#040B08]/90 border border-emerald-500/30 outline-none focus:border-[#10E775]" />
+                                        <button id="dash-ai-workout-go-btn" class="btn-emerald px-3.5 py-2 text-xs font-extrabold uppercase tracking-wider shrink-0 cursor-pointer">
+                                            Calcular IA
+                                        </button>
+                                    </div>
+                                    <div class="flex flex-wrap gap-1.5 mt-2">
                                         ${[
-                                            { label: '🏋️ Pesas / Gym (45m)', name: 'Entrenamiento de Pesas', duration: 45, calories: 320, icon: 'fitness_center' },
-                                            { label: '🚶 Caminata (40m)', name: 'Caminata Rápida', duration: 40, calories: 220, icon: 'directions_walk' },
-                                            { label: '🚴 Ciclismo (45m)', name: 'Ciclismo / Bicicleta', duration: 45, calories: 410, icon: 'directions_bike' },
-                                            { label: '⚽ Fútbol (60m)', name: 'Fútbol', duration: 60, calories: 540, icon: 'sports_soccer' }
-                                        ].map(w => `
-                                            <button type="button" class="dash-quick-workout-chip px-3 py-1.5 rounded-xl bg-[#040B08]/80 hover:bg-[#10E775]/20 border border-emerald-500/25 hover:border-[#10E775]/50 text-[11px] font-semibold text-emerald-100 hover:text-white transition-all cursor-pointer" data-name="${w.name}" data-duration="${w.duration}" data-calories="${w.calories}" data-icon="${w.icon}">
-                                                ${w.label}
+                                            '1 hora de funcional intenso',
+                                            '45 min de musculación / pesas',
+                                            '40 min de caminata rápida',
+                                            '1 partido de fútbol de 60 min'
+                                        ].map(prompt => `
+                                            <button type="button" class="dash-quick-workout-chip px-2.5 py-1 rounded-xl bg-[#040B08]/80 hover:bg-[#10E775]/20 border border-emerald-500/25 hover:border-[#10E775]/50 text-[10px] font-semibold text-emerald-100 hover:text-white transition-all cursor-pointer" data-prompt="${prompt}">
+                                                ⚡ ${prompt}
                                             </button>
                                         `).join('')}
                                     </div>
                                 </div>
 
-                                <!-- Today's Logged Workouts -->
+                                <!-- Today's Logged Workouts with AI Physiology Badges -->
                                 <div class="flex flex-col gap-2">
-                                    ${todaysWorkouts.length ? todaysWorkouts.map(w => `
-                                        <div class="p-3 rounded-2xl bg-[#040B08]/70 border border-emerald-500/20 flex items-center justify-between">
-                                            <div class="flex items-center gap-2.5">
-                                                <span class="material-symbols-outlined text-[#10E775] text-lg">${w.icon || 'fitness_center'}</span>
-                                                <div>
-                                                    <p class="text-xs font-bold text-white capitalize">${w.name || w.type}</p>
-                                                    <span class="text-[10px] font-mono text-emerald-300/70">${w.duration || 30} min</span>
+                                    ${todaysWorkouts.length ? todaysWorkouts.map(w => {
+                                        const ai = w.details || {};
+                                        return `
+                                        <div class="p-3 rounded-2xl bg-[#040B08]/70 border border-emerald-500/20 flex flex-col gap-1.5">
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-2.5">
+                                                    <span class="material-symbols-outlined text-[#10E775] text-lg">${w.icon || 'fitness_center'}</span>
+                                                    <div>
+                                                        <p class="text-xs font-bold text-white capitalize">${w.name || w.type}</p>
+                                                        <span class="text-[10px] font-mono text-emerald-300/70">${w.duration || 30} min ${ai.heart_rate_zone ? `· ${ai.heart_rate_zone}` : ''}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-xs font-mono font-extrabold text-lime-400">-${w.calories} kcal</span>
+                                                    <button class="dash-delete-workout-btn size-7 rounded-lg text-emerald-300/50 hover:text-lime-300 flex items-center justify-center cursor-pointer" data-id="${w.id}">
+                                                        <span class="material-symbols-outlined text-sm">delete</span>
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div class="flex items-center gap-2">
-                                                <span class="text-xs font-mono font-extrabold text-lime-400">-${w.calories} kcal</span>
-                                                <button class="dash-delete-workout-btn size-7 rounded-lg text-emerald-300/50 hover:text-lime-300 flex items-center justify-center cursor-pointer" data-id="${w.id}">
-                                                    <span class="material-symbols-outlined text-sm">delete</span>
-                                                </button>
-                                            </div>
+                                            ${(ai.endorphins_score || ai.fat_oxidized_g || ai.epoc_calories) ? `
+                                                <div class="flex flex-wrap gap-1.5 pt-1 border-t border-emerald-500/10">
+                                                    ${ai.endorphins_score ? `<span class="px-2 py-0.5 rounded-lg bg-[#10E775]/10 border border-[#10E775]/25 text-[9px] font-bold text-[#10E775]">🧠 Endorfinas ${ai.endorphins_score}%</span>` : ''}
+                                                    ${ai.fat_oxidized_g ? `<span class="px-2 py-0.5 rounded-lg bg-[#34D399]/10 border border-[#34D399]/25 text-[9px] font-bold text-[#34D399]">🔥 ${ai.fat_oxidized_g}g grasa</span>` : ''}
+                                                    ${ai.epoc_calories ? `<span class="px-2 py-0.5 rounded-lg bg-lime-400/10 border border-lime-400/25 text-[9px] font-bold text-lime-300">⚡ +${ai.epoc_calories} kcal EPOC</span>` : ''}
+                                                </div>
+                                            ` : ''}
                                         </div>
-                                    `).join('') : `
+                                        `;
+                                    }).join('') : `
                                         <div class="p-4 rounded-2xl bg-[#040B08]/50 border border-emerald-500/15 text-center">
-                                            <p class="text-xs text-emerald-300/60">Sin ejercicios cargados hoy. Toca un botón rápido arriba o usa <strong>"+ Agregar Ejercicio"</strong>.</p>
+                                            <p class="text-xs text-emerald-300/60">Escribe arriba qué ejercicio hiciste hoy (ej. <strong>"1 hora de funcional"</strong>) para calcular calorías, endorfinas y oxidación de grasa.</p>
                                         </div>
                                     `}
                                 </div>
@@ -1207,21 +1225,36 @@ export const attachDashboardEvents = () => {
 
     // Dashboard Workout & Exercise Events
     const dashWorkoutModal = document.getElementById('dash-workout-modal');
+    const launchAiWorkoutModalWithPrompt = (promptText = '') => {
+        if (!dashWorkoutModal) return;
+        openAddWorkoutModal(dashWorkoutModal, () => window.router.navigate('dashboard'));
+        if (promptText.trim()) {
+            const modalInput = document.getElementById('modal-ai-workout-input');
+            const modalCalcBtn = document.getElementById('modal-ai-calc-btn');
+            if (modalInput) modalInput.value = promptText.trim();
+            if (modalCalcBtn) modalCalcBtn.click();
+        }
+    };
+
     document.getElementById('dash-open-workout-modal-btn')?.addEventListener('click', () => {
-        if (dashWorkoutModal) {
-            openAddWorkoutModal(dashWorkoutModal, () => window.router.navigate('dashboard'));
+        launchAiWorkoutModalWithPrompt('');
+    });
+
+    const dashAiWorkoutInput = document.getElementById('dash-ai-workout-input');
+    document.getElementById('dash-ai-workout-go-btn')?.addEventListener('click', () => {
+        launchAiWorkoutModalWithPrompt(dashAiWorkoutInput?.value || '');
+    });
+    dashAiWorkoutInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            launchAiWorkoutModalWithPrompt(dashAiWorkoutInput.value);
         }
     });
 
     document.querySelectorAll('.dash-quick-workout-chip').forEach(chip => {
-        chip.addEventListener('click', async () => {
-            const name = chip.dataset.name;
-            const duration = Number(chip.dataset.duration) || 40;
-            const calories = Number(chip.dataset.calories) || 250;
-            const icon = chip.dataset.icon || 'fitness_center';
-            await addWorkout({ name, duration, calories, icon, type: 'workout' });
-            window.showAlert?.('¡Ejercicio Registrado!', `${name} · ${duration} min (-${calories} kcal quemadas)`, 'success');
-            window.router.navigate('dashboard');
+        chip.addEventListener('click', () => {
+            const prompt = chip.dataset.prompt || '';
+            launchAiWorkoutModalWithPrompt(prompt);
         });
     });
 

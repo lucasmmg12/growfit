@@ -734,3 +734,175 @@ export const generateMealPlanWithAI = async (profile, targetCalories = null) => 
   }
 };
 
+// --- ANALIZADOR FISIOLÓGICO Y BIOMÉTRICO DE ENTRENAMIENTO CON IA ---
+
+export const analyzeWorkoutWithAI = async (workoutText, state) => {
+  const apiKey = getOpenAIKey();
+  const profile = state?.profile || {};
+  const latestM = (state?.measurements && state.measurements.length > 0)
+    ? [...state.measurements].sort((a, b) => new Date(b.date) - new Date(a.date))[0]
+    : null;
+
+  const weight = Number(latestM?.weight || profile.startingWeight || 85);
+  const height = Number(latestM?.height || profile.height || 175);
+  const age = Number(profile.age || 32);
+  const gender = profile.gender || 'male';
+  const bodyFat = Number(latestM?.bodyFat || 24);
+  const leanMass = Number(latestM?.leanMass || (weight * (1 - bodyFat / 100)).toFixed(1));
+  const latestObetide = state?.obetideTreatments?.[0] || null;
+  const conditions = profile.health?.conditions || 'Tratamiento descenso de peso';
+  const medications = profile.health?.medications || (latestObetide ? `Obetide/Dutide (${latestObetide.dose_ml}ml)` : 'Ninguna');
+
+  // Local intelligent fallback builder if API fails or is offline
+  const buildFallbackAnalysis = (text) => {
+    const lower = (text || '').toLowerCase();
+    let duration = 60;
+    const hourMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:hora|horas|hs|h\b)/);
+    const minMatch = lower.match(/(\d+)\s*(?:min|minutos|m\b)/);
+    if (hourMatch) {
+      duration = Math.round(parseFloat(hourMatch[1].replace(',', '.')) * 60);
+      if (minMatch) duration += parseInt(minMatch[1]);
+    } else if (minMatch) {
+      duration = parseInt(minMatch[1]);
+    }
+
+    let met = 6.5;
+    let icon = 'fitness_center';
+    let cleanName = text.trim() || 'Entrenamiento Funcional';
+    let hrZone = 'Zona 3-4 (138 - 164 lpm) · Aeróbico / Mixto';
+    let muscles = ['Core & Estabilizadores', 'Tren Inferior', 'Tren Superior', 'Sistema Cardiovascular'];
+    let endorphinPct = 92;
+
+    if (lower.includes('funcional') || lower.includes('crossfit') || lower.includes('hiit') || lower.includes('circuito')) {
+      met = 7.5;
+      icon = 'bolt';
+      hrZone = 'Zona 4 (148 - 172 lpm) · Umbral Metabólico';
+      endorphinPct = 96;
+    } else if (lower.includes('fútbol') || lower.includes('futbol') || lower.includes('pádel') || lower.includes('padel')) {
+      met = 8.0;
+      icon = 'sports_soccer';
+      hrZone = 'Zona 4 (145 - 170 lpm) · Intermitente Alta Intensidad';
+      muscles = ['Cuádriceps & Isquiotibiales', 'Gemelos', 'Core', 'Capacidad Cardiorrespiratoria'];
+      endorphinPct = 95;
+    } else if (lower.includes('bici') || lower.includes('ciclismo') || lower.includes('spinning')) {
+      met = 7.2;
+      icon = 'directions_bike';
+      hrZone = 'Zona 3 (135 - 158 lpm) · Resistencia Aeróbica';
+      muscles = ['Cuádriceps', 'Glúteos', ' Isquiotibiales', 'Sistema Cardiorrespiratorio'];
+      endorphinPct = 90;
+    } else if (lower.includes('caminata') || lower.includes('caminar')) {
+      met = 4.2;
+      icon = 'directions_walk';
+      hrZone = 'Zona 2 (112 - 130 lpm) · Oxidación Lipídica Pura';
+      muscles = ['Tren Inferior', 'Glúteos', 'Core Postural'];
+      endorphinPct = 82;
+    } else if (lower.includes('pesas') || lower.includes('musculacion') || lower.includes('musculación') || lower.includes('gym') || lower.includes('fuerza')) {
+      met = 5.8;
+      icon = 'fitness_center';
+      hrZone = 'Zona 2-3 (120 - 148 lpm) · Tensión Mecánica & Hipertrofia';
+      muscles = ['Fibras Rápidas Tipo II', 'Pectorales & Dorsales', 'Tren Inferior', 'Core'];
+      endorphinPct = 91;
+    }
+
+    const calories = Math.round(met * weight * (duration / 60));
+    const epocCalories = Math.round(calories * 0.14);
+    const fatOxidizedG = Math.round((calories * 0.55) / 9);
+    const glycogenUsedG = Math.round((calories * 0.45) / 4);
+    const hydrationLossMl = Math.round((duration / 60) * (weight * 8.5));
+
+    return {
+      name: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+      duration,
+      calories,
+      epoc_calories: epocCalories,
+      total_metabolic_burn: calories + epocCalories,
+      fat_oxidized_g: fatOxidizedG,
+      glycogen_used_g: glycogenUsedG,
+      met_value: met,
+      icon,
+      endorphins_score: `${endorphinPct}% · Pico Alto de Endorfinas y Dopamina`,
+      endorphins_detail: `Liberación intensa de beta-endorfinas, serotonina y BDNF cerebral. Reduce el cortisol (estrés) en un ~30% y potencia el control de ansiedad y saciedad por las próximas 6 a 8 horas.`,
+      heart_rate_zone: hrZone,
+      muscle_groups: muscles,
+      hydration_loss_ml: hydrationLossMl,
+      recovery_hours: duration >= 60 ? '24 a 36 hs' : '18 a 24 hs',
+      metabolic_impact: `Calculado para tu peso actual de ${weight} kg (${leanMass} kg de masa magra): este entrenamiento preserva tejido muscular activo, eleva tu sensibilidad a la insulina por 24h y potencia la pérdida de grasa visceral.`,
+      post_workout_nutrition: `Ingerir 30-35g de proteína limpia + ${hydrationLossMl} ml de agua en los próximos 45 minutos para reparar fibras y proteger masa magra.`
+    };
+  };
+
+  if (!apiKey) {
+    return buildFallbackAnalysis(workoutText);
+  }
+
+  const systemPrompt = `
+    Eres un Fisiólogo del Ejercicio, Deportólogo y Endocrinólogo Clínico de "Grow Labs".
+    El usuario te dirá qué ejercicio hizo hoy (ej. "1 hora de funcional", "45 min de pesas", "jugué fútbol 1 hora").
+    Debes calcular con precisión fisiológica TODOS los indicadores basándote en el cuerpo y datos reales del usuario cargados en el sistema:
+    
+    DATOS BIOMÉTRICOS DEL USUARIO EN EL SISTEMA:
+    - Nombre: ${profile.name || 'Atleta'}
+    - Peso Corporal Actual: ${weight} kg
+    - Altura: ${height} cm
+    - Edad: ${age} años | Género: ${gender}
+    - % Grasa Corporal: ${bodyFat}% | Masa Magra Muscular (LBM): ${leanMass} kg
+    - Condiciones / Contexto Clínico: ${conditions} | Medicación: ${medications}
+    - Tratamiento GLP-1 (Obetide/Dutide): ${latestObetide ? `Activo (${latestObetide.dose_ml} ml)` : 'En seguimiento'}
+
+    Fórmula base calórica: Calorías = MET * ${weight} kg * (duración_minutos / 60), ajustada por masa magra (${leanMass} kg) y edad (${age}).
+    
+    Devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin backticks) con esta estructura exacta:
+    {
+      "name": "Nombre claro y profesional del ejercicio (ej: Funcional de Alta Intensidad)",
+      "duration": number (minutos totales, ej: 60),
+      "calories": number (calorías directas quemadas en la sesión según sus ${weight}kg),
+      "epoc_calories": number (calorías extra quemadas post-ejercicio por efecto EPOC / Afterburn en las siguientes 12-24h),
+      "total_metabolic_burn": number (calories + epoc_calories),
+      "fat_oxidized_g": number (gramos estimados de grasa corporal oxidada),
+      "glycogen_used_g": number (gramos de glucógeno muscular utilizado),
+      "met_value": number (MET estimado de la actividad, ej: 7.5),
+      "icon": "fitness_center" | "bolt" | "sports_soccer" | "directions_bike" | "directions_walk" | "sprint",
+      "endorphins_score": "Ej: 95% · Pico Alto de Endorfinas, Dopamina y Serotonina",
+      "endorphins_detail": "Explicación neuroquímica clara: liberación de beta-endorfinas, reducción de cortisol, mejora del estado de ánimo y sinergia con el centro de saciedad hipotalámico.",
+      "heart_rate_zone": "Ej: Zona 3-4 (142 - 166 lpm) · Umbral Aeróbico-Metabólico",
+      "muscle_groups": ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4"],
+      "hydration_loss_ml": number (ml de sudoración perdidos y agua recomendada a reponer según sus ${weight}kg),
+      "recovery_hours": "Ej: 24 a 36 hs",
+      "metabolic_impact": "Explicación personalizada mencionando su peso (${weight}kg), su masa magra (${leanMass}kg) y cómo esta sesión protege su músculo e impulsa la lipólisis.",
+      "post_workout_nutrition": "Recomendación concreta de proteína e hidratación post-entreno adaptada a su perfil."
+    }
+  `;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `¿Qué ejercicio hice hoy?: "${workoutText}"` }
+        ],
+        max_tokens: 650,
+        temperature: 0.3
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    const content = data.choices[0].message.content.trim().replace(/^```json/, '').replace(/```$/, '').trim();
+    const parsed = JSON.parse(content);
+    return {
+      ...buildFallbackAnalysis(workoutText),
+      ...parsed
+    };
+  } catch (err) {
+    console.warn("AI Workout fallback used:", err);
+    return buildFallbackAnalysis(workoutText);
+  }
+};
+
+
