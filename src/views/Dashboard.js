@@ -141,20 +141,6 @@ export const renderDashboard = () => {
                         </div>
                         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-emerald-500/15">
                             <div>
-                                <div class="flex flex-wrap items-center gap-2 mb-2">
-                                    <span class="badge-emerald">
-                                        <span class="size-1.5 rounded-full bg-[#10E775] animate-pulse"></span>
-                                        Biometría Activa
-                                    </span>
-                                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-lime-500/15 text-lime-300 border border-lime-500/30 flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-xs">local_fire_department</span>
-                                        Racha Activa
-                                    </span>
-                                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-teal-500/15 text-teal-300 border border-teal-500/30 flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-xs">vaccines</span>
-                                        GLP-1 ${state.obetideTreatments?.[0] ? `${state.obetideTreatments[0].dose_ml} ml` : '0.25 ml'}
-                                    </span>
-                                </div>
                                 <h2 class="text-2xl md:text-3xl font-display font-extrabold text-white tracking-tight">
                                     ¡Hola, ${state.profile.name || 'Atleta'}!
                                 </h2>
