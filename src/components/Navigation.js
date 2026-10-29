@@ -245,7 +245,7 @@ export const renderMobileHeader = (title = 'GrowFit') => {
     const state = getState();
     const currentUser = getCurrentUser();
     return `
-    <header class="lg:hidden flex items-center justify-between px-4 py-3 bg-[#040B08]/90 backdrop-blur-xl border-b border-emerald-500/15 sticky top-0 z-30 shadow-lg">
+    <header class="lg:hidden shrink-0 flex items-center justify-between px-4 py-3 bg-[#040B08]/95 backdrop-blur-xl border-b border-emerald-500/15 sticky top-0 z-30 shadow-lg">
         <div class="flex items-center gap-2.5 cursor-pointer" onclick="window.router.navigate('dashboard')">
             <div class="size-9 rounded-xl bg-gradient-to-br from-[#10E775]/25 to-emerald-600/20 flex items-center justify-center text-[#10E775] border border-[#10E775]/35 shadow-[0_0_12px_rgba(16,231,117,0.2)]">
                 <span class="material-symbols-outlined text-lg">eco</span>
@@ -269,7 +269,7 @@ export const renderMobileHeader = (title = 'GrowFit') => {
 
 export const renderBottomNav = (activeRoute = 'dashboard') => {
     return `
-    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-40 glass-nav-light px-2 py-1.5 pb-safe border-t border-emerald-500/15">
+    <nav class="lg:hidden shrink-0 fixed bottom-0 left-0 right-0 z-50 glass-nav-light px-2 pt-1.5 pb-safe border-t border-emerald-500/20 shadow-[0_-10px_30px_rgba(0,0,0,0.85)]">
         <div class="flex items-center justify-around max-w-lg mx-auto">
             <!-- 1. Inicio -->
             <button onclick="window.router.navigate('dashboard')" class="flex flex-col items-center gap-0.5 py-1 px-2 transition-colors ${

@@ -14,10 +14,10 @@ export const renderMealPlan = () => {
     const currentDay = days[activeDayTab] || days[0] || null;
 
     return `
-    <div class="flex h-screen w-full bg-[#0F172A] font-body text-slate-100 overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#050C09] font-body text-slate-100 overflow-hidden fade-in">
         ${renderSidebar('mealplan')}
 
-        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-[#0F172A]">
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative z-10">
             ${renderMobileHeader('Plan Nutricional IA')}
 
             <div class="flex-1 overflow-y-auto px-4 md:px-8 py-5 custom-scrollbar pb-28 lg:pb-8">
