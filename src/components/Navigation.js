@@ -269,45 +269,61 @@ export const renderMobileHeader = (title = 'GrowFit') => {
 
 export const renderBottomNav = (activeRoute = 'dashboard') => {
     return `
-    <nav class="lg:hidden shrink-0 fixed bottom-0 left-0 right-0 z-50 glass-nav-light px-2 pt-1.5 pb-safe border-t border-emerald-500/20 shadow-[0_-10px_30px_rgba(0,0,0,0.85)]">
+    <nav class="lg:hidden shrink-0 fixed bottom-0 left-0 right-0 z-50 glass-nav-light px-1.5 pt-1.5 pb-safe border-t border-emerald-500/20 shadow-[0_-10px_30px_rgba(0,0,0,0.85)]">
         <div class="flex items-center justify-around max-w-lg mx-auto">
             <!-- 1. Inicio -->
-            <button onclick="window.router.navigate('dashboard')" class="flex flex-col items-center gap-0.5 py-1 px-2 transition-colors ${
-                activeRoute === 'dashboard' ? 'text-[#10E775] font-bold' : 'text-emerald-200/50 hover:text-emerald-200'
+            <button onclick="window.router.navigate('dashboard')" class="flex flex-col items-center gap-0.5 py-1 px-1.5 transition-colors cursor-pointer ${
+                activeRoute === 'dashboard' ? 'text-[#10E775] font-bold' : 'text-emerald-200/55 hover:text-emerald-200'
             }">
-                <span class="material-symbols-outlined text-2xl">space_dashboard</span>
-                <span class="text-[9px] tracking-tight">Inicio</span>
+                <span class="material-symbols-outlined text-xl">space_dashboard</span>
+                <span class="text-[8.5px] tracking-tight">Inicio</span>
             </button>
 
             <!-- 2. Comidas -->
-            <button onclick="window.router.navigate('tracker')" class="flex flex-col items-center gap-0.5 py-1 px-2 transition-colors ${
-                activeRoute === 'tracker' ? 'text-[#10E775] font-bold' : 'text-emerald-200/50 hover:text-emerald-200'
+            <button onclick="window.router.navigate('tracker')" class="flex flex-col items-center gap-0.5 py-1 px-1.5 transition-colors cursor-pointer ${
+                activeRoute === 'tracker' ? 'text-[#10E775] font-bold' : 'text-emerald-200/55 hover:text-emerald-200'
             }">
-                <span class="material-symbols-outlined text-2xl">restaurant</span>
-                <span class="text-[9px] tracking-tight">Comidas</span>
+                <span class="material-symbols-outlined text-xl">restaurant</span>
+                <span class="text-[8.5px] tracking-tight">Comidas</span>
             </button>
 
-            <!-- 3. Center Quick Add Button -->
-            <div class="-mt-5">
-                <button onclick="window.openQuickActionsModal()" class="size-12 rounded-2xl btn-emerald flex items-center justify-center border-2 border-[#040B08] active:scale-90 transition-transform">
+            <!-- 3. Entrenamientos -->
+            <button onclick="window.router.navigate('workouts')" class="flex flex-col items-center gap-0.5 py-1 px-1.5 transition-colors cursor-pointer ${
+                activeRoute === 'workouts' ? 'text-[#10E775] font-bold' : 'text-emerald-200/55 hover:text-emerald-200'
+            }">
+                <span class="material-symbols-outlined text-xl">fitness_center</span>
+                <span class="text-[8.5px] tracking-tight">Entreno</span>
+            </button>
+
+            <!-- 4. Center Quick Add Button -->
+            <div class="-mt-5 px-0.5">
+                <button onclick="window.openQuickActionsModal()" class="size-11 rounded-2xl btn-emerald flex items-center justify-center border-2 border-[#040B08] active:scale-90 transition-transform cursor-pointer">
                     <span class="material-symbols-outlined text-2xl font-black">add</span>
                 </button>
             </div>
 
-            <!-- 4. Obetide -->
-            <button onclick="window.router.navigate('obetide')" class="flex flex-col items-center gap-0.5 py-1 px-2 transition-colors ${
-                activeRoute === 'obetide' ? 'text-teal-400 font-bold' : 'text-emerald-200/50 hover:text-emerald-200'
+            <!-- 5. Medidas y Peso -->
+            <button onclick="window.router.navigate('measurements')" class="flex flex-col items-center gap-0.5 py-1 px-1.5 transition-colors cursor-pointer ${
+                activeRoute === 'measurements' ? 'text-[#34D399] font-bold' : 'text-emerald-200/55 hover:text-emerald-200'
             }">
-                <span class="material-symbols-outlined text-2xl">vaccines</span>
-                <span class="text-[9px] tracking-tight">Obetide</span>
+                <span class="material-symbols-outlined text-xl">monitor_weight</span>
+                <span class="text-[8.5px] tracking-tight">Medidas</span>
             </button>
 
-            <!-- 5. Billetera -->
-            <button onclick="window.router.navigate('wallet')" class="flex flex-col items-center gap-0.5 py-1 px-2 transition-colors ${
-                activeRoute === 'wallet' ? 'text-lime-400 font-bold' : 'text-emerald-200/50 hover:text-emerald-200'
+            <!-- 6. Obetide -->
+            <button onclick="window.router.navigate('obetide')" class="flex flex-col items-center gap-0.5 py-1 px-1.5 transition-colors cursor-pointer ${
+                activeRoute === 'obetide' ? 'text-teal-400 font-bold' : 'text-emerald-200/55 hover:text-emerald-200'
             }">
-                <span class="material-symbols-outlined text-2xl">account_balance_wallet</span>
-                <span class="text-[9px] tracking-tight">Billetera</span>
+                <span class="material-symbols-outlined text-xl">vaccines</span>
+                <span class="text-[8.5px] tracking-tight">Obetide</span>
+            </button>
+
+            <!-- 7. Billetera -->
+            <button onclick="window.router.navigate('wallet')" class="flex flex-col items-center gap-0.5 py-1 px-1.5 transition-colors cursor-pointer ${
+                activeRoute === 'wallet' ? 'text-lime-400 font-bold' : 'text-emerald-200/55 hover:text-emerald-200'
+            }">
+                <span class="material-symbols-outlined text-xl">account_balance_wallet</span>
+                <span class="text-[8.5px] tracking-tight">Billetera</span>
             </button>
         </div>
     </nav>

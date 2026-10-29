@@ -1,5 +1,4 @@
-import { getState, addWorkout, deleteWorkout, saveGymSession, calculate1RM, getArgentinaDate } from '../state';
-import { HOME_ROUTINES } from '../data/routines';
+import { getState, addWorkout, deleteWorkout, saveGymSession, calculate1RM, getArgentinaDate, getLatestMeasurement } from '../state';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
 
 let activeWorkoutTab = 'gym'; // 'gym' | 'routines'
@@ -31,57 +30,70 @@ let currentSession = {
 export const renderWorkouts = () => {
     const state = getState();
     const workouts = state.workouts || [];
-    const gymSessions = state.gymSessions || [];
 
-    // Calculate this month stats
     const currentMonthKey = getArgentinaDate().slice(0, 7);
     const thisMonthWorkouts = workouts.filter(w => (w.date || '').startsWith(currentMonthKey));
     const totalBurnedMonth = thisMonthWorkouts.reduce((s, w) => s + (w.calories || 0), 0);
     const daysTrainedMonth = new Set(thisMonthWorkouts.map(w => w.date)).size;
 
     return `
-    <div class="flex h-screen w-full bg-[#050C09] font-sans text-slate-100 overflow-hidden fade-in">
+    <div class="flex h-screen w-full bg-[#050C09] font-sans text-[#ECFDF5] overflow-hidden fade-in">
         ${renderSidebar('workouts')}
 
         <!-- Main Content -->
         <main class="flex-1 flex flex-col h-full overflow-hidden relative z-10">
             ${renderMobileHeader('Entrenamientos')}
 
-            <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-8">
-                <div class="max-w-5xl mx-auto flex flex-col gap-6">
+            <div class="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar pb-28 lg:pb-10">
+                <div class="max-w-7xl mx-auto flex flex-col gap-6">
 
-                    <!-- Top KPI Banner -->
-                    <div class="white-card p-6 border-slate-700/60 bg-gradient-to-r from-slate-900 via-slate-800/80 to-slate-900">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <!-- Top KPI & Quick Add Exercise Banner -->
+                    <div class="white-card card-glow-emerald p-6 shadow-2xl relative overflow-hidden">
+                        <div class="pointer-events-none select-none absolute -right-4 -top-6 text-[#10E775] opacity-[0.09] -rotate-12">
+                            <span class="material-symbols-outlined text-[130px]">fitness_center</span>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
                             <div>
-                                <span class="badge-emerald mb-1">Módulo de Rendimiento</span>
-                                <h2 class="text-3xl font-bold text-white tracking-tight">Registro de Ejercicio</h2>
-                                <p class="text-xs text-slate-400 mt-0.5">Controla tu sobrecarga progresiva y gasto calórico.</p>
+                                <span class="badge-emerald mb-1.5">
+                                    <span class="size-1.5 rounded-full bg-[#10E775] animate-pulse"></span>
+                                    Módulo de Rendimiento & Fuerza
+                                </span>
+                                <h2 class="text-2xl md:text-3xl font-display font-extrabold text-white tracking-tight">
+                                    Entrenamientos & Ejercicio
+                                </h2>
+                                <p class="text-xs text-emerald-300/75 mt-0.5">
+                                    Registra ejercicios de pesas, deportes o cardio con cálculo automático de calorías y 1RM.
+                                </p>
                             </div>
 
-                            <div class="flex items-center gap-4">
-                                <div class="p-3 bg-slate-800/90 rounded-2xl border border-slate-700/60 text-center shadow-sm">
-                                    <span class="text-[10px] font-bold uppercase text-slate-400">Este Mes</span>
-                                    <p class="text-xl font-bold text-emerald-400">${totalBurnedMonth} <span class="text-xs font-normal text-slate-400">kcal</span></p>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <div class="p-3 bg-[#040B08]/75 rounded-2xl border border-emerald-500/25 text-center">
+                                    <span class="text-[10px] font-bold uppercase text-emerald-300/70 block">Este Mes</span>
+                                    <p class="text-lg font-mono font-extrabold text-[#10E775]">${totalBurnedMonth} <span class="text-xs font-normal text-emerald-300/60">kcal</span></p>
                                 </div>
-                                <div class="p-3 bg-slate-800/90 rounded-2xl border border-slate-700/60 text-center shadow-sm">
-                                    <span class="text-[10px] font-bold uppercase text-slate-400">Sesiones</span>
-                                    <p class="text-xl font-bold text-emerald-400">${daysTrainedMonth} <span class="text-xs font-normal text-slate-400">días</span></p>
+                                <div class="p-3 bg-[#040B08]/75 rounded-2xl border border-emerald-500/25 text-center">
+                                    <span class="text-[10px] font-bold uppercase text-emerald-300/70 block">Días Activos</span>
+                                    <p class="text-lg font-mono font-extrabold text-emerald-300">${daysTrainedMonth} <span class="text-xs font-normal text-emerald-300/60">días</span></p>
                                 </div>
+                                <button id="open-add-workout-modal-btn" class="btn-emerald px-5 py-3.5 text-xs font-extrabold uppercase tracking-wider cursor-pointer">
+                                    <span class="material-symbols-outlined text-lg">add_circle</span>
+                                    + Agregar Ejercicio
+                                </button>
                             </div>
                         </div>
 
                         <!-- Tab Switcher (Gym Logbook vs Quick Routines) -->
-                        <div class="flex gap-2 p-1 bg-slate-800/80 border border-slate-700/60 rounded-2xl mt-5 text-xs font-bold">
-                            <button id="tab-gym-btn" class="flex-1 py-2.5 rounded-xl transition-all ${
-                                activeWorkoutTab === 'gym' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                        <div class="flex gap-2 p-1.5 bg-[#040B08]/80 border border-emerald-500/20 rounded-2xl mt-5 text-xs font-bold relative z-10">
+                            <button id="tab-gym-btn" class="flex-1 py-2.5 rounded-xl transition-all cursor-pointer ${
+                                activeWorkoutTab === 'gym' ? 'btn-emerald shadow-sm' : 'text-emerald-300/70 hover:text-white'
                             }">
-                                <span class="material-symbols-outlined text-base align-middle mr-1">fitness_center</span> Bitácora Gym & 1RM
+                                <span class="material-symbols-outlined text-base align-middle mr-1">fitness_center</span> Bitácora de Pesas & 1RM
                             </button>
-                            <button id="tab-routines-btn" class="flex-1 py-2.5 rounded-xl transition-all ${
-                                activeWorkoutTab === 'routines' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                            <button id="tab-routines-btn" class="flex-1 py-2.5 rounded-xl transition-all cursor-pointer ${
+                                activeWorkoutTab === 'routines' ? 'btn-emerald shadow-sm' : 'text-emerald-300/70 hover:text-white'
                             }">
-                                <span class="material-symbols-outlined text-base align-middle mr-1">timer</span> Rutinas & Cardio
+                                <span class="material-symbols-outlined text-base align-middle mr-1">sprint</span> Cardio, Deportes & Rutinas
                             </button>
                         </div>
                     </div>
@@ -90,34 +102,37 @@ export const renderWorkouts = () => {
                     <div id="gym-logbook-view" class="${activeWorkoutTab === 'gym' ? 'flex' : 'hidden'} flex-col gap-6">
                         
                         <!-- Rest Timer Widget Card -->
-                        <div class="white-card p-5 bg-gradient-to-r from-slate-900 to-slate-800 border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="white-card card-glow-mint p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
-                                <div class="size-11 rounded-2xl bg-slate-800 text-emerald-400 border border-slate-700 flex items-center justify-center shadow-sm">
-                                    <span class="material-symbols-outlined text-2xl">hourglass_empty</span>
+                                <div class="size-11 rounded-2xl bg-emerald-500/20 text-[#10E775] border border-emerald-500/35 flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-2xl">timer</span>
                                 </div>
                                 <div>
-                                    <h4 class="text-sm font-bold text-emerald-400 uppercase">Temporizador de Descanso</h4>
-                                    <p id="rest-timer-display" class="text-2xl font-mono font-black text-white">
+                                    <h4 class="text-xs font-extrabold text-[#10E775] uppercase tracking-wider">Temporizador de Descanso</h4>
+                                    <p id="rest-timer-display" class="text-2xl font-mono font-extrabold text-white">
                                         ${restSecondsRemaining > 0 ? `${restSecondsRemaining}s` : 'Listo para la serie'}
                                     </p>
                                 </div>
                             </div>
 
-                            <div class="flex items-center gap-2">
+                            <div class="flex flex-wrap items-center gap-2">
                                 <button class="start-rest-btn btn-emerald-soft px-3 py-1.5 text-xs font-bold" data-sec="45">45s</button>
                                 <button class="start-rest-btn btn-emerald-soft px-3 py-1.5 text-xs font-bold" data-sec="60">60s</button>
                                 <button class="start-rest-btn btn-emerald-soft px-3 py-1.5 text-xs font-bold" data-sec="90">90s</button>
                                 <button class="start-rest-btn btn-emerald-soft px-3 py-1.5 text-xs font-bold" data-sec="120">120s</button>
-                                ${restSecondsRemaining > 0 ? `<button id="stop-rest-btn" class="btn-ghost-light px-3 py-1.5 text-xs font-bold text-red-400">Parar</button>` : ''}
+                                ${restSecondsRemaining > 0 ? `<button id="stop-rest-btn" class="btn-ghost-light px-3 py-1.5 text-xs font-bold text-lime-300">Parar</button>` : ''}
                             </div>
                         </div>
 
                         <!-- Active Exercises in Session -->
                         <div class="flex flex-col gap-4">
-                            <div class="flex items-center justify-between">
-                                <h3 class="text-xl font-bold text-white uppercase">Ejercicios de la Sesión</h3>
-                                <button id="add-exercise-btn" class="btn-emerald-soft text-xs px-3.5 py-1.5 font-bold">
-                                    <span class="material-symbols-outlined text-sm">add</span> Añadir Ejercicio
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                    <h3 class="text-lg font-display font-extrabold text-white uppercase">Ejercicios de Pesas en la Sesión</h3>
+                                    <p class="text-xs text-emerald-300/70">Calcula tu fuerza máxima (1RM) automáticamente al cargar peso y repeticiones</p>
+                                </div>
+                                <button id="add-exercise-btn" class="btn-emerald-soft text-xs px-4 py-2 font-extrabold cursor-pointer">
+                                    <span class="material-symbols-outlined text-sm">add_circle</span> + Añadir Ejercicio de Pesas
                                 </button>
                             </div>
 
@@ -126,8 +141,8 @@ export const renderWorkouts = () => {
                             </div>
 
                             <div class="flex justify-end gap-3 pt-2">
-                                <button id="finish-gym-session-btn" class="btn-emerald px-6 py-3 text-sm font-bold shadow-emerald-sm">
-                                    <span class="material-symbols-outlined text-lg">check_circle</span> Finalizar y Guardar Sesión
+                                <button id="finish-gym-session-btn" class="btn-emerald px-6 py-3.5 text-xs font-extrabold uppercase tracking-wider cursor-pointer">
+                                    <span class="material-symbols-outlined text-lg">check_circle</span> Finalizar y Guardar Sesión de Pesas
                                 </button>
                             </div>
                         </div>
@@ -135,13 +150,13 @@ export const renderWorkouts = () => {
 
                     <!-- TAB 2: ROUTINES & CARDIO -->
                     <div id="routines-view" class="${activeWorkoutTab === 'routines' ? 'flex' : 'hidden'} flex-col gap-5">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-800/90 p-4 rounded-2xl border border-slate-700/60 shadow-sm">
+                        <div class="white-card card-glow-mint p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div>
-                                <h3 class="text-base font-bold text-white uppercase tracking-tight">Deportes, Cardio & Rutinas</h3>
-                                <p class="text-xs text-slate-400">Registra tu actividad favorita con 1 toque o ingresa una personalizada.</p>
+                                <h3 class="text-base font-display font-extrabold text-white uppercase tracking-tight">Deportes, Cardio & Rutinas Rápidas</h3>
+                                <p class="text-xs text-emerald-300/70">Registra tu actividad favorita con 1 toque o carga un ejercicio personalizado.</p>
                             </div>
-                            <button id="custom-cardio-btn" class="btn-emerald-soft text-xs px-3.5 py-2 font-bold flex items-center justify-center gap-1.5 shadow-sm">
-                                <span class="material-symbols-outlined text-base">add_circle</span> Actividad Personalizada
+                            <button id="custom-cardio-btn" class="btn-emerald text-xs px-4 py-2.5 font-extrabold flex items-center justify-center gap-1.5 cursor-pointer">
+                                <span class="material-symbols-outlined text-base">add_circle</span> + Ejercicio Personalizado
                             </button>
                         </div>
 
@@ -151,10 +166,13 @@ export const renderWorkouts = () => {
                     </div>
 
                     <!-- History / Recent Sessions -->
-                    <div class="white-card p-6">
-                        <h3 class="text-lg font-bold text-white uppercase mb-4 pb-2 border-b border-slate-700/60">
-                            Historial de Entrenamientos
-                        </h3>
+                    <div class="white-card p-6 border border-emerald-500/20">
+                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-emerald-500/15">
+                            <h3 class="text-base font-display font-extrabold text-white uppercase">
+                                Historial de Ejercicios y Entrenamientos
+                            </h3>
+                            <span class="badge-emerald font-mono">${workouts.length} sesiones</span>
+                        </div>
                         <div class="flex flex-col gap-3">
                             ${renderWorkoutHistory(workouts)}
                         </div>
@@ -165,18 +183,24 @@ export const renderWorkouts = () => {
 
             ${renderBottomNav('workouts')}
         </main>
+
+        <!-- Add Exercise / Workout Modal -->
+        <div id="workout-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"></div>
     </div>
     `;
 };
 
 const renderExercises = (exercises) => {
-    if (!exercises.length) return `<p class="text-xs text-slate-400 italic py-4 text-center">No hay ejercicios agregados.</p>`;
+    if (!exercises.length) return `<p class="text-xs text-emerald-300/60 italic py-4 text-center">No hay ejercicios agregados en la sesión actual.</p>`;
 
     return exercises.map((ex, exIdx) => `
-        <div class="white-card p-5 border border-slate-700/60">
-            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-700/60">
-                <input class="exercise-name-input bg-transparent border-none font-bold text-base md:text-lg text-white uppercase outline-none focus:bg-slate-800 rounded px-1" value="${ex.name}" data-exidx="${exIdx}">
-                <button class="remove-exercise-btn text-xs text-slate-400 hover:text-red-400 font-semibold" data-exidx="${exIdx}">
+        <div class="white-card p-5 border border-emerald-500/20">
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-emerald-500/15">
+                <div class="flex items-center gap-2 flex-1">
+                    <span class="material-symbols-outlined text-[#10E775] text-lg">fitness_center</span>
+                    <input class="exercise-name-input bg-transparent border-none font-display font-extrabold text-base text-white uppercase outline-none rounded px-2 py-0.5 w-full max-w-xs" value="${ex.name}" data-exidx="${exIdx}">
+                </div>
+                <button class="remove-exercise-btn text-xs text-emerald-300/60 hover:text-lime-300 font-semibold cursor-pointer" data-exidx="${exIdx}">
                     Quitar
                 </button>
             </div>
@@ -185,31 +209,31 @@ const renderExercises = (exercises) => {
             <div class="overflow-x-auto">
                 <table class="w-full text-xs text-left">
                     <thead>
-                        <tr class="text-slate-400 font-bold uppercase text-[10px] border-b border-slate-700/60">
-                            <th class="pb-2">Set</th>
+                        <tr class="text-emerald-300/70 font-bold uppercase text-[10px] border-b border-emerald-500/15">
+                            <th class="pb-2">Serie</th>
                             <th class="pb-2">Peso (kg)</th>
                             <th class="pb-2">Reps</th>
-                            <th class="pb-2">1RM Est.</th>
-                            <th class="pb-2 text-center">Listo</th>
+                            <th class="pb-2">1RM Estimado</th>
+                            <th class="pb-2 text-center">Completado</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-700/60">
+                    <tbody class="divide-y divide-emerald-500/10">
                         ${ex.sets.map((set, sIdx) => {
                             const oneRM = calculate1RM(set.weight, set.reps);
                             return `
                             <tr class="font-medium">
-                                <td class="py-2.5 font-bold text-slate-400">#${sIdx + 1}</td>
+                                <td class="py-2.5 font-mono font-bold text-emerald-300/80">#${sIdx + 1}</td>
                                 <td class="py-2.5">
-                                    <input type="number" value="${set.weight}" class="set-weight-input w-16 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 font-mono font-bold text-white outline-none focus:border-emerald-500" data-exidx="${exIdx}" data-sidx="${sIdx}">
+                                    <input type="number" value="${set.weight}" class="set-weight-input w-20 rounded-xl px-2.5 py-1.5 font-mono font-bold text-white outline-none" data-exidx="${exIdx}" data-sidx="${sIdx}">
                                 </td>
                                 <td class="py-2.5">
-                                    <input type="number" value="${set.reps}" class="set-reps-input w-14 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 font-mono font-bold text-white outline-none focus:border-emerald-500" data-exidx="${exIdx}" data-sidx="${sIdx}">
+                                    <input type="number" value="${set.reps}" class="set-reps-input w-16 rounded-xl px-2.5 py-1.5 font-mono font-bold text-white outline-none" data-exidx="${exIdx}" data-sidx="${sIdx}">
                                 </td>
-                                <td class="py-2.5 font-mono font-bold text-emerald-400">
+                                <td class="py-2.5 font-mono font-extrabold text-[#10E775]">
                                     ${oneRM > 0 ? oneRM + ' kg' : '--'}
                                 </td>
                                 <td class="py-2.5 text-center">
-                                    <input type="checkbox" ${set.completed ? 'checked' : ''} class="set-completed-check size-4 accent-emerald-500 cursor-pointer" data-exidx="${exIdx}" data-sidx="${sIdx}">
+                                    <input type="checkbox" ${set.completed ? 'checked' : ''} class="set-completed-check size-4 accent-[#10E775] cursor-pointer" data-exidx="${exIdx}" data-sidx="${sIdx}">
                                 </td>
                             </tr>
                             `;
@@ -218,7 +242,7 @@ const renderExercises = (exercises) => {
                 </table>
             </div>
 
-            <button class="add-set-btn btn-emerald-soft text-[11px] px-3 py-1 mt-3 font-bold" data-exidx="${exIdx}">
+            <button class="add-set-btn btn-emerald-soft text-[11px] px-3.5 py-1.5 mt-3 font-bold cursor-pointer" data-exidx="${exIdx}">
                 + Agregar Serie
             </button>
         </div>
@@ -227,30 +251,29 @@ const renderExercises = (exercises) => {
 
 const renderRoutinesCards = () => {
     const routines = [
+        { name: 'Entrenamiento de Pesas / Gym', duration: 45, calories: 340, category: 'Fuerza & Hipertrofia', icon: 'fitness_center', badge: 'Popular' },
         { name: 'Ciclismo / Bicicleta', duration: 45, calories: 420, category: 'Cardio & Resistencia', icon: 'directions_bike', badge: 'Favorito' },
         { name: 'Fútbol (Partido / Picado)', duration: 60, calories: 550, category: 'Deporte & Resistencia', icon: 'sports_soccer', badge: 'Favorito' },
+        { name: 'Caminata Rápida / Cinta', duration: 40, calories: 230, category: 'Quema Grasa Zona 2', icon: 'directions_walk' },
         { name: 'Running & Trote Mixto', duration: 30, calories: 310, category: 'Resistencia', icon: 'sprint' },
-        { name: 'HIIT Quema Grasa', duration: 20, calories: 220, category: 'Cardio Intenso', icon: 'bolt' },
-        { name: 'Full Body Peso Corporal', duration: 25, calories: 190, category: 'Fuerza Calistenia', icon: 'accessibility_new' },
-        { name: 'Salsa & Baile Cardio', duration: 30, calories: 240, category: 'Cardio Ritmo', icon: 'music_note' },
-        { name: 'Movilidad & Flexibilidad', duration: 15, calories: 75, category: 'Recuperación', icon: 'self_improvement' }
+        { name: 'HIIT Circuito Funcional', duration: 25, calories: 260, category: 'Cardio Intenso', icon: 'bolt' }
     ];
 
     return routines.map(r => `
-        <div class="white-card p-5 flex flex-col justify-between hover:border-emerald-500/50 transition-all shadow-sm">
+        <div class="white-card card-glow-emerald p-5 flex flex-col justify-between transition-all">
             <div>
                 <div class="flex items-center justify-between mb-3">
-                    <div class="size-10 rounded-xl bg-emerald-950/60 text-emerald-400 flex items-center justify-center border border-emerald-800/50">
+                    <div class="size-10 rounded-xl bg-[#10E775]/15 text-[#10E775] flex items-center justify-center border border-[#10E775]/30">
                         <span class="material-symbols-outlined text-xl">${r.icon}</span>
                     </div>
                     ${r.badge ? `<span class="badge-emerald text-[10px] py-0.5 px-2 font-bold">${r.badge}</span>` : ''}
                 </div>
-                <span class="text-[10px] font-bold uppercase text-slate-400">${r.category}</span>
-                <h4 class="text-base font-bold text-white uppercase tracking-tight mt-0.5">${r.name}</h4>
-                <p class="text-xs font-mono text-emerald-400 mt-1 font-bold">~${r.calories} kcal · ${r.duration} min</p>
+                <span class="text-[10px] font-bold uppercase text-emerald-300/70">${r.category}</span>
+                <h4 class="text-base font-display font-extrabold text-white tracking-tight mt-0.5">${r.name}</h4>
+                <p class="text-xs font-mono text-[#10E775] mt-1 font-bold">~${r.calories} kcal · ${r.duration} min</p>
             </div>
 
-            <button class="log-quick-routine-btn btn-emerald w-full py-2 text-xs font-bold mt-4" data-name="${r.name}" data-duration="${r.duration}" data-calories="${r.calories}" data-icon="${r.icon}">
+            <button class="log-quick-routine-btn btn-emerald w-full py-2.5 text-xs font-extrabold mt-4 cursor-pointer" data-name="${r.name}" data-duration="${r.duration}" data-calories="${r.calories}" data-icon="${r.icon}">
                 Registrar Realizado
             </button>
         </div>
@@ -262,31 +285,28 @@ const getWorkoutIcon = (workout) => {
     const name = (workout.name || workout.type || '').toLowerCase();
     if (name.includes('bici') || name.includes('cicl')) return 'directions_bike';
     if (name.includes('futbol') || name.includes('fútbol') || name.includes('soccer') || name.includes('pelota')) return 'sports_soccer';
-    if (name.includes('run') || name.includes('trote') || name.includes('correr')) return 'sprint';
+    if (name.includes('run') || name.includes('trote') || name.includes('correr') || name.includes('caminata')) return 'sprint';
     if (name.includes('hiit') || name.includes('quema')) return 'bolt';
-    if (name.includes('baile') || name.includes('salsa')) return 'music_note';
-    if (name.includes('movilidad') || name.includes('flex')) return 'self_improvement';
-    if (name.includes('fuerza') || name.includes('gym') || workout.type === 'strength') return 'fitness_center';
     return 'fitness_center';
 };
 
 const renderWorkoutHistory = (workouts) => {
-    if (!workouts.length) return `<p class="text-xs text-slate-400 italic py-3 text-center">Sin entrenamientos recientes.</p>`;
+    if (!workouts.length) return `<p class="text-xs text-emerald-300/50 italic py-4 text-center">Sin entrenamientos recientes. Usa el botón "+ Agregar Ejercicio" para registrar hoy.</p>`;
 
-    return workouts.slice(-8).reverse().map(w => `
-        <div class="flex items-center justify-between p-3.5 bg-slate-800/80 rounded-xl border border-slate-700/60 hover:border-emerald-500/40 transition-all">
+    return workouts.slice(-10).reverse().map(w => `
+        <div class="flex items-center justify-between p-3.5 bg-[#040B08]/70 rounded-2xl border border-emerald-500/15 hover:border-emerald-500/35 transition-all">
             <div class="flex items-center gap-3">
-                <div class="size-9 rounded-xl bg-emerald-950/80 text-emerald-400 flex items-center justify-center border border-emerald-800/50">
-                    <span class="material-symbols-outlined text-base">${getWorkoutIcon(w)}</span>
+                <div class="size-10 rounded-xl bg-[#10E775]/15 text-[#10E775] flex items-center justify-center border border-[#10E775]/30">
+                    <span class="material-symbols-outlined text-lg">${getWorkoutIcon(w)}</span>
                 </div>
                 <div>
                     <h5 class="text-xs font-bold text-white capitalize">${w.name || w.type}</h5>
-                    <p class="text-[10px] font-mono text-slate-400">${w.date || 'Hoy'} · ${w.duration || 30} min</p>
+                    <p class="text-[10px] font-mono text-emerald-300/70">${w.date || 'Hoy'} · ${w.duration || 30} min</p>
                 </div>
             </div>
             <div class="flex items-center gap-3">
-                <span class="text-xs font-mono font-black text-emerald-400">-${w.calories} kcal</span>
-                <button class="delete-workout-btn text-slate-400 hover:text-red-400 transition-colors p-1" data-id="${w.id}" title="Eliminar registro">
+                <span class="text-xs font-mono font-extrabold text-[#10E775]">-${w.calories} kcal</span>
+                <button class="delete-workout-btn text-emerald-300/50 hover:text-lime-300 transition-colors p-1 cursor-pointer" data-id="${w.id}" title="Eliminar registro">
                     <span class="material-symbols-outlined text-base">delete</span>
                 </button>
             </div>
@@ -294,8 +314,128 @@ const renderWorkoutHistory = (workouts) => {
     `).join('');
 };
 
+export const openAddWorkoutModal = (modalContainer, onSavedCallback) => {
+    const state = getState();
+    const latestM = getLatestMeasurement();
+    const currentWeight = latestM ? latestM.weight : (state.profile?.startingWeight || 80);
+
+    modalContainer.innerHTML = `
+        <div class="white-card card-glow-emerald p-6 w-full max-w-md relative animate-scale-up shadow-2xl border border-emerald-500/35 my-6">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-emerald-500/15">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[#10E775] text-xl">fitness_center</span>
+                    <div>
+                        <h3 class="text-base font-display font-extrabold text-white uppercase">Agregar Ejercicio / Entreno</h3>
+                        <p class="text-[11px] text-emerald-300/70">Cálculo automático de calorías según tu peso (${currentWeight} kg)</p>
+                    </div>
+                </div>
+                <button id="close-workout-modal" class="size-8 rounded-full bg-emerald-950 flex items-center justify-center text-emerald-300 hover:bg-emerald-900 cursor-pointer">
+                    <span class="material-symbols-outlined text-base">close</span>
+                </button>
+            </div>
+
+            <!-- Preset Exercise Chips -->
+            <div class="mb-3">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-300/70 block mb-1.5">Selección rápida:</span>
+                <div class="flex flex-wrap gap-1.5">
+                    ${[
+                        { name: 'Musculación / Pesas', met: 5.5, min: 45, icon: 'fitness_center' },
+                        { name: 'Caminata Rápida', met: 4.3, min: 40, icon: 'directions_walk' },
+                        { name: 'Ciclismo / Bici', met: 7.5, min: 45, icon: 'directions_bike' },
+                        { name: 'Fútbol', met: 8.0, min: 60, icon: 'sports_soccer' },
+                        { name: 'Running / Trote', met: 9.0, min: 30, icon: 'sprint' },
+                        { name: 'Funcional / HIIT', met: 8.5, min: 30, icon: 'bolt' }
+                    ].map(p => `
+                        <button type="button" class="workout-preset-chip px-2.5 py-1 rounded-xl bg-emerald-950/70 hover:bg-[#10E775]/20 border border-emerald-500/25 text-[11px] font-semibold text-emerald-100 cursor-pointer transition-all" data-name="${p.name}" data-met="${p.met}" data-min="${p.min}" data-icon="${p.icon}">
+                            ${p.name}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3.5">
+                <div>
+                    <label class="text-[10px] font-bold text-[#10E775] uppercase">Ejercicio o Actividad *</label>
+                    <input id="wo-name-input" type="text" value="Musculación / Pesas" placeholder="Ej: Pesas, Cinta, Fútbol, Pádel..." class="w-full rounded-xl px-3 py-2.5 text-sm font-bold text-white outline-none mt-1">
+                </div>
+
+                <div class="grid grid-cols-3 gap-2.5">
+                    <div>
+                        <label class="text-[10px] font-bold text-emerald-300/80 uppercase">Duración (min)</label>
+                        <input id="wo-duration-input" type="number" value="45" min="5" max="300" class="w-full rounded-xl px-3 py-2 text-sm font-mono font-bold text-white outline-none mt-1">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-emerald-300/80 uppercase">Intensidad</label>
+                        <select id="wo-intensity-select" class="w-full rounded-xl px-2.5 py-2 text-xs font-bold text-white outline-none mt-1 cursor-pointer">
+                            <option value="4.0">Moderada</option>
+                            <option value="6.0" selected>Media / Fuerte</option>
+                            <option value="8.5">Intensa / Alta</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-[#10E775] uppercase">Calorías (kcal)</label>
+                        <input id="wo-calories-input" type="number" value="${Math.round(6.0 * currentWeight * (45 / 60))}" class="w-full rounded-xl px-3 py-2 text-sm font-mono font-extrabold text-[#10E775] outline-none mt-1">
+                    </div>
+                </div>
+
+                <button id="save-wo-modal-btn" class="btn-emerald py-3.5 text-xs font-extrabold uppercase tracking-wider mt-1 cursor-pointer">
+                    <span class="material-symbols-outlined text-lg">check_circle</span>
+                    Guardar Ejercicio Realizado
+                </button>
+            </div>
+        </div>
+    `;
+    modalContainer.classList.remove('hidden');
+
+    let selectedIcon = 'fitness_center';
+
+    const recalcCalories = () => {
+        const mins = Number(document.getElementById('wo-duration-input')?.value) || 30;
+        const met = Number(document.getElementById('wo-intensity-select')?.value) || 6.0;
+        const est = Math.round(met * currentWeight * (mins / 60));
+        const calInp = document.getElementById('wo-calories-input');
+        if (calInp) calInp.value = est;
+    };
+
+    document.getElementById('wo-duration-input')?.addEventListener('input', recalcCalories);
+    document.getElementById('wo-intensity-select')?.addEventListener('change', recalcCalories);
+
+    modalContainer.querySelectorAll('.workout-preset-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const name = chip.dataset.name;
+            const met = Number(chip.dataset.met) || 6.0;
+            const min = Number(chip.dataset.min) || 45;
+            selectedIcon = chip.dataset.icon || 'fitness_center';
+            document.getElementById('wo-name-input').value = name;
+            document.getElementById('wo-duration-input').value = min;
+            document.getElementById('wo-calories-input').value = Math.round(met * currentWeight * (min / 60));
+        });
+    });
+
+    document.getElementById('close-workout-modal').onclick = () => modalContainer.classList.add('hidden');
+
+    document.getElementById('save-wo-modal-btn').onclick = async () => {
+        const name = document.getElementById('wo-name-input').value.trim() || 'Entrenamiento';
+        const duration = Number(document.getElementById('wo-duration-input').value) || 30;
+        const calories = Number(document.getElementById('wo-calories-input').value) || 200;
+
+        const saved = await addWorkout({
+            name,
+            duration,
+            calories,
+            icon: selectedIcon,
+            type: 'workout'
+        });
+
+        modalContainer.classList.add('hidden');
+        window.showAlert?.('¡Ejercicio Registrado!', `${name} · ${duration} min (-${calories} kcal quemadas)`, 'success');
+        if (onSavedCallback) onSavedCallback(saved);
+    };
+};
+
 export const attachWorkoutsEvents = () => {
-    // Tabs
+    const modal = document.getElementById('workout-modal');
+
     document.getElementById('tab-gym-btn')?.addEventListener('click', () => {
         activeWorkoutTab = 'gym';
         window.router.navigate('workouts');
@@ -306,7 +446,14 @@ export const attachWorkoutsEvents = () => {
         window.router.navigate('workouts');
     });
 
-    // Exercise updates
+    document.getElementById('open-add-workout-modal-btn')?.addEventListener('click', () => {
+        openAddWorkoutModal(modal, () => window.router.navigate('workouts'));
+    });
+
+    document.getElementById('custom-cardio-btn')?.addEventListener('click', () => {
+        openAddWorkoutModal(modal, () => window.router.navigate('workouts'));
+    });
+
     document.querySelectorAll('.exercise-name-input').forEach(inp => {
         inp.onchange = (e) => {
             const idx = parseInt(e.target.dataset.exidx);
@@ -337,11 +484,7 @@ export const attachWorkoutsEvents = () => {
             const exIdx = parseInt(e.target.dataset.exidx);
             const sIdx = parseInt(e.target.dataset.sidx);
             currentSession.exercises[exIdx].sets[sIdx].completed = e.target.checked;
-            
-            // Auto start 60s rest timer if completed
-            if (e.target.checked) {
-                startRestTimer(60);
-            }
+            if (e.target.checked) startRestTimer(60);
         };
     });
 
@@ -368,24 +511,57 @@ export const attachWorkoutsEvents = () => {
     });
 
     document.getElementById('add-exercise-btn')?.addEventListener('click', () => {
-        const name = prompt('Nombre del ejercicio (ej. Dominadas, Prensa, Remo):');
-        if (name) {
+        modal.innerHTML = `
+            <div class="white-card card-glow-emerald p-6 w-full max-w-sm relative animate-scale-up shadow-2xl border border-emerald-500/35">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-emerald-500/15">
+                    <h3 class="text-sm font-display font-extrabold text-white uppercase">Nuevo Ejercicio de Pesas</h3>
+                    <button id="close-new-ex-modal" class="size-7 rounded-full bg-emerald-950 text-emerald-300 flex items-center justify-center cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+                <div class="flex flex-col gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-[#10E775] uppercase">Nombre del Ejercicio</label>
+                        <input id="new-ex-name" type="text" placeholder="Ej: Dominadas, Prensa 45°, Remo con Barra" class="w-full rounded-xl px-3 py-2 text-sm font-bold text-white outline-none mt-1">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="text-[10px] font-bold text-emerald-300/70 uppercase">Peso Inicial (kg)</label>
+                            <input id="new-ex-weight" type="number" value="50" class="w-full rounded-xl px-3 py-2 text-sm font-mono font-bold text-white outline-none mt-1">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-emerald-300/70 uppercase">Repeticiones</label>
+                            <input id="new-ex-reps" type="number" value="10" class="w-full rounded-xl px-3 py-2 text-sm font-mono font-bold text-white outline-none mt-1">
+                        </div>
+                    </div>
+                    <button id="confirm-new-ex-btn" class="btn-emerald py-3 text-xs font-extrabold uppercase mt-1 cursor-pointer">
+                        Añadir a la Sesión
+                    </button>
+                </div>
+            </div>
+        `;
+        modal.classList.remove('hidden');
+        document.getElementById('close-new-ex-modal').onclick = () => modal.classList.add('hidden');
+        document.getElementById('confirm-new-ex-btn').onclick = () => {
+            const name = document.getElementById('new-ex-name').value.trim();
+            const weight = Number(document.getElementById('new-ex-weight').value) || 40;
+            const reps = Number(document.getElementById('new-ex-reps').value) || 10;
+            if (!name) return;
             currentSession.exercises.push({
                 name,
-                sets: [{ reps: 10, weight: 40, rpe: 8, completed: false }]
+                sets: [{ reps, weight, rpe: 8, completed: false }]
             });
+            modal.classList.add('hidden');
             window.router.navigate('workouts');
-        }
+        };
     });
 
-    // Save session
     document.getElementById('finish-gym-session-btn')?.addEventListener('click', async () => {
         await saveGymSession(currentSession);
         window.showAlert?.('¡Entrenamiento Guardado!', 'Se calculó tu volumen levantado y calorías quemadas.', 'success');
         window.router.navigate('workouts');
     });
 
-    // Quick routines
     document.querySelectorAll('.log-quick-routine-btn').forEach(btn => {
         btn.onclick = async (e) => {
             const name = e.currentTarget.dataset.name;
@@ -401,49 +577,26 @@ export const attachWorkoutsEvents = () => {
                 type: 'routine'
             });
 
-            window.showAlert?.('¡Entrenamiento Registrado!', `${name} (+${calories} kcal quemadas)`, 'success');
+            window.showAlert?.('¡Entrenamiento Registrado!', `${name} (-${calories} kcal quemadas)`, 'success');
             window.router.navigate('workouts');
         };
     });
 
-    // Custom cardio / sport button
-    document.getElementById('custom-cardio-btn')?.addEventListener('click', async () => {
-        const activityName = prompt('¿Qué deporte o actividad realizaste? (ej. Ciclismo, Fútbol, Spinning, Pádel, Natación):', 'Ciclismo');
-        if (!activityName) return;
-
-        const durationStr = prompt(`¿Cuántos minutos duró la sesión de ${activityName}?`, '45');
-        const duration = parseInt(durationStr);
-        if (isNaN(duration) || duration <= 0) return;
-
-        const estimatedCals = Math.round(duration * 9);
-        const caloriesStr = prompt(`Calorías quemadas estimadas (~${estimatedCals} kcal):`, estimatedCals.toString());
-        const calories = parseInt(caloriesStr) || estimatedCals;
-
-        await addWorkout({
-            name: activityName,
-            duration,
-            calories,
-            type: 'cardio'
-        });
-
-        window.showAlert?.('¡Actividad Registrada!', `${activityName} · ${duration} min (+${calories} kcal)`, 'success');
-        window.router.navigate('workouts');
-    });
-
-    // Delete workout from history
     document.querySelectorAll('.delete-workout-btn').forEach(btn => {
         btn.onclick = async (e) => {
             e.stopPropagation();
             const id = e.currentTarget.dataset.id;
-            if (confirm('¿Deseas eliminar este registro de entrenamiento?')) {
-                await deleteWorkout(id);
-                window.showAlert?.('Registro Eliminado', 'Se actualizó tu historial y balance calórico.', 'info');
-                window.router.navigate('workouts');
-            }
+            window.showConfirm?.(
+                '¿Eliminar ejercicio?',
+                'Se restará del gasto calórico de entrenamiento.',
+                async () => {
+                    await deleteWorkout(id);
+                    window.router.navigate('workouts');
+                }
+            );
         };
     });
 
-    // Rest Timers
     document.querySelectorAll('.start-rest-btn').forEach(btn => {
         btn.onclick = (e) => {
             const sec = parseInt(e.currentTarget.dataset.sec) || 60;

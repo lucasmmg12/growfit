@@ -1177,42 +1177,136 @@ export const getSensationsMetrics = (targetDate = null) => {
     };
 };
 
+export const calculateBodyIndices = (data = {}, customProfile = null) => {
+    const state = getState();
+    const profile = customProfile || state.profile || {};
+    const prevLatest = getLatestMeasurement();
+
+    const weight = Number(data.weight || prevLatest?.weight || profile.startingWeight || 75);
+    const height = Number(data.height || profile.height || 175);
+    const age = Number(data.age || profile.age || 30);
+    const gender = data.gender || profile.gender || 'male';
+
+    const waist = Number(data.waist || prevLatest?.waist || 85);
+    const neck = Number(data.neck || prevLatest?.neck || 38);
+    const hip = Number(data.hip || prevLatest?.hip || 95);
+    const chest = Number(data.chest || prevLatest?.chest || 0);
+    const arm = Number(data.arm || prevLatest?.arm || 0);
+    const thigh = Number(data.thigh || prevLatest?.thigh || 0);
+
+    const heightMeters = Math.max(1.2, height / 100);
+
+    // 1. IMC (BMI)
+    const bmi = Number((weight / (heightMeters * heightMeters)).toFixed(1));
+    let bmiCategory = 'Peso Normal';
+    if (bmi < 18.5) bmiCategory = 'Bajo Peso';
+    else if (bmi < 25) bmiCategory = 'Peso Saludable';
+    else if (bmi < 30) bmiCategory = 'Sobrepeso';
+    else if (bmi < 35) bmiCategory = 'Obesidad Grado I';
+    else bmiCategory = 'Obesidad Grado II';
+
+    // 2. % Grasa Corporal (US Navy Seal + fallback Deurenberg)
+    let bodyFat = 0;
+    if (waist > 0 && neck > 0 && waist > neck) {
+        if (gender === 'male') {
+            const logWaistNeck = Math.log10(Math.max(1, waist - neck));
+            const logHeight = Math.log10(height);
+            bodyFat = (495 / (1.0324 - 0.19077 * logWaistNeck + 0.15456 * logHeight)) - 450;
+        } else {
+            const finalHip = hip || waist;
+            const logWaistHipNeck = Math.log10(Math.max(1, waist + finalHip - neck));
+            const logHeight = Math.log10(height);
+            bodyFat = (495 / (1.29579 - 0.35004 * logWaistHipNeck + 0.22100 * logHeight)) - 450;
+        }
+    } else {
+        // Deurenberg formula fallback from BMI
+        const sexFactor = gender === 'male' ? 1 : 0;
+        bodyFat = (1.20 * bmi) + (0.23 * age) - (10.8 * sexFactor) - 5.4;
+    }
+    bodyFat = Number(Math.max(3, Math.min(60, bodyFat)).toFixed(1));
+
+    // 3. Masa Grasa y Masa Magra (LBM)
+    const fatMass = Number(((weight * bodyFat) / 100).toFixed(1));
+    const leanMass = Number((weight - fatMass).toFixed(1));
+    const leanPct = Number((100 - bodyFat).toFixed(1));
+
+    // 4. ICA (Índice Cintura-Altura / Waist-to-Height Ratio)
+    const whtr = Number((waist / height).toFixed(2));
+    let whtrCategory = 'Saludable';
+    if (whtr >= 0.60) whtrCategory = 'Riesgo Alto';
+    else if (whtr >= 0.50) whtrCategory = 'Riesgo Moderado';
+
+    // 5. ICC (Índice Cintura-Cadera / Waist-to-Hip Ratio)
+    const whr = hip > 0 ? Number((waist / hip).toFixed(2)) : 0;
+
+    // 6. FFMI (Índice de Masa Libre de Grasa / Muscularidad)
+    const ffmi = Number((leanMass / (heightMeters * heightMeters)).toFixed(1));
+
+    // 7. TMB (Mifflin-St Jeor) & TDEE
+    const bmr = Math.round((10 * weight) + (6.25 * height) - (5 * age) + (gender === 'male' ? 5 : -161));
+    const tdee = Math.round(bmr * 1.4);
+
+    // 8. Peso Ideal de Referencia (IMC 22.5)
+    const idealWeight = Number((22.5 * heightMeters * heightMeters).toFixed(1));
+
+    return {
+        weight: Number(weight.toFixed(1)),
+        height,
+        waist,
+        neck,
+        hip,
+        chest,
+        arm,
+        thigh,
+        bmi,
+        bmiCategory,
+        bodyFat,
+        fatMass,
+        leanMass,
+        leanPct,
+        whtr,
+        whtrCategory,
+        whr,
+        ffmi,
+        bmr,
+        tdee,
+        idealWeight
+    };
+};
+
 export const addMeasurement = async (data) => {
     const state = getState();
-    const { weight, neck, waist, hip } = data;
-    const profile = state.profile;
-    const height = profile.height || 175;
-    const gender = profile.gender || 'male';
-
-    let bodyFat = 0;
-    if (gender === 'male') {
-        const logWaistNeck = Math.log10(Math.max(1, waist - neck));
-        const logHeight = Math.log10(height);
-        bodyFat = (495 / (1.0324 - 0.19077 * logWaistNeck + 0.15456 * logHeight)) - 450;
-    } else {
-        const finalHip = hip || waist;
-        const logWaistHipNeck = Math.log10(Math.max(1, waist + finalHip - neck));
-        const logHeight = Math.log10(height);
-        bodyFat = (495 / (1.29579 - 0.35004 * logWaistHipNeck + 0.22100 * logHeight)) - 450;
+    if (data.height && Number(data.height) > 100) {
+        state.profile.height = Number(data.height);
     }
-    bodyFat = Math.max(2, Math.min(60, bodyFat));
 
-    const fatMass = (weight * bodyFat) / 100;
-    const leanMass = weight - fatMass;
+    const indices = calculateBodyIndices(data, state.profile);
 
     const newEntry = {
         id: Date.now(),
         date: data.date || getArgentinaDate(),
-        weight: Number(weight),
-        neck: Number(neck) || 0,
-        waist: Number(waist) || 0,
-        hip: Number(hip) || 0,
-        bodyFat: Number(bodyFat.toFixed(1)),
-        fatMass: Number(fatMass.toFixed(1)),
-        leanMass: Number(leanMass.toFixed(1))
+        weight: indices.weight,
+        height: indices.height,
+        neck: indices.neck,
+        waist: indices.waist,
+        hip: indices.hip,
+        chest: indices.chest,
+        arm: indices.arm,
+        thigh: indices.thigh,
+        bmi: indices.bmi,
+        bmiCategory: indices.bmiCategory,
+        bodyFat: indices.bodyFat,
+        fatMass: indices.fatMass,
+        leanMass: indices.leanMass,
+        whtr: indices.whtr,
+        whr: indices.whr,
+        ffmi: indices.ffmi,
+        bmr: indices.bmr,
+        tdee: indices.tdee
     };
 
     if (!state.measurements) state.measurements = [];
+    // If entry for same date exists, replace or append cleanly
     state.measurements.push(newEntry);
 
     addXP(state, 50);

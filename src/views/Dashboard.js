@@ -13,12 +13,18 @@ import {
     getArgentinaDate,
     getSensationsMetrics,
     getMealSodium,
-    getFinancialSummary
+    getFinancialSummary,
+    getLatestMeasurement,
+    calculateBodyIndices,
+    addWorkout,
+    deleteWorkout
 } from '../state';
 import { analyzeFood, generateDailyTip, generateSmartHabits } from '../services/openai';
 import { getProductByBarcode } from '../services/openfoodfacts';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
 import { renderMealSensationsModalContainer, renderSatietyBadge, attachSensationsModalEvents } from '../components/MealSensationsModal';
+import { openBodyMeasurementModal } from './Measurements';
+import { openAddWorkoutModal } from './Workouts';
 
 let barcodeScannerInstance = null;
 
@@ -93,6 +99,10 @@ export const renderDashboard = () => {
     const waterAmount = dayStats.water || 0;
     const waterGoal = 2500;
     const waterPct = Math.min(100, Math.round((waterAmount / waterGoal) * 100));
+
+    const latestMeas = getLatestMeasurement();
+    const bodyIndices = calculateBodyIndices(latestMeas || {}, state.profile);
+    const todaysWorkouts = dailyBurn.workouts || [];
 
     return `
     <div class="flex h-screen w-full bg-[#050C09] font-body text-text-primary overflow-hidden fade-in">
@@ -520,6 +530,150 @@ export const renderDashboard = () => {
                         </div>
                     </div>
 
+                    <!-- NEW 2-COLUMN BENTO: ENTRENAMIENTOS / EJERCICIO & PESO, MEDIDAS E ÍNDICES AUTOMÁTICOS -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <!-- 1. Agregar Ejercicio & Entrenamientos del Día (6 Cols) -->
+                        <div class="lg:col-span-6 white-card card-glow-emerald p-5 md:p-6 flex flex-col justify-between relative overflow-hidden">
+                            <div class="pointer-events-none select-none absolute -right-4 -bottom-6 text-[#10E775] opacity-[0.08] -rotate-12">
+                                <span class="material-symbols-outlined text-[120px]">fitness_center</span>
+                            </div>
+
+                            <div class="relative z-10">
+                                <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-emerald-500/15">
+                                    <div class="flex items-center gap-3">
+                                        <div class="size-10 rounded-2xl bg-[#10E775]/15 text-[#10E775] border border-[#10E775]/30 flex items-center justify-center">
+                                            <span class="material-symbols-outlined text-xl">fitness_center</span>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-base font-display font-extrabold text-white uppercase tracking-wide">Entrenamientos & Ejercicio</h3>
+                                            <p class="text-[11px] text-emerald-300/70">Quemadas hoy: <strong class="text-lime-400 font-mono">${Math.round(dailyBurn.activity)} kcal</strong> · Basal: ${dailyBurn.bmr} kcal</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button id="dash-open-workout-modal-btn" class="btn-emerald px-3.5 py-2 text-xs font-extrabold uppercase tracking-wider cursor-pointer">
+                                            <span class="material-symbols-outlined text-base">add_circle</span>
+                                            + Agregar Ejercicio
+                                        </button>
+                                        <button onclick="window.router.navigate('workouts')" class="btn-ghost-light px-2.5 py-2 text-xs font-bold cursor-pointer" title="Ir a Bitácora Gym">
+                                            <span class="material-symbols-outlined text-base">open_in_new</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- 1-Click Quick Exercise Chips -->
+                                <div class="mb-4">
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400/75 block mb-1.5">Registrar con 1 toque:</span>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        ${[
+                                            { label: '🏋️ Pesas / Gym (45m)', name: 'Entrenamiento de Pesas', duration: 45, calories: 320, icon: 'fitness_center' },
+                                            { label: '🚶 Caminata (40m)', name: 'Caminata Rápida', duration: 40, calories: 220, icon: 'directions_walk' },
+                                            { label: '🚴 Ciclismo (45m)', name: 'Ciclismo / Bicicleta', duration: 45, calories: 410, icon: 'directions_bike' },
+                                            { label: '⚽ Fútbol (60m)', name: 'Fútbol', duration: 60, calories: 540, icon: 'sports_soccer' }
+                                        ].map(w => `
+                                            <button type="button" class="dash-quick-workout-chip px-3 py-1.5 rounded-xl bg-[#040B08]/80 hover:bg-[#10E775]/20 border border-emerald-500/25 hover:border-[#10E775]/50 text-[11px] font-semibold text-emerald-100 hover:text-white transition-all cursor-pointer" data-name="${w.name}" data-duration="${w.duration}" data-calories="${w.calories}" data-icon="${w.icon}">
+                                                ${w.label}
+                                            </button>
+                                        `).join('')}
+                                    </div>
+                                </div>
+
+                                <!-- Today's Logged Workouts -->
+                                <div class="flex flex-col gap-2">
+                                    ${todaysWorkouts.length ? todaysWorkouts.map(w => `
+                                        <div class="p-3 rounded-2xl bg-[#040B08]/70 border border-emerald-500/20 flex items-center justify-between">
+                                            <div class="flex items-center gap-2.5">
+                                                <span class="material-symbols-outlined text-[#10E775] text-lg">${w.icon || 'fitness_center'}</span>
+                                                <div>
+                                                    <p class="text-xs font-bold text-white capitalize">${w.name || w.type}</p>
+                                                    <span class="text-[10px] font-mono text-emerald-300/70">${w.duration || 30} min</span>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs font-mono font-extrabold text-lime-400">-${w.calories} kcal</span>
+                                                <button class="dash-delete-workout-btn size-7 rounded-lg text-emerald-300/50 hover:text-lime-300 flex items-center justify-center cursor-pointer" data-id="${w.id}">
+                                                    <span class="material-symbols-outlined text-sm">delete</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('') : `
+                                        <div class="p-4 rounded-2xl bg-[#040B08]/50 border border-emerald-500/15 text-center">
+                                            <p class="text-xs text-emerald-300/60">Sin ejercicios cargados hoy. Toca un botón rápido arriba o usa <strong>"+ Agregar Ejercicio"</strong>.</p>
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Peso, Medidas & Índices Corporales Automáticos (6 Cols) -->
+                        <div class="lg:col-span-6 white-card card-glow-mint p-5 md:p-6 flex flex-col justify-between relative overflow-hidden">
+                            <div class="pointer-events-none select-none absolute -right-4 -bottom-6 text-[#34D399] opacity-[0.08] rotate-12">
+                                <span class="material-symbols-outlined text-[120px]">monitor_weight</span>
+                            </div>
+
+                            <div class="relative z-10">
+                                <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-emerald-500/15">
+                                    <div class="flex items-center gap-3">
+                                        <div class="size-10 rounded-2xl bg-[#34D399]/15 text-[#34D399] border border-[#34D399]/30 flex items-center justify-center">
+                                            <span class="material-symbols-outlined text-xl">monitor_weight</span>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-base font-display font-extrabold text-white uppercase tracking-wide">Peso, Medidas & Índices</h3>
+                                            <p class="text-[11px] text-emerald-300/70">Cálculo automático: IMC, % Grasa, Masa Magra, ICA y TMB</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button id="dash-open-meas-modal-btn" class="btn-emerald px-3.5 py-2 text-xs font-extrabold uppercase tracking-wider cursor-pointer">
+                                            <span class="material-symbols-outlined text-base">straighten</span>
+                                            + Peso y Medidas
+                                        </button>
+                                        <button onclick="window.router.navigate('measurements')" class="btn-ghost-light px-2.5 py-2 text-xs font-bold cursor-pointer" title="Ver Historial Completo">
+                                            <span class="material-symbols-outlined text-base">open_in_new</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- 6 Key Automatic Body Indices Grid -->
+                                <div class="grid grid-cols-3 gap-2.5 mb-3">
+                                    <div class="p-3 rounded-2xl bg-[#040B08]/75 border border-[#10E775]/25">
+                                        <span class="text-[9px] font-bold uppercase text-emerald-300/70 block">Peso Actual</span>
+                                        <p class="text-lg font-mono font-extrabold text-[#10E775] mt-0.5">${bodyIndices.weight} <small class="text-[10px] font-normal">kg</small></p>
+                                        <span class="text-[9px] text-emerald-300/60 font-mono">Meta: ${bodyIndices.idealWeight}kg</span>
+                                    </div>
+                                    <div class="p-3 rounded-2xl bg-[#040B08]/75 border border-emerald-500/20">
+                                        <span class="text-[9px] font-bold uppercase text-emerald-300/70 block">IMC (BMI)</span>
+                                        <p class="text-lg font-mono font-extrabold text-white mt-0.5">${bodyIndices.bmi}</p>
+                                        <span class="text-[9px] text-[#34D399] font-semibold truncate block">${bodyIndices.bmiCategory}</span>
+                                    </div>
+                                    <div class="p-3 rounded-2xl bg-[#040B08]/75 border border-lime-500/25">
+                                        <span class="text-[9px] font-bold uppercase text-lime-300/80 block">% Grasa Navy</span>
+                                        <p class="text-lg font-mono font-extrabold text-lime-400 mt-0.5">${bodyIndices.bodyFat}%</p>
+                                        <span class="text-[9px] text-emerald-300/60 font-mono">Grasa: ${bodyIndices.fatMass}kg</span>
+                                    </div>
+                                    <div class="p-3 rounded-2xl bg-[#040B08]/75 border border-teal-500/25">
+                                        <span class="text-[9px] font-bold uppercase text-teal-300/80 block">Masa Magra</span>
+                                        <p class="text-base font-mono font-extrabold text-teal-300 mt-0.5">${bodyIndices.leanMass} kg</p>
+                                        <span class="text-[9px] text-teal-300/70 font-mono">${bodyIndices.leanPct}% LBM</span>
+                                    </div>
+                                    <div class="p-3 rounded-2xl bg-[#040B08]/75 border border-emerald-500/20">
+                                        <span class="text-[9px] font-bold uppercase text-emerald-300/70 block">Cintura / ICA</span>
+                                        <p class="text-base font-mono font-extrabold text-white mt-0.5">${bodyIndices.waist} cm</p>
+                                        <span class="text-[9px] text-[#10E775] font-mono">ICA: ${bodyIndices.whtr} (${bodyIndices.whtrCategory})</span>
+                                    </div>
+                                    <div class="p-3 rounded-2xl bg-[#040B08]/75 border border-emerald-500/20">
+                                        <span class="text-[9px] font-bold uppercase text-emerald-300/70 block">FFMI & TMB</span>
+                                        <p class="text-base font-mono font-extrabold text-[#34D399] mt-0.5">${bodyIndices.ffmi} <small class="text-[9px]">kg/m²</small></p>
+                                        <span class="text-[9px] text-emerald-300/70 font-mono">TMB: ${bodyIndices.bmr} kcal</span>
+                                    </div>
+                                </div>
+
+                                <div class="text-[11px] text-emerald-300/75 flex items-center justify-between pt-1">
+                                    <span>Cuello: <strong>${bodyIndices.neck} cm</strong> · Cadera: <strong>${bodyIndices.hip} cm</strong> · Altura: <strong>${bodyIndices.height} cm</strong></span>
+                                    <button onclick="window.router.navigate('measurements')" class="text-[#10E775] hover:underline font-bold cursor-pointer">Ver evolución →</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- BOTTOM 2-COLUMN BENTO: SENSATIONS & DAILY MEALS TIMELINE -->
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                         <!-- Sensations & Satiety Metrics Card (5 Cols) -->
@@ -629,6 +783,8 @@ export const renderDashboard = () => {
         <!-- Global Modals Container -->
         <div id="meal-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"></div>
         <div id="barcode-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"></div>
+        <div id="dash-workout-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"></div>
+        <div id="dash-measurement-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"></div>
         ${renderMealSensationsModalContainer()}
     </div>
     `;
@@ -1061,6 +1217,45 @@ export const attachDashboardEvents = () => {
     // Attach sensations modal feedback triggers
     attachSensationsModalEvents(() => {
         window.router.navigate('dashboard');
+    });
+
+    // Dashboard Workout & Exercise Events
+    const dashWorkoutModal = document.getElementById('dash-workout-modal');
+    document.getElementById('dash-open-workout-modal-btn')?.addEventListener('click', () => {
+        if (dashWorkoutModal) {
+            openAddWorkoutModal(dashWorkoutModal, () => window.router.navigate('dashboard'));
+        }
+    });
+
+    document.querySelectorAll('.dash-quick-workout-chip').forEach(chip => {
+        chip.addEventListener('click', async () => {
+            const name = chip.dataset.name;
+            const duration = Number(chip.dataset.duration) || 40;
+            const calories = Number(chip.dataset.calories) || 250;
+            const icon = chip.dataset.icon || 'fitness_center';
+            await addWorkout({ name, duration, calories, icon, type: 'workout' });
+            window.showAlert?.('¡Ejercicio Registrado!', `${name} · ${duration} min (-${calories} kcal quemadas)`, 'success');
+            window.router.navigate('dashboard');
+        });
+    });
+
+    document.querySelectorAll('.dash-delete-workout-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            window.showConfirm?.('¿Eliminar ejercicio?', 'Se restará del gasto calórico de hoy.', async () => {
+                await deleteWorkout(id);
+                window.router.navigate('dashboard');
+            });
+        });
+    });
+
+    // Dashboard Body Measurements & Automatic Indices Modal
+    const dashMeasModal = document.getElementById('dash-measurement-modal');
+    document.getElementById('dash-open-meas-modal-btn')?.addEventListener('click', () => {
+        if (dashMeasModal) {
+            openBodyMeasurementModal(dashMeasModal, () => window.router.navigate('dashboard'));
+        }
     });
 };
 

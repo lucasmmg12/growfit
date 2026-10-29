@@ -148,84 +148,96 @@ window.openQuickActionsModal = () => {
   if (!sheet) {
     sheet = document.createElement('div');
     sheet.id = 'quick-actions-sheet';
-    sheet.className = 'fixed inset-0 z-50 flex flex-col justify-end bg-slate-950/70 backdrop-blur-md p-3 transition-opacity';
+    sheet.className = 'fixed inset-0 z-50 flex flex-col justify-end bg-black/80 backdrop-blur-md p-3 transition-opacity';
     document.body.appendChild(sheet);
   }
 
   sheet.innerHTML = `
-    <div class="white-card p-5 w-full max-w-lg mx-auto rounded-3xl animate-scale-up shadow-2xl border border-slate-700 bg-[#1E293B]">
-      <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-700/80">
+    <div class="white-card card-glow-emerald p-5 w-full max-w-lg mx-auto rounded-3xl animate-scale-up shadow-2xl border border-emerald-500/30">
+      <div class="flex items-center justify-between pb-3 mb-3 border-b border-emerald-500/15">
         <div class="flex items-center gap-2">
-          <div class="size-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
+          <div class="size-8 rounded-xl bg-[#10E775]/20 text-[#10E775] border border-[#10E775]/35 flex items-center justify-center">
             <span class="material-symbols-outlined text-lg">bolt</span>
           </div>
           <div>
-            <h3 class="text-base font-display font-bold text-white uppercase tracking-tight">Acceso Rápido Móvil</h3>
-            <p class="text-[10px] text-slate-400">¿Qué deseas registrar ahora?</p>
+            <h3 class="text-base font-display font-bold text-white uppercase tracking-tight">Acciones Rápidas</h3>
+            <p class="text-[10px] text-emerald-300/70">¿Qué deseas registrar o calcular ahora?</p>
           </div>
         </div>
-        <button id="close-quick-sheet" class="size-7 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700">
+        <button id="close-quick-sheet" class="size-7 rounded-full bg-emerald-950 flex items-center justify-center text-emerald-300 hover:text-white hover:bg-emerald-900 cursor-pointer">
           <span class="material-symbols-outlined text-sm">close</span>
         </button>
       </div>
 
-      <!-- Action Grid -->
-      <div class="grid grid-cols-2 gap-3 text-left">
+      <!-- Action Grid (6 Green Cards) -->
+      <div class="grid grid-cols-2 gap-2.5 text-left">
         <!-- 1. Foto Comida (IA) -->
-        <label for="camera-direct-input" class="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/60 to-slate-900 border border-emerald-500/30 hover:border-emerald-400 flex flex-col justify-between cursor-pointer active:scale-95 transition-all">
-          <div class="size-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center mb-2 shadow-emerald-sm">
+        <label for="camera-direct-input" class="p-3.5 rounded-2xl bg-emerald-950/60 border border-[#10E775]/30 hover:border-[#10E775] flex flex-col justify-between cursor-pointer active:scale-95 transition-all">
+          <div class="size-9 rounded-xl bg-[#10E775]/20 text-[#10E775] border border-[#10E775]/35 flex items-center justify-center mb-2">
             <span class="material-symbols-outlined text-xl">photo_camera</span>
           </div>
           <div>
-            <h4 class="text-xs font-bold text-emerald-300 uppercase">Foto Comida (IA)</h4>
-            <p class="text-[10px] text-slate-300 leading-tight mt-0.5">Captura tu plato y calcula calorías al instante.</p>
+            <h4 class="text-xs font-bold text-[#10E775] uppercase">Foto Comida (IA)</h4>
+            <p class="text-[10px] text-emerald-200/70 leading-tight mt-0.5">Analiza calorías, macros y sodio.</p>
           </div>
         </label>
         <input type="file" id="camera-direct-input" accept="image/*" capture="environment" class="hidden">
 
-        <!-- 2. Registrar Obetide -->
-        <button id="quick-action-obetide" class="p-4 rounded-2xl bg-gradient-to-br from-blue-950/60 to-slate-900 border border-blue-500/30 hover:border-blue-400 flex flex-col justify-between cursor-pointer active:scale-95 transition-all text-left">
-          <div class="size-10 rounded-xl bg-blue-600 text-white flex items-center justify-center mb-2 shadow-sm">
-            <span class="material-symbols-outlined text-xl">syringe</span>
+        <!-- 2. Agregar Ejercicio / Entreno -->
+        <button id="quick-action-workout" class="p-3.5 rounded-2xl bg-emerald-950/60 border border-emerald-400/30 hover:border-emerald-400 flex flex-col justify-between cursor-pointer active:scale-95 transition-all text-left">
+          <div class="size-9 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/35 flex items-center justify-center mb-2">
+            <span class="material-symbols-outlined text-xl">fitness_center</span>
           </div>
           <div>
-            <h4 class="text-xs font-bold text-blue-300 uppercase">Dosis Obetide</h4>
-            <p class="text-[10px] text-slate-300 leading-tight mt-0.5">Control semanal (0.25ml), saciedad y punción.</p>
+            <h4 class="text-xs font-bold text-emerald-300 uppercase">Agregar Ejercicio</h4>
+            <p class="text-[10px] text-emerald-200/70 leading-tight mt-0.5">Pesas, cardio, deportes y calorías.</p>
           </div>
         </button>
 
-        <!-- 3. Registrar Gasto Billetera -->
-        <button id="quick-action-wallet" class="p-4 rounded-2xl bg-gradient-to-br from-amber-950/60 to-slate-900 border border-amber-500/30 hover:border-amber-400 flex flex-col justify-between cursor-pointer active:scale-95 transition-all text-left">
-          <div class="size-10 rounded-xl bg-amber-500 text-white flex items-center justify-center mb-2 shadow-sm">
-            <span class="material-symbols-outlined text-xl">add_card</span>
+        <!-- 3. Registrar Peso y Medidas Corporales -->
+        <button id="quick-action-weight" class="p-3.5 rounded-2xl bg-emerald-950/60 border border-lime-500/30 hover:border-lime-400 flex flex-col justify-between cursor-pointer active:scale-95 transition-all text-left">
+          <div class="size-9 rounded-xl bg-lime-500/20 text-lime-300 border border-lime-400/35 flex items-center justify-center mb-2">
+            <span class="material-symbols-outlined text-xl">monitor_weight</span>
           </div>
           <div>
-            <h4 class="text-xs font-bold text-amber-300 uppercase">Mi Billetera</h4>
-            <p class="text-[10px] text-slate-300 leading-tight mt-0.5">Registrar gasto rápido con categoría.</p>
+            <h4 class="text-xs font-bold text-lime-300 uppercase">Peso y Medidas</h4>
+            <p class="text-[10px] text-emerald-200/70 leading-tight mt-0.5">Calcula IMC, % grasa, masa magra y más.</p>
           </div>
         </button>
 
-        <!-- 4. Registrar Peso Corporal -->
-        <button id="quick-action-weight" class="p-4 rounded-2xl bg-gradient-to-br from-purple-950/60 to-slate-900 border border-purple-500/30 hover:border-purple-400 flex flex-col justify-between cursor-pointer active:scale-95 transition-all text-left">
-          <div class="size-10 rounded-xl bg-purple-600 text-white flex items-center justify-center mb-2 shadow-sm">
-            <span class="material-symbols-outlined text-xl">scale</span>
+        <!-- 4. Registrar Obetide -->
+        <button id="quick-action-obetide" class="p-3.5 rounded-2xl bg-emerald-950/60 border border-teal-500/30 hover:border-teal-400 flex flex-col justify-between cursor-pointer active:scale-95 transition-all text-left">
+          <div class="size-9 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-400/35 flex items-center justify-center mb-2">
+            <span class="material-symbols-outlined text-xl">vaccines</span>
           </div>
           <div>
-            <h4 class="text-xs font-bold text-purple-300 uppercase">Registrar Peso</h4>
-            <p class="text-[10px] text-slate-300 leading-tight mt-0.5">Pesaje para actualizar curva de descenso.</p>
+            <h4 class="text-xs font-bold text-teal-300 uppercase">Dosis Obetide</h4>
+            <p class="text-[10px] text-emerald-200/70 leading-tight mt-0.5">Control semanal GLP-1 y saciedad.</p>
+          </div>
+        </button>
+
+        <!-- 5. Registrar Gasto / Ingreso Billetera -->
+        <button id="quick-action-wallet" class="p-3.5 rounded-2xl bg-emerald-950/60 border border-emerald-500/30 hover:border-[#10E775] flex flex-col justify-between cursor-pointer active:scale-95 transition-all text-left">
+          <div class="size-9 rounded-xl bg-[#10E775]/20 text-[#10E775] border border-[#10E775]/35 flex items-center justify-center mb-2">
+            <span class="material-symbols-outlined text-xl">account_balance_wallet</span>
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-[#10E775] uppercase">Mi Billetera</h4>
+            <p class="text-[10px] text-emerald-200/70 leading-tight mt-0.5">Registrar gasto o ingreso por categoría.</p>
+          </div>
+        </button>
+
+        <!-- 6. Diario de Comidas -->
+        <button id="quick-action-tracker" class="p-3.5 rounded-2xl bg-emerald-950/60 border border-emerald-500/30 hover:border-emerald-300 flex flex-col justify-between cursor-pointer active:scale-95 transition-all text-left">
+          <div class="size-9 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/35 flex items-center justify-center mb-2">
+            <span class="material-symbols-outlined text-xl">restaurant</span>
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-emerald-300 uppercase">Agregar Comida</h4>
+            <p class="text-[10px] text-emerald-200/70 leading-tight mt-0.5">Buscar alimento o código de barras.</p>
           </div>
         </button>
       </div>
-
-      <!-- Quick Weight Input Modal Container (Hidden by default) -->
-      <div id="quick-weight-container" class="hidden mt-3 p-3 bg-slate-900 border border-slate-700 rounded-2xl">
-        <label class="text-[10px] font-bold uppercase text-slate-400 block mb-1">Ingresa tu peso de hoy (kg):</label>
-        <div class="flex gap-2">
-          <input type="number" id="quick-weight-input" step="0.1" placeholder="ej. 74.5" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-white outline-none focus:border-purple-500">
-          <button id="save-quick-weight-btn" class="bg-purple-600 text-white px-4 py-2 rounded-xl text-xs font-bold">Guardar</button>
-        </div>
-      </div>
-
     </div>
   `;
 
@@ -271,13 +283,31 @@ window.openQuickActionsModal = () => {
     }
   });
 
+  // Workout Action
+  document.getElementById('quick-action-workout')?.addEventListener('click', () => {
+    sheet.classList.add('hidden');
+    window.router.navigate('workouts');
+    setTimeout(() => {
+      document.getElementById('open-add-workout-modal-btn')?.click();
+    }, 150);
+  });
+
+  // Weight & Measurements Action
+  document.getElementById('quick-action-weight')?.addEventListener('click', () => {
+    sheet.classList.add('hidden');
+    window.router.navigate('measurements');
+    setTimeout(() => {
+      document.getElementById('open-measurement-form-btn')?.click();
+    }, 150);
+  });
+
   // Obetide Action
   document.getElementById('quick-action-obetide')?.addEventListener('click', () => {
     sheet.classList.add('hidden');
     window.router.navigate('obetide');
     setTimeout(() => {
       document.getElementById('open-obetide-modal-btn')?.click();
-    }, 200);
+    }, 150);
   });
 
   // Wallet Action
@@ -286,25 +316,13 @@ window.openQuickActionsModal = () => {
     window.router.navigate('wallet');
     setTimeout(() => {
       document.getElementById('open-expense-modal-btn')?.click();
-    }, 200);
+    }, 150);
   });
 
-  // Weight Action
-  document.getElementById('quick-action-weight')?.addEventListener('click', () => {
-    const wc = document.getElementById('quick-weight-container');
-    wc?.classList.toggle('hidden');
-  });
-
-  document.getElementById('save-quick-weight-btn')?.addEventListener('click', async () => {
-    const val = Number(document.getElementById('quick-weight-input').value);
-    if (!val || val <= 0) return;
-    await addMeasurement({
-      weight: val,
-      date: getArgentinaDate()
-    });
+  // Tracker Action
+  document.getElementById('quick-action-tracker')?.addEventListener('click', () => {
     sheet.classList.add('hidden');
-    window.showAlert?.('¡Peso Registrado!', `Tu peso de ${val} kg fue guardado en el historial.`, 'success');
-    window.router.navigate('measurements');
+    window.router.navigate('tracker');
   });
 };
 
