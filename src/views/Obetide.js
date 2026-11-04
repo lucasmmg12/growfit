@@ -1,6 +1,7 @@
-import { getState, addObetideTreatment, deleteObetideTreatment, getArgentinaDate, getLatestMeasurement } from '../state';
+import { getState, addObetideTreatment, deleteObetideTreatment, getArgentinaDate, getLatestMeasurement, getGlp1Pharmacokinetics, getMuscleShieldMetrics } from '../state';
 import { generateObetideCoachingSummary } from '../services/openai';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
+import { openMedicalReportModal } from '../components/UnifiedEcosystemModals';
 import Chart from 'chart.js/auto';
 
 let obetideChartInstance = null;
@@ -11,6 +12,8 @@ export const renderObetide = () => {
     const latest = treatments[0] || null;
     const latestMeasurement = getLatestMeasurement();
     const startingWeight = state.profile.startingWeight || (latestMeasurement ? latestMeasurement.weight : 104);
+    const glp1Pharma = getGlp1Pharmacokinetics();
+    const muscleShield = getMuscleShieldMetrics();
 
     // Calculate days since last dose
     let daysSince = null;
@@ -115,15 +118,72 @@ export const renderObetide = () => {
 
                     <!-- Action Bar -->
                     <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-                        <button id="open-obetide-modal-btn" class="btn-emerald py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 font-display font-black text-sm uppercase tracking-wide shadow-emerald-md">
+                        <button id="open-obetide-modal-btn" class="btn-emerald py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 font-display font-black text-sm uppercase tracking-wide shadow-emerald-md cursor-pointer">
                             <span class="material-symbols-outlined text-xl">syringe</span>
                             Registrar Dosis Semanal
                         </button>
 
-                        <button id="run-obetide-ai-btn" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs shadow-xs transition-all active:scale-95">
-                            <span class="material-symbols-outlined text-lg text-emerald-400">psychology</span>
-                            Evaluación Médica con IA
-                        </button>
+                        <div class="flex flex-wrap gap-2">
+                            <button id="obetide-open-medical-report-btn" class="bg-emerald-950/90 hover:bg-emerald-900 text-lime-300 border border-lime-400/35 py-3 px-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs cursor-pointer">
+                                <span class="material-symbols-outlined text-lg">clinical_notes</span>
+                                Reporte Médico & Labs
+                            </button>
+                            <button id="run-obetide-ai-btn" class="bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 py-3 px-5 rounded-2xl flex items-center justify-center gap-2 font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer">
+                                <span class="material-symbols-outlined text-lg text-emerald-400">psychology</span>
+                                Evaluación Médica con IA
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Curva Farmacocinética GLP-1 en Tiempo Real & Escudo de Masa Muscular -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                        <div class="lg:col-span-7 white-card p-5 border border-[#10E775]/30">
+                            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                                <div>
+                                    <span class="badge-emerald text-[10px]">Farmacocinética Semanal (t½ ≈ 7 días)</span>
+                                    <h3 class="text-base font-display font-black text-white uppercase mt-1">${glp1Pharma.phase}</h3>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] uppercase text-emerald-300/70 block">Nivel Plasmático Activo</span>
+                                    <span class="text-2xl font-mono font-extrabold text-[#10E775]">${glp1Pharma.activeLevelPct}%</span>
+                                </div>
+                            </div>
+                            <p class="text-xs text-emerald-200/80 mb-4">${glp1Pharma.phaseDesc}</p>
+                            <div class="grid grid-cols-7 gap-2 items-end h-24 pt-2 px-2 bg-[#040B08]/75 rounded-2xl border border-emerald-500/20">
+                                ${glp1Pharma.curveDays.map((pct, i) => `
+                                    <div class="flex flex-col items-center gap-1 h-full justify-end pb-1.5">
+                                        <span class="text-[9px] font-mono ${i === glp1Pharma.daysSince ? 'text-lime-400 font-extrabold' : 'text-emerald-300/60'}">${pct}%</span>
+                                        <div class="w-full max-w-[28px] rounded-t-md ${i === glp1Pharma.daysSince ? 'bg-gradient-to-t from-[#10E775] to-lime-400 shadow-lg' : 'bg-emerald-500/30'}" style="height:${Math.max(12, Math.round(pct * 0.55))}px"></div>
+                                        <span class="text-[9px] font-bold ${i === glp1Pharma.daysSince ? 'text-white' : 'text-emerald-400/60'}">Día ${i + 1}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="lg:col-span-5 white-card p-5 border border-[#34D399]/30 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="px-2.5 py-0.5 rounded-full bg-[#34D399]/15 text-[#34D399] text-[10px] font-extrabold uppercase">Escudo Antisarcopenia</span>
+                                    <span class="text-lg font-mono font-extrabold text-[#10E775]">${muscleShield.shieldScore}%</span>
+                                </div>
+                                <h3 class="text-base font-display font-black text-white uppercase">${muscleShield.status}</h3>
+                                <p class="text-xs text-emerald-200/80 mt-1.5 leading-relaxed">${muscleShield.recommendation}</p>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-emerald-500/15 text-center">
+                                <div class="p-2 rounded-xl bg-[#040B08]/75 border border-emerald-500/20">
+                                    <span class="text-[9px] uppercase text-emerald-300/70 block">Masa Magra</span>
+                                    <strong class="text-xs font-mono text-white">${muscleShield.leanMassKg} kg</strong>
+                                </div>
+                                <div class="p-2 rounded-xl bg-[#040B08]/75 border border-emerald-500/20">
+                                    <span class="text-[9px] uppercase text-emerald-300/70 block">Proteína Hoy</span>
+                                    <strong class="text-xs font-mono text-[#10E775]">${muscleShield.currentProtein}/${muscleShield.recommendedProtein}g</strong>
+                                </div>
+                                <div class="p-2 rounded-xl bg-[#040B08]/75 border border-emerald-500/20">
+                                    <span class="text-[9px] uppercase text-emerald-300/70 block">Fuerza (7d)</span>
+                                    <strong class="text-xs font-mono text-lime-400">${muscleShield.weeklyWorkoutsCount} ses.</strong>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- AI Medical Coaching Section (Collapsible/Dynamic) -->
@@ -237,6 +297,9 @@ export const renderObetide = () => {
 
             ${renderBottomNav('obetide')}
         </main>
+
+        <!-- Medical Report & Labs Modal -->
+        <div id="obetide-medical-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto"></div>
 
         <!-- Log Obetide Modal -->
         <div id="obetide-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto">
@@ -475,6 +538,13 @@ export const attachObetideEvents = () => {
         } finally {
             runAiBtn.disabled = false;
             runAiBtn.innerHTML = `<span class="material-symbols-outlined text-lg text-emerald-400">psychology</span> Evaluación Médica con IA`;
+        }
+    });
+
+    const obetideMedicalModal = document.getElementById('obetide-medical-modal');
+    document.getElementById('obetide-open-medical-report-btn')?.addEventListener('click', () => {
+        if (obetideMedicalModal) {
+            openMedicalReportModal(obetideMedicalModal, () => window.router.navigate('obetide'));
         }
     });
 

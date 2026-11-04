@@ -1,4 +1,5 @@
-import { getState, addExpense, deleteExpense, saveExpenseCategory, deleteExpenseCategory, addIncome, deleteIncome, toggleIncomeReceived, saveIncomeCategory, deleteIncomeCategory, getFinancialSummary, setMonthlyIncome, getArgentinaDate, toggleExpensePaid, setAllExpensesPaid } from '../state';
+import { getState, addExpense, deleteExpense, saveExpenseCategory, deleteExpenseCategory, addIncome, deleteIncome, toggleIncomeReceived, saveIncomeCategory, deleteIncomeCategory, getFinancialSummary, setMonthlyIncome, getArgentinaDate, toggleExpensePaid, setAllExpensesPaid, getHealthFinanceMetrics } from '../state';
+import { analyzeReceiptWithAI } from '../services/openai';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
 import Chart from 'chart.js/auto';
 
@@ -10,6 +11,7 @@ export const renderWallet = () => {
     const state = getState();
     const currentMonth = getArgentinaDate().substring(0, 7);
     const summary = getFinancialSummary(currentMonth);
+    const healthFinance = getHealthFinanceMetrics();
     const currency = state.profile.currency || 'ARS';
     const categories = state.expenseCategories || [];
     const incomeCategories = state.incomeCategories || [];
@@ -199,33 +201,33 @@ export const renderWallet = () => {
                             </div>
                         </div>
 
-                        <!-- Obetide & Health Financial Ratio -->
+                        <!-- Obetide & Health Financial Ratio + AI Receipt Scanner -->
                         <div class="white-card card-glow-jade p-5 shadow-xl flex flex-col justify-between">
                             <div>
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="text-xs px-2.5 py-0.5 rounded-full bg-teal-500/10 border border-teal-400/20 text-[#2DD4BF] font-semibold">
-                                        Tratamiento & Salud
+                                        Finanzas & Nutrición Conectadas
                                     </span>
-                                    <span class="text-xs text-emerald-400/70 font-mono font-medium">GLP-1</span>
+                                    <span class="text-xs text-[#10E775] font-mono font-bold">~$${healthFinance.costPerGramProtein} / g Proteína</span>
                                 </div>
-                                <h3 class="text-sm font-semibold text-white">Inversión en Bienestar</h3>
+                                <h3 class="text-sm font-semibold text-white">Inversión en Salud & Escáner de Tickets IA</h3>
                                 <p class="text-xs text-emerald-200/70 mt-1 leading-relaxed">
-                                    Control de compras de Obetide, consultas médicas y nutricionales en Sanatorio Argentino.
+                                    Cruza tu inversión en Obetide y supermercado con los gramos de proteína consumidos (${healthFinance.totalProteinMonthGrams}g este mes).
                                 </p>
                             </div>
 
-                            <div class="my-4 p-4 rounded-2xl bg-teal-500/[0.06] border border-teal-500/20 flex items-center justify-between">
+                            <div class="my-3 p-3.5 rounded-2xl bg-teal-500/[0.06] border border-teal-500/20 flex items-center justify-between">
                                 <div class="flex items-center gap-3">
-                                    <div class="size-11 rounded-2xl bg-teal-500/20 text-[#2DD4BF] flex items-center justify-center text-xl">
+                                    <div class="size-10 rounded-2xl bg-teal-500/20 text-[#2DD4BF] flex items-center justify-center text-lg">
                                         💉
                                     </div>
                                     <div>
-                                        <p class="text-xs font-semibold text-white">Tratamiento Dutide & Tiroides</p>
-                                        <span class="text-[10px] text-teal-300">Dutide ($100.000) + Levotiroxina ($15.000)</span>
+                                        <p class="text-xs font-semibold text-white">Tratamiento GLP-1 & Salud</p>
+                                        <span class="text-[10px] text-teal-300">Obetide / Farmacia + Alimentación Proteica</span>
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <span class="font-mono font-bold text-[#2DD4BF] text-lg">
+                                    <span class="font-mono font-bold text-[#2DD4BF] text-base">
                                         ${formatMoney(
                                             (state.expenses || [])
                                                 .filter(e => e.date?.startsWith(currentMonth) && (e.category_id === 'salud-obetide' || e.category_name?.toLowerCase().includes('salud') || e.name?.toLowerCase().includes('dutide') || e.name?.toLowerCase().includes('levotiroxina') || e.category_name?.toLowerCase().includes('obetide')))
@@ -235,10 +237,20 @@ export const renderWallet = () => {
                                 </div>
                             </div>
 
-                            <p class="text-[11px] text-emerald-300/70 flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-[#2DD4BF] text-sm">verified_user</span>
-                                Inversión prioritaria: control metabólico, saciedad temprana y soporte endocrino.
-                            </p>
+                            <!-- AI Receipt / Ticket Loader -->
+                            <div class="p-3 rounded-2xl bg-[#040B08]/80 border border-emerald-500/25 flex flex-col gap-2">
+                                <label class="text-[10px] font-bold uppercase tracking-wider text-lime-400">🧾 Escáner de Ticket Supermercado / Farmacia con IA</label>
+                                <div class="flex gap-1.5">
+                                    <input id="wallet-ai-receipt-input" type="text" placeholder="Ej: Carnicería pollo y huevos $38500..." class="flex-1 rounded-xl px-3 py-1.5 text-xs text-white bg-emerald-950/50 border border-emerald-500/30 outline-none" />
+                                    <label for="wallet-ai-receipt-photo" class="px-2.5 py-1.5 rounded-xl bg-emerald-950 border border-emerald-500/30 text-[#10E775] flex items-center justify-center cursor-pointer" title="Subir foto del ticket">
+                                        <span class="material-symbols-outlined text-base">photo_camera</span>
+                                        <input id="wallet-ai-receipt-photo" type="file" accept="image/*" class="hidden" />
+                                    </label>
+                                    <button id="wallet-ai-receipt-btn" class="btn-emerald px-3 py-1.5 text-[11px] font-extrabold uppercase cursor-pointer">
+                                        Escanear IA
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1281,6 +1293,65 @@ export const attachWalletEvents = () => {
                 }
             );
         });
+    });
+
+    // AI Receipt / Ticket Scanner
+    const receiptInput = document.getElementById('wallet-ai-receipt-input');
+    const receiptPhoto = document.getElementById('wallet-ai-receipt-photo');
+    const receiptBtn = document.getElementById('wallet-ai-receipt-btn');
+
+    const runReceiptScan = async (txt, fileObj = null) => {
+        if (!txt && !fileObj) return;
+        if (receiptBtn) {
+            receiptBtn.disabled = true;
+            receiptBtn.textContent = 'Analizando...';
+        }
+        try {
+            let parsed;
+            if (fileObj) {
+                const b64 = await new Promise((res, rej) => {
+                    const r = new FileReader();
+                    r.readAsDataURL(fileObj);
+                    r.onload = () => res(r.result);
+                    r.onerror = rej;
+                });
+                parsed = await analyzeReceiptWithAI(b64, 'image');
+            } else {
+                parsed = await analyzeReceiptWithAI(txt, 'text');
+            }
+
+            await addExpense({
+                name: parsed.merchant || 'Compra Saludable IA',
+                amount: Number(parsed.amount) || 25000,
+                category_id: parsed.category_id || 'operativos-vida',
+                category_name: parsed.category_name || 'Operativos & Vida',
+                date: getArgentinaDate(),
+                description: parsed.summary || (parsed.detected_items || []).join(', '),
+                is_paid: true
+            });
+
+            window.showAlert?.(
+                '¡Ticket Registrado con IA!',
+                `${parsed.merchant}: $${Number(parsed.amount || 0).toLocaleString('es-AR')} · ${parsed.summary || ''}`,
+                'success'
+            );
+            window.router.navigate('wallet');
+        } catch (err) {
+            window.showAlert?.('Error en Ticket', 'No se pudo procesar el ticket.', 'error');
+        } finally {
+            if (receiptBtn) {
+                receiptBtn.disabled = false;
+                receiptBtn.textContent = 'Escanear IA';
+            }
+        }
+    };
+
+    receiptBtn?.addEventListener('click', () => runReceiptScan(receiptInput?.value || '', receiptPhoto?.files?.[0] || null));
+    receiptInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') runReceiptScan(receiptInput.value, null);
+    });
+    receiptPhoto?.addEventListener('change', () => {
+        if (receiptPhoto.files?.length) runReceiptScan(receiptInput?.value || '', receiptPhoto.files[0]);
     });
 
     initWalletChart();

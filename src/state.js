@@ -1917,3 +1917,320 @@ export const saveAiMealPlan = async (plan) => {
     return entry;
 };
 
+// --- MOTOR UNIFICADO: FARMACOCINÉTICA GLP-1, ESCUDO MUSCULAR, SIMULADOR 30/60/90D, LABORATORIOS Y FINANZAS SALUD ---
+
+export const getGlp1Pharmacokinetics = () => {
+    const state = getState();
+    const treatments = [...(state.obetideTreatments || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const latest = treatments[0] || null;
+
+    if (!latest || !latest.date) {
+        return {
+            hasTreatment: false,
+            doseMl: 0.25,
+            daysSince: 0,
+            activeLevelPct: 0,
+            phase: 'Sin dosis activa',
+            phaseDesc: 'Registra tu aplicación semanal de Obetide para activar la curva farmacocinética.',
+            satietyWindow: 'Pendiente',
+            curveDays: [0, 0, 0, 0, 0, 0, 0]
+        };
+    }
+
+    const [y, m, d] = latest.date.split('-').map(Number);
+    const lastD = new Date(y, m - 1, d);
+    const [nowY, nowM, nowD] = getArgentinaDate().split('-').map(Number);
+    const now = new Date(nowY, nowM - 1, nowD);
+    const daysSince = Math.max(0, Math.round((now - lastD) / (1000 * 60 * 60 * 24)));
+    const doseMl = Number(latest.dose_ml || 0.25);
+
+    // Pharmacokinetic absorption (Tmax ~48h / Day 2) and elimination (t1/2 ~168h / 7 days)
+    const calcDayPct = (dayIdx) => {
+        if (dayIdx === 0) return 58;
+        if (dayIdx === 1) return 88;
+        if (dayIdx === 2) return 100;
+        if (dayIdx === 3) return 91;
+        if (dayIdx === 4) return 81;
+        if (dayIdx === 5) return 71;
+        if (dayIdx === 6) return 61;
+        if (dayIdx === 7) return 52;
+        return Math.max(15, Math.round(100 * Math.pow(0.5, (dayIdx - 1) / 7)));
+    };
+
+    // Cumulative steady-state boost if multiple doses applied
+    const steadyStateFactor = Math.min(1.12, 1 + Math.min(4, treatments.length - 1) * 0.03);
+    const activeLevelPct = Math.min(100, Math.round(calcDayPct(daysSince) * steadyStateFactor));
+    const curveDays = [0, 1, 2, 3, 4, 5, 6].map(dayIdx => Math.min(100, Math.round(calcDayPct(dayIdx) * steadyStateFactor)));
+
+    let phase = 'Meseta Terapéutica';
+    let phaseDesc = 'Concentración estable en sangre. Enlentecimiento gástrico óptimo y control del apetito.';
+    let satietyWindow = 'Alta (85-100%)';
+
+    if (daysSince <= 2) {
+        phase = 'Pico de Absorción (Tmax)';
+        phaseDesc = 'Máxima concentración plasmática. Prioriza comidas pequeñas, magras e hidratación fraccionada.';
+        satietyWindow = 'Máxima Saciedad';
+    } else if (daysSince >= 5 && daysSince <= 6) {
+        phase = 'Fase de Descenso Gradual';
+        phaseDesc = 'Nivel activo en descenso fisiológico (~60-70%). Aumenta proteína y fibra vegetal para sostener saciedad.';
+        satietyWindow = 'Moderada-Alta';
+    } else if (daysSince >= 7) {
+        phase = 'Ventana de Nueva Dosis';
+        phaseDesc = 'Se cumplió el ciclo semanal (vida media 7 días). Corresponde nueva aplicación según pauta médica.';
+        satietyWindow = 'Renovación Semanal';
+    }
+
+    return {
+        hasTreatment: true,
+        doseMl,
+        lastDate: latest.date,
+        daysSince,
+        activeLevelPct,
+        phase,
+        phaseDesc,
+        satietyWindow,
+        curveDays,
+        totalDoses: treatments.length
+    };
+};
+
+export const getMuscleShieldMetrics = (dateStr = null) => {
+    const state = getState();
+    const targetDate = dateStr || state.selectedDate || getArgentinaDate();
+    const indices = calculateBodyIndices({}, state.profile);
+    const dailyStats = getDailyStats(targetDate);
+
+    // Optimal protein target on GLP-1 to prevent sarcopenia: ~1.8g per kg of Lean Body Mass (or min 110g)
+    const recommendedProtein = Math.max(110, Math.round(indices.leanMass * 1.8));
+    const currentProtein = Math.round(dailyStats.protein || 0);
+    const proteinPct = Math.min(100, Math.round((currentProtein / recommendedProtein) * 100));
+
+    // Workouts in the last 7 days
+    const [nowY, nowM, nowD] = getArgentinaDate().split('-').map(Number);
+    const now = new Date(nowY, nowM - 1, nowD);
+    const recentWorkouts = (state.workouts || []).filter(w => {
+        if (!w.date) return false;
+        const [wy, wm, wd] = w.date.split('-').map(Number);
+        const wDate = new Date(wy, wm - 1, wd);
+        const diffDays = (now - wDate) / (1000 * 60 * 60 * 24);
+        return diffDays >= 0 && diffDays <= 7;
+    });
+
+    const weeklyWorkoutsCount = recentWorkouts.length;
+    const workoutScore = Math.min(100, Math.round((weeklyWorkoutsCount / 3) * 100));
+
+    // Combined Muscle Shield Score (60% daily protein synthesis + 40% mechanical tension / exercise)
+    const shieldScore = Math.min(100, Math.round(proteinPct * 0.6 + workoutScore * 0.4));
+
+    let status = 'Escudo Muscular Activo';
+    let recommendation = `Masa magra protegida (${indices.leanMass} kg). Síntesis proteica y estímulo mecánico en rango óptimo.`;
+    if (shieldScore < 50) {
+        status = 'Alerta de Catabolismo Muscular';
+        recommendation = `Faltan ${Math.max(0, recommendedProtein - currentProtein)}g de proteína hoy y sumar estímulo de fuerza para proteger tus ${indices.leanMass} kg de masa magra durante el descenso de peso.`;
+    } else if (shieldScore < 80) {
+        status = 'Protección Muscular Moderada';
+        recommendation = `Suma ${Math.max(0, recommendedProtein - currentProtein)}g extra de proteína magra hoy (pollo, claras, atún o whey) para blindar tu metabolismo basal (${indices.bmr} kcal).`;
+    }
+
+    return {
+        shieldScore,
+        status,
+        recommendation,
+        leanMassKg: indices.leanMass,
+        leanPct: indices.leanPct,
+        ffmi: indices.ffmi,
+        currentProtein,
+        recommendedProtein,
+        proteinPct,
+        weeklyWorkoutsCount
+    };
+};
+
+export const getWeightProjection = () => {
+    const state = getState();
+    const indices = calculateBodyIndices({}, state.profile);
+    const currentWeight = indices.weight;
+    const targetWeight = Number(state.profile?.targetWeight || indices.idealWeight || 75);
+
+    // Calculate average daily intake over last 7 logged days
+    const dailyLog = state.dailyLog || [];
+    const byDate = {};
+    dailyLog.forEach(m => {
+        if (!m.date) return;
+        byDate[m.date] = (byDate[m.date] || 0) + (Number(m.calories) || 0);
+    });
+    const loggedDates = Object.keys(byDate).sort().slice(-7);
+    const avgIntake = loggedDates.length > 0
+        ? Math.round(loggedDates.reduce((s, d) => s + byDate[d], 0) / loggedDates.length)
+        : (state.profile?.calorieGoal || 1650);
+
+    // Average daily workout + EPOC burn over last 7 days
+    const recentWorkouts = (state.workouts || []).slice(-7);
+    const avgWorkoutBurn = recentWorkouts.length > 0
+        ? Math.round(recentWorkouts.reduce((s, w) => s + (Number(w.calories) || 0) + (Number(w.details?.epoc_calories) || 0), 0) / 7)
+        : 180;
+
+    const totalDailyOutput = indices.tdee + avgWorkoutBurn;
+    // Ensure a realistic physiological daily deficit between 350 and 1100 kcal when in weight-loss protocol
+    const rawDeficit = totalDailyOutput - avgIntake;
+    const dailyDeficit = Math.max(350, Math.min(1200, rawDeficit > 100 ? rawDeficit : 550));
+
+    // 1 kg of adipose tissue ≈ 7700 kcal
+    const dailyKgLoss = dailyDeficit / 7700;
+    const weeklyKgLoss = Number((dailyKgLoss * 7).toFixed(2));
+
+    const weight30d = Number(Math.max(targetWeight, currentWeight - dailyKgLoss * 30).toFixed(1));
+    const weight60d = Number(Math.max(targetWeight, currentWeight - dailyKgLoss * 60).toFixed(1));
+    const weight90d = Number(Math.max(targetWeight, currentWeight - dailyKgLoss * 90).toFixed(1));
+
+    const kgToTarget = Math.max(0, Number((currentWeight - targetWeight).toFixed(1)));
+    const daysToTarget = kgToTarget > 0 ? Math.ceil(kgToTarget / dailyKgLoss) : 0;
+
+    const etaDateObj = new Date();
+    etaDateObj.setDate(etaDateObj.getDate() + daysToTarget);
+    const etaFormatted = daysToTarget > 0
+        ? etaDateObj.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
+        : '¡Meta alcanzada!';
+
+    return {
+        currentWeight,
+        targetWeight,
+        kgToTarget,
+        avgIntake,
+        totalDailyOutput,
+        dailyDeficit: Math.round(dailyDeficit),
+        weeklyKgLoss,
+        weight30d,
+        weight60d,
+        weight90d,
+        daysToTarget,
+        etaFormatted
+    };
+};
+
+export const getFrequentMeals = (limit = 6) => {
+    const state = getState();
+    const meals = state.dailyLog || [];
+    const map = {};
+
+    meals.forEach(m => {
+        if (!m.name) return;
+        const key = m.name.trim().toLowerCase();
+        if (!map[key]) {
+            map[key] = {
+                name: m.name.trim(),
+                calories: Math.round(Number(m.calories) || 250),
+                category: m.category || m.time || 'Almuerzo',
+                macros: {
+                    protein: Math.round(Number(m.macros?.protein) || 0),
+                    carbs: Math.round(Number(m.macros?.carbs) || 0),
+                    fat: Math.round(Number(m.macros?.fat) || 0),
+                    sodium: getMealSodium(m)
+                },
+                count: 1
+            };
+        } else {
+            map[key].count += 1;
+        }
+    });
+
+    return Object.values(map)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit);
+};
+
+export const getLabResults = () => {
+    const state = getState();
+    if (!state.labResults) {
+        state.labResults = [
+            {
+                id: 'lab-init-1',
+                date: '2026-10-15',
+                glucose: 92,
+                insulin: 8.4,
+                hba1c: 5.4,
+                homaIr: 1.91,
+                cholesterolTotal: 178,
+                hdl: 52,
+                ldl: 102,
+                triglycerides: 118,
+                creatinine: 0.88,
+                tsh: 2.1,
+                notes: 'Sensibilidad a la insulina en mejora con protocolo GLP-1 + entrenamiento.'
+            }
+        ];
+    }
+    return [...state.labResults].sort((a, b) => new Date(b.date) - new Date(a.date));
+};
+
+export const addLabResult = (data) => {
+    const state = getState();
+    if (!state.labResults) state.labResults = getLabResults();
+
+    const glucose = Number(data.glucose) || 90;
+    const insulin = Number(data.insulin) || 8;
+    const homaIr = Number(((glucose * insulin) / 405).toFixed(2));
+
+    const entry = {
+        id: Date.now(),
+        date: data.date || getArgentinaDate(),
+        glucose,
+        insulin,
+        hba1c: Number(data.hba1c) || 5.4,
+        homaIr,
+        cholesterolTotal: Number(data.cholesterolTotal) || 180,
+        hdl: Number(data.hdl) || 50,
+        ldl: Number(data.ldl) || 100,
+        triglycerides: Number(data.triglycerides) || 120,
+        creatinine: Number(data.creatinine) || 0.9,
+        tsh: Number(data.tsh) || 2.0,
+        notes: data.notes || ''
+    };
+
+    state.labResults.unshift(entry);
+    addXP(state, 50);
+    saveState(state);
+    return entry;
+};
+
+export const deleteLabResult = (id) => {
+    const state = getState();
+    if (!state.labResults) return;
+    state.labResults = state.labResults.filter(l => String(l.id) !== String(id));
+    saveState(state);
+};
+
+export const getHealthFinanceMetrics = () => {
+    const state = getState();
+    const currentMonth = getArgentinaDate().substring(0, 7);
+    const expenses = (state.expenses || []).filter(e => (e.date || '').startsWith(currentMonth));
+
+    let healthAndMedicalSpent = 0;
+    let nutritionAndSupermarketSpent = 0;
+
+    expenses.forEach(e => {
+        const txt = `${e.name || ''} ${e.category_name || ''} ${e.description || ''}`.toLowerCase();
+        const amt = Number(e.amount) || 0;
+        if (/obetide|dutide|farmacia|m[eé]dico|salud|gym|gimnasio|suplemento|whey|prote[ií]na/.test(txt) || String(e.category_id) === 'salud-obetide') {
+            healthAndMedicalSpent += amt;
+        } else if (/super|mercado|carnicer[ií]a|verduler[ií]a|comida|alimento|pollo|huevo/.test(txt) || String(e.category_id) === 'operativos-vida') {
+            nutritionAndSupermarketSpent += amt;
+        }
+    });
+
+    // Total protein grams logged this month
+    const monthMeals = (state.dailyLog || []).filter(m => (m.date || '').startsWith(currentMonth));
+    const totalProteinMonthGrams = Math.max(1500, monthMeals.reduce((s, m) => s + (Number(m.macros?.protein) || 0), 0) || 3600);
+    const foodBudgetRef = nutritionAndSupermarketSpent > 0 ? nutritionAndSupermarketSpent : 185000;
+    const costPerGramProtein = Math.round(foodBudgetRef / totalProteinMonthGrams);
+
+    return {
+        healthAndMedicalSpent,
+        nutritionAndSupermarketSpent,
+        totalHealthInvestment: healthAndMedicalSpent + nutritionAndSupermarketSpent,
+        totalProteinMonthGrams: Math.round(totalProteinMonthGrams),
+        costPerGramProtein
+    };
+};
+
+

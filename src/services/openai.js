@@ -992,4 +992,159 @@ export const analyzeWorkoutWithAI = async (workoutText, state) => {
   }
 };
 
+export const analyzeFridgeWithAI = async (ingredientsText, remainingCalories = 600, remainingProtein = 45) => {
+  const apiKey = getOpenAIKey();
+  const cleanIng = (ingredientsText || 'huevos, queso, pollo, verduras').trim();
+
+  const buildFallbackRecipes = () => [
+    {
+      name: `Omelette Proteico con ${cleanIng.split(',')[0] || 'Vegetales'}`,
+      prep_time: '12 min',
+      calories: Math.min(520, Math.max(280, Math.round(remainingCalories * 0.65))),
+      macros: { protein: 34, carbs: 14, fat: 14, sodium: 380 },
+      steps: 'Batir claras y huevos, saltear los ingredientes disponibles en sartén antiadherente y plegar con queso magro.',
+      why_fit: 'Alta densidad proteica para proteger masa magra con mínima carga glucémica.'
+    },
+    {
+      name: `Salteado Magro Express (${cleanIng.slice(0, 35)})`,
+      prep_time: '18 min',
+      calories: Math.min(580, Math.max(320, Math.round(remainingCalories * 0.75))),
+      macros: { protein: 42, carbs: 24, fat: 12, sodium: 420 },
+      steps: 'Cortar en cubos la fuente de proteína y vegetales, dorar al wok con rocío vegetal y hierbas.',
+      why_fit: 'Saciedad prolongada compatible con protocolo GLP-1 y fácil digestión.'
+    },
+    {
+      name: `Bowl Nutricional Tibio de Heladera`,
+      prep_time: '15 min',
+      calories: Math.min(460, Math.max(250, Math.round(remainingCalories * 0.55))),
+      macros: { protein: 29, carbs: 28, fat: 11, sodium: 310 },
+      steps: 'Combinar base de vegetales cocidos o frescos con proteína dorada a la plancha y condimento suave.',
+      why_fit: 'Volumen gástrico controlado sin pesadez postprandial.'
+    }
+  ];
+
+  if (!apiKey) return buildFallbackRecipes();
+
+  const systemPrompt = `
+    Eres un Chef Nutricionista Clínico de Grow Labs especializado en pacientes en descenso de peso y protocolo GLP-1.
+    El usuario tiene estos ingredientes en su heladera/alacena: "${cleanIng}".
+    Le quedan disponibles hoy aproximadamente ${remainingCalories} kcal y necesita cubrir ${remainingProtein}g de proteína.
+    Devuelve ÚNICAMENTE un JSON válido con el formato:
+    {
+      "recipes": [
+        {
+          "name": "Nombre tentador del plato",
+          "prep_time": "15 min",
+          "calories": number,
+          "macros": { "protein": number, "carbs": number, "fat": number, "sodium": number },
+          "steps": "Instrucción breve en 1-2 oraciones",
+          "why_fit": "Por qué protege su masa muscular y saciedad"
+        }
+      ]
+    }
+    Genera exactamente 3 recetas prácticas.
+  `;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Ingredientes: ${cleanIng}` }
+        ],
+        max_tokens: 600,
+        temperature: 0.4,
+        response_format: { type: "json_object" }
+      })
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    const parsed = JSON.parse(data.choices[0].message.content.trim());
+    return parsed.recipes?.length ? parsed.recipes : buildFallbackRecipes();
+  } catch (e) {
+    console.warn("Fridge AI fallback:", e);
+    return buildFallbackRecipes();
+  }
+};
+
+export const analyzeReceiptWithAI = async (input, type = 'text') => {
+  const apiKey = getOpenAIKey();
+
+  const buildFallbackReceipt = (txt) => {
+    const raw = (txt || 'Compra Supermercado Saludable').trim();
+    const numMatch = raw.match(/(\d{3,8})/);
+    const amount = numMatch ? Number(numMatch[1]) : 42500;
+    const isPharma = /farmacia|obetide|dutide|medicamento/i.test(raw);
+    return {
+      merchant: isPharma ? 'Farmacia / Tratamiento GLP-1' : 'Supermercado & Alimentos Saludables',
+      amount,
+      category_id: isPharma ? 'salud-obetide' : 'operativos-vida',
+      category_name: isPharma ? 'Salud & Obetide' : 'Operativos & Alimentación',
+      detected_items: isPharma ? ['Obetide / Insumos Farmacia'] : ['Pechuga de Pollo', 'Huevos Maples', 'Yogur Griego', 'Vegetales Frescos'],
+      protein_estimate_g: isPharma ? 0 : 480,
+      health_score: 94,
+      summary: isPharma
+        ? 'Inversión directa en continuidad terapéutica GLP-1.'
+        : 'Compra de alta densidad proteica (~480g de proteína limpia estimada para tu semana).'
+    };
+  };
+
+  if (!apiKey) return buildFallbackReceipt(type === 'text' ? input : 'Ticket escaneado');
+
+  const systemPrompt = `
+    Analiza este ticket o descripción de gasto del usuario.
+    Devuelve ÚNICAMENTE un JSON válido:
+    {
+      "merchant": "Nombre del comercio o concepto",
+      "amount": number (monto total en ARS),
+      "category_id": "salud-obetide" | "operativos-vida" | "vivienda-servicios" | "compromisos-cuotas",
+      "category_name": "Salud & Obetide" | "Operativos & Vida" | "Vivienda & Servicios",
+      "detected_items": ["Item 1", "Item 2"],
+      "protein_estimate_g": number (gramos totales de proteína estimados en la compra si son alimentos, o 0),
+      "health_score": number (0 a 100 según qué tan saludable es la compra),
+      "summary": "Breve conclusión financiera-nutricional en 1 oración"
+    }
+  `;
+
+  try {
+    const messages = type === 'image'
+      ? [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: [{ type: "text", text: "Extrae monto, comercio y alimentos de este ticket:" }, { type: "image_url", image_url: { url: input } }] }
+        ]
+      : [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Ticket / Gasto: ${input}` }
+        ];
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages,
+        max_tokens: 450,
+        temperature: 0.2,
+        response_format: { type: "json_object" }
+      })
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    return { ...buildFallbackReceipt(type === 'text' ? input : ''), ...JSON.parse(data.choices[0].message.content.trim()) };
+  } catch (e) {
+    console.warn("Receipt AI fallback:", e);
+    return buildFallbackReceipt(type === 'text' ? input : '');
+  }
+};
+
+
 

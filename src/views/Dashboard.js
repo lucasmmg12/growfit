@@ -17,7 +17,14 @@ import {
     getLatestMeasurement,
     calculateBodyIndices,
     addWorkout,
-    deleteWorkout
+    deleteWorkout,
+    getGlp1Pharmacokinetics,
+    getMuscleShieldMetrics,
+    getWeightProjection,
+    getFastingProgress,
+    startFasting,
+    stopFasting,
+    getFrequentMeals
 } from '../state';
 import { analyzeFood, generateDailyTip, generateSmartHabits } from '../services/openai';
 import { getProductByBarcode } from '../services/openfoodfacts';
@@ -25,6 +32,7 @@ import { renderSidebar, renderMobileHeader, renderBottomNav } from '../component
 import { renderMealSensationsModalContainer, renderSatietyBadge, attachSensationsModalEvents } from '../components/MealSensationsModal';
 import { openBodyMeasurementModal } from './Measurements';
 import { openAddWorkoutModal } from './Workouts';
+import { attachVoiceDictation, openFridgeAiModal, openMedicalReportModal } from '../components/UnifiedEcosystemModals';
 
 let barcodeScannerInstance = null;
 
@@ -103,6 +111,11 @@ export const renderDashboard = () => {
     const latestMeas = getLatestMeasurement();
     const bodyIndices = calculateBodyIndices(latestMeas || {}, state.profile);
     const todaysWorkouts = dailyBurn.workouts || [];
+    const glp1Pharma = getGlp1Pharmacokinetics();
+    const muscleShield = getMuscleShieldMetrics(selectedDate);
+    const weightProj = getWeightProjection();
+    const fastingInfo = getFastingProgress();
+    const frequentMeals = getFrequentMeals(4);
 
     return `
     <div class="flex h-screen w-full bg-[#050C09] font-body text-text-primary overflow-hidden fade-in">
@@ -146,31 +159,42 @@ export const renderDashboard = () => {
                                 </h2>
                             </div>
 
-                            <!-- Date Navigation Buttons -->
-                            <div class="flex items-center gap-2.5 self-start lg:self-center">
+                            <!-- Date Navigation + Heladera IA + Reporte Médico -->
+                            <div class="flex flex-wrap items-center gap-2 self-start lg:self-center">
+                                <button id="dash-open-fridge-btn" class="px-3 py-2 rounded-2xl bg-[#10E775]/15 hover:bg-[#10E775]/25 border border-[#10E775]/35 text-[#10E775] text-xs font-extrabold flex items-center gap-1.5 cursor-pointer transition-all">
+                                    <span class="material-symbols-outlined text-base">kitchen</span>
+                                    <span>Heladera IA</span>
+                                </button>
+                                <button id="dash-open-medical-report-btn" class="px-3 py-2 rounded-2xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/30 text-emerald-200 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer transition-all">
+                                    <span class="material-symbols-outlined text-base text-lime-400">clinical_notes</span>
+                                    <span>Reporte Médico & Labs</span>
+                                </button>
                                 <div class="flex items-center bg-[#040B08]/90 p-1.5 rounded-2xl border border-emerald-500/20">
                                     <button id="prev-day-btn" class="size-8 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-[#10E775] transition-all flex items-center justify-center cursor-pointer">
                                         <span class="material-symbols-outlined text-base">chevron_left</span>
                                     </button>
-                                    <span class="px-4 text-xs font-extrabold text-white font-mono tracking-wider">
+                                    <span class="px-3 text-xs font-extrabold text-white font-mono tracking-wider">
                                         ${isToday ? 'HOY · ' + selectedDate.slice(5) : new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }).toUpperCase()}
                                     </span>
                                     <button id="next-day-btn" class="size-8 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-[#10E775] transition-all flex items-center justify-center cursor-pointer">
                                         <span class="material-symbols-outlined text-base">chevron_right</span>
                                     </button>
                                 </div>
-                                <button id="open-calendar-btn" class="size-11 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-[#10E775] flex items-center justify-center transition-all cursor-pointer" title="Ver Calendario">
+                                <button id="open-calendar-btn" class="size-10 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-[#10E775] flex items-center justify-center transition-all cursor-pointer" title="Ver Calendario">
                                     <span class="material-symbols-outlined text-lg">calendar_month</span>
                                 </button>
                             </div>
                         </div>
 
-                        <!-- AI Command Bar + Quick Chips -->
+                        <!-- AI Command Bar + Voice Dictation + Quick Chips -->
                         <div class="mt-4 flex flex-col gap-3">
-                            <div class="flex items-center gap-2.5">
-                                <div class="flex-1 flex items-center bg-[#040B08]/90 border border-emerald-500/25 rounded-2xl px-4 py-2.5 focus-within:border-[#10E775] transition-all shadow-inner">
-                                    <span class="material-symbols-outlined text-[#10E775] text-xl mr-2.5">auto_awesome</span>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 flex items-center bg-[#040B08]/90 border border-emerald-500/25 rounded-2xl px-3.5 py-2 focus-within:border-[#10E775] transition-all shadow-inner">
+                                    <span class="material-symbols-outlined text-[#10E775] text-xl mr-2">auto_awesome</span>
                                     <input id="quick-log-input" type="text" placeholder="¿Qué comiste hoy? Ej: 2 huevos revueltos con tostada y café..." class="w-full bg-transparent border-none outline-none text-sm font-medium text-white placeholder:text-emerald-300/40" />
+                                    <button id="quick-log-voice-btn" type="button" title="Dictar comida por voz" class="size-8 rounded-xl bg-emerald-950/90 hover:bg-[#10E775]/20 text-[#10E775] flex items-center justify-center transition-all cursor-pointer shrink-0 ml-1">
+                                        <span class="material-symbols-outlined text-base">mic</span>
+                                    </button>
                                 </div>
 
                                 <!-- Camera AI Button -->
@@ -185,21 +209,24 @@ export const renderDashboard = () => {
                                 </button>
 
                                 <!-- Submit / Add Button -->
-                                <button id="quick-log-btn" class="btn-emerald px-5 h-11 text-xs font-extrabold uppercase tracking-wider">
+                                <button id="quick-log-btn" class="btn-emerald px-5 h-11 text-xs font-extrabold uppercase tracking-wider cursor-pointer">
                                     <span class="material-symbols-outlined text-lg">add_circle</span>
                                     <span class="hidden sm:inline">Registrar</span>
                                 </button>
                             </div>
 
-                            <!-- 1-Click Quick Food Chips -->
+                            <!-- 1-Click Quick Food Chips + Frequent Favorites -->
                             <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pt-0.5">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400/70 shrink-0">Carga rápida:</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400/70 shrink-0">1 Toque / Favoritos:</span>
+                                ${frequentMeals.map(fav => `
+                                    <button type="button" class="dash-fav-meal-chip px-3 py-1 rounded-full bg-[#10E775]/15 hover:bg-[#10E775]/30 border border-[#10E775]/35 text-[11px] font-bold text-[#10E775] hover:text-white transition-all shrink-0 cursor-pointer" data-fav='${JSON.stringify(fav).replace(/'/g, "&apos;")}'>
+                                        ⭐ ${fav.name} (${fav.calories} kcal)
+                                    </button>
+                                `).join('')}
                                 ${[
                                     { label: '☕ Café con leche', query: 'Café con leche descremada' },
                                     { label: '🥚 2 Huevos y tostada', query: '2 huevos revueltos con 1 tostada integral' },
-                                    { label: '🍗 Pollo con ensalada', query: '200g pechuga de pollo grillada con ensalada mixta' },
-                                    { label: '🥩 Bife con huevo', query: '200g bife de carne magra con 1 huevo a la plancha' },
-                                    { label: '🥣 Yogur con avena', query: 'Yogur griego natural con 30g de avena' }
+                                    { label: '🍗 Pollo con ensalada', query: '200g pechuga de pollo grillada con ensalada mixta' }
                                 ].map(chip => `
                                     <button type="button" class="quick-food-chip px-3 py-1 rounded-full bg-emerald-950/60 hover:bg-[#10E775]/20 border border-emerald-500/20 hover:border-[#10E775]/45 text-[11px] font-semibold text-emerald-100/80 hover:text-white transition-all shrink-0 cursor-pointer" data-food="${chip.query}">
                                         ${chip.label}
@@ -678,6 +705,99 @@ export const renderDashboard = () => {
                         </div>
                     </div>
 
+                    <!-- HUB UNIFICADO DE BIO-INTELIGENCIA: GLP-1, ESCUDO MUSCULAR, AYUNO & SIMULADOR 30/60/90 DÍAS -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- 1. Curva Farmacocinética GLP-1 en Vivo -->
+                        <div class="white-card p-5 border border-[#10E775]/25 flex flex-col justify-between relative overflow-hidden">
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="px-2 py-0.5 rounded-md bg-[#10E775]/15 text-[#10E775] text-[10px] font-extrabold uppercase">Farmacocinética GLP-1</span>
+                                    <span class="text-xs font-mono font-extrabold text-lime-400">${glp1Pharma.activeLevelPct}% activo</span>
+                                </div>
+                                <h4 class="text-sm font-display font-extrabold text-white">${glp1Pharma.phase}</h4>
+                                <p class="text-[11px] text-emerald-300/75 mt-1 leading-relaxed">${glp1Pharma.phaseDesc}</p>
+                            </div>
+                            <div class="mt-3 pt-2.5 border-t border-emerald-500/15">
+                                <div class="flex items-end justify-between gap-1 h-10 mb-1.5">
+                                    ${glp1Pharma.curveDays.map((val, idx) => `
+                                        <div class="flex-1 flex flex-col items-center gap-0.5">
+                                            <div class="w-full rounded-t-sm ${idx === glp1Pharma.daysSince ? 'bg-[#10E775]' : 'bg-emerald-500/30'}" style="height:${Math.max(15, Math.round(val * 0.32))}px"></div>
+                                            <span class="text-[8px] font-mono ${idx === glp1Pharma.daysSince ? 'text-[#10E775] font-bold' : 'text-emerald-400/60'}">D${idx + 1}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <button onclick="window.router.navigate('obetide')" class="w-full text-[11px] font-bold text-[#10E775] hover:underline text-left cursor-pointer">
+                                    Dosis: ${glp1Pharma.doseMl} ml · Ver curva completa →
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 2. Escudo de Masa Muscular (Antisarcopenia) -->
+                        <div class="white-card p-5 border border-[#34D399]/25 flex flex-col justify-between relative overflow-hidden">
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="px-2 py-0.5 rounded-md bg-[#34D399]/15 text-[#34D399] text-[10px] font-extrabold uppercase">Escudo Muscular</span>
+                                    <span class="text-xs font-mono font-extrabold text-[#10E775]">${muscleShield.shieldScore}%</span>
+                                </div>
+                                <h4 class="text-sm font-display font-extrabold text-white">${muscleShield.status}</h4>
+                                <p class="text-[11px] text-emerald-300/75 mt-1 leading-relaxed">${muscleShield.recommendation}</p>
+                            </div>
+                            <div class="mt-3 pt-2.5 border-t border-emerald-500/15 flex items-center justify-between text-[11px] font-mono">
+                                <span class="text-emerald-200">Proteína: <strong class="text-[#10E775]">${muscleShield.currentProtein}/${muscleShield.recommendedProtein}g</strong></span>
+                                <span class="text-lime-400">Fuerza 7d: <strong>${muscleShield.weeklyWorkoutsCount} ses.</strong></span>
+                            </div>
+                        </div>
+
+                        <!-- 3. Bio-Reloj de Ayuno Intermitente & Fases Metabólicas -->
+                        <div class="white-card p-5 border border-lime-500/25 flex flex-col justify-between relative overflow-hidden">
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="px-2 py-0.5 rounded-md bg-lime-400/15 text-lime-300 text-[10px] font-extrabold uppercase">Ayuno ${fastingInfo.protocol || '16:8'}</span>
+                                    <span class="text-xs font-mono font-extrabold text-white">${fastingInfo.isActive ? fastingInfo.elapsedFormatted : 'En ventana'}</span>
+                                </div>
+                                <h4 class="text-sm font-display font-extrabold text-white">${fastingInfo.isActive ? fastingInfo.stage : 'Ayuno Metabólico Listo'}</h4>
+                                <p class="text-[11px] text-emerald-300/75 mt-1 leading-relaxed">${fastingInfo.isActive ? fastingInfo.stageDesc : 'Inicia tu ventana 16:8 post-cena para activar lipólisis y autofagia.'}</p>
+                            </div>
+                            <div class="mt-3 pt-2.5 border-t border-emerald-500/15 flex items-center justify-between gap-2">
+                                <div class="flex-1 h-2 bg-[#040B08] rounded-full overflow-hidden border border-emerald-500/20">
+                                    <div class="h-full bg-gradient-to-r from-[#10E775] to-lime-400" style="width:${fastingInfo.isActive ? fastingInfo.percent : 0}%"></div>
+                                </div>
+                                <button id="dash-toggle-fasting-btn" class="px-3 py-1 rounded-xl ${fastingInfo.isActive ? 'bg-emerald-950 text-lime-300 border border-lime-400/40' : 'btn-emerald'} text-[10px] font-extrabold uppercase cursor-pointer shrink-0">
+                                    ${fastingInfo.isActive ? 'Finalizar' : 'Iniciar 16:8'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 4. Simulador Predictivo 30 / 60 / 90 Días -->
+                        <div class="white-card p-5 border border-teal-500/25 flex flex-col justify-between relative overflow-hidden">
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="px-2 py-0.5 rounded-md bg-teal-400/15 text-teal-300 text-[10px] font-extrabold uppercase">Simulador IA 90D</span>
+                                    <span class="text-xs font-mono font-extrabold text-[#10E775]">-${weightProj.weeklyKgLoss} kg/sem</span>
+                                </div>
+                                <h4 class="text-sm font-display font-extrabold text-white">Proyección de Descenso</h4>
+                                <div class="grid grid-cols-3 gap-1.5 text-center mt-2">
+                                    <div class="p-1.5 rounded-xl bg-[#040B08]/80 border border-emerald-500/20">
+                                        <span class="text-[8px] uppercase text-emerald-300/70 block">30 Días</span>
+                                        <strong class="text-xs font-mono text-white">${weightProj.weight30d}kg</strong>
+                                    </div>
+                                    <div class="p-1.5 rounded-xl bg-[#040B08]/80 border border-emerald-500/20">
+                                        <span class="text-[8px] uppercase text-emerald-300/70 block">60 Días</span>
+                                        <strong class="text-xs font-mono text-[#34D399]">${weightProj.weight60d}kg</strong>
+                                    </div>
+                                    <div class="p-1.5 rounded-xl bg-[#040B08]/80 border border-[#10E775]/35">
+                                        <span class="text-[8px] uppercase text-[#10E775] block">90 Días</span>
+                                        <strong class="text-xs font-mono text-[#10E775]">${weightProj.weight90d}kg</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-2 border-t border-emerald-500/15 flex items-center justify-between text-[10px] text-emerald-300/80">
+                                <span>Meta ${weightProj.targetWeight}kg: <strong class="text-white">${weightProj.etaFormatted}</strong></span>
+                                <span class="font-mono text-lime-400">-${weightProj.dailyDeficit} kcal/d</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- BOTTOM 2-COLUMN BENTO: SENSATIONS & DAILY MEALS TIMELINE -->
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                         <!-- Sensations & Satiety Metrics Card (5 Cols) -->
@@ -789,6 +909,8 @@ export const renderDashboard = () => {
         <div id="barcode-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"></div>
         <div id="dash-workout-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"></div>
         <div id="dash-measurement-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"></div>
+        <div id="dash-fridge-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"></div>
+        <div id="dash-medical-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"></div>
         ${renderMealSensationsModalContainer()}
     </div>
     `;
@@ -1275,6 +1397,64 @@ export const attachDashboardEvents = () => {
         if (dashMeasModal) {
             openBodyMeasurementModal(dashMeasModal, () => window.router.navigate('dashboard'));
         }
+    });
+
+    // Voice Dictation on Quick Log Input
+    const quickLogVoiceBtn = document.getElementById('quick-log-voice-btn');
+    if (quickLogVoiceBtn && input) {
+        attachVoiceDictation(quickLogVoiceBtn, input, (transcript) => {
+            handleAnalysis(transcript, null);
+        });
+    }
+
+    // 1-Click Favorite Meals Logging
+    document.querySelectorAll('.dash-fav-meal-chip').forEach(chip => {
+        chip.addEventListener('click', async () => {
+            try {
+                const fav = JSON.parse(chip.dataset.fav);
+                await addMeal({
+                    name: fav.name,
+                    calories: fav.calories,
+                    category: fav.category || 'Almuerzo',
+                    time: fav.category || 'Almuerzo',
+                    date: state.selectedDate || getArgentinaDate(),
+                    macros: fav.macros,
+                    satiety_score: 3,
+                    sensations: ['Saciedad temprana']
+                });
+                window.showAlert?.('¡Favorito Registrado!', `${fav.name} (${fav.calories} kcal) sumado en 1 toque.`, 'success');
+                window.router.navigate('dashboard');
+            } catch (e) {}
+        });
+    });
+
+    // Fridge AI Modal ("¿Qué cocino con mi heladera?")
+    const dashFridgeModal = document.getElementById('dash-fridge-modal');
+    document.getElementById('dash-open-fridge-btn')?.addEventListener('click', () => {
+        if (dashFridgeModal) {
+            openFridgeAiModal(dashFridgeModal, () => window.router.navigate('dashboard'));
+        }
+    });
+
+    // Medical Report & Labs Modal
+    const dashMedicalModal = document.getElementById('dash-medical-modal');
+    document.getElementById('dash-open-medical-report-btn')?.addEventListener('click', () => {
+        if (dashMedicalModal) {
+            openMedicalReportModal(dashMedicalModal, () => window.router.navigate('dashboard'));
+        }
+    });
+
+    // Fasting 16:8 Toggle Button
+    document.getElementById('dash-toggle-fasting-btn')?.addEventListener('click', () => {
+        const f = getFastingProgress();
+        if (f.isActive) {
+            stopFasting();
+            window.showAlert?.('Ayuno Completado', `Cerraste tu ventana de ayuno (${f.elapsedFormatted}). +40 XP`, 'success');
+        } else {
+            startFasting('16:8', 16);
+            window.showAlert?.('Ayuno 16:8 Iniciado', 'Reloj metabólico en marcha. Hidrátate con agua, mate o café sin azúcar.', 'success');
+        }
+        window.router.navigate('dashboard');
     });
 };
 

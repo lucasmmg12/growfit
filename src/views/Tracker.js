@@ -1,8 +1,9 @@
-import { getState, addMeal, deleteMeal, getArgentinaDate, setSelectedDate, getSensationsMetrics, getMealSodium } from '../state';
+import { getState, addMeal, deleteMeal, getArgentinaDate, setSelectedDate, getSensationsMetrics, getMealSodium, getFrequentMeals } from '../state';
 import { analyzeFood } from '../services/openai';
 import { searchOpenFood } from '../services/openfoodfacts';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
 import { renderMealSensationsModalContainer, renderSatietyBadge, attachSensationsModalEvents } from '../components/MealSensationsModal';
+import { attachVoiceDictation, openFridgeAiModal } from '../components/UnifiedEcosystemModals';
 
 let activeCategoryForAdd = 'Almuerzo';
 
@@ -136,15 +137,19 @@ export const renderTracker = () => {
                         </div>
                     </div>
 
-                    <!-- Barra Directa de Carga de Alimentos con IA + Foto -->
+                    <!-- Barra Directa de Carga de Alimentos con IA + Voz + Foto + Heladera IA -->
                     <div class="white-card p-4 md:p-5 border border-[#10E775]/35 shadow-xl relative overflow-hidden">
                         <div class="flex flex-col gap-3">
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <div class="flex items-center gap-2">
                                     <span class="material-symbols-outlined text-[#10E775] text-lg">auto_awesome</span>
-                                    <span class="text-xs font-display font-extrabold uppercase tracking-wider text-white">Cargar Alimento con IA o Foto</span>
+                                    <span class="text-xs font-display font-extrabold uppercase tracking-wider text-white">Cargar Alimento con IA, Voz o Foto</span>
                                 </div>
-                                <div class="flex items-center gap-2">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button id="tracker-open-fridge-btn" class="px-3 py-1 rounded-xl bg-[#10E775]/15 hover:bg-[#10E775]/25 border border-[#10E775]/35 text-[#10E775] text-xs font-extrabold flex items-center gap-1 cursor-pointer">
+                                        <span class="material-symbols-outlined text-sm">kitchen</span>
+                                        <span>¿Qué cocino con mi heladera?</span>
+                                    </button>
                                     <span class="text-[10px] font-bold uppercase text-emerald-300/75">Momento:</span>
                                     <select id="tracker-top-ai-category" class="rounded-xl px-2.5 py-1 text-xs font-bold text-[#10E775] bg-[#040B08] border border-emerald-500/30 outline-none">
                                         ${categories.map(c => `<option value="${c.id}" ${c.id === 'Almuerzo' ? 'selected' : ''}>${c.label}</option>`).join('')}
@@ -153,9 +158,12 @@ export const renderTracker = () => {
                             </div>
 
                             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                                <div class="flex items-center flex-1 gap-2.5 px-3.5 py-2.5 bg-[#040B08]/90 rounded-2xl border border-emerald-500/25 focus-within:border-[#10E775]">
+                                <div class="flex items-center flex-1 gap-2 px-3.5 py-2 bg-[#040B08]/90 rounded-2xl border border-emerald-500/25 focus-within:border-[#10E775]">
                                     <span class="material-symbols-outlined text-[#10E775] text-xl">restaurant</span>
                                     <input id="tracker-top-ai-input" type="text" placeholder="¿Qué comiste? Ej: 2 huevos con tostada y café, o 2 chipá..." class="w-full bg-transparent border-none outline-none text-sm font-semibold text-white placeholder:text-emerald-300/40" />
+                                    <button id="tracker-top-voice-btn" type="button" title="Dictar por voz" class="size-8 rounded-xl bg-emerald-950/90 hover:bg-[#10E775]/20 text-[#10E775] flex items-center justify-center cursor-pointer shrink-0">
+                                        <span class="material-symbols-outlined text-base">mic</span>
+                                    </button>
                                 </div>
 
                                 <div class="flex items-center gap-2">
@@ -170,6 +178,16 @@ export const renderTracker = () => {
                                         <span>Analizar con IA</span>
                                     </button>
                                 </div>
+                            </div>
+
+                            <!-- Platos Frecuentes de 1 Toque -->
+                            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pt-0.5">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400/75 shrink-0">Frecuentes 1-Clic:</span>
+                                ${getFrequentMeals(5).map(fav => `
+                                    <button type="button" class="tracker-fav-meal-chip px-3 py-1 rounded-full bg-[#10E775]/15 hover:bg-[#10E775]/30 border border-[#10E775]/35 text-[11px] font-bold text-[#10E775] hover:text-white transition-all shrink-0 cursor-pointer" data-fav='${JSON.stringify(fav).replace(/'/g, "&apos;")}'>
+                                        ⭐ ${fav.name} (${fav.calories} kcal)
+                                    </button>
+                                `).join('')}
                             </div>
                         </div>
                     </div>
@@ -237,6 +255,7 @@ export const renderTracker = () => {
 
         <!-- Add Meal & AI Modal -->
         <div id="tracker-add-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4"></div>
+        <div id="tracker-fridge-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 overflow-y-auto"></div>
         ${renderMealSensationsModalContainer()}
     </div>
     `;
@@ -245,6 +264,7 @@ export const renderTracker = () => {
 export const attachTrackerEvents = () => {
     const state = getState();
     const modal = document.getElementById('tracker-add-modal');
+    const fridgeModal = document.getElementById('tracker-fridge-modal');
 
     document.querySelectorAll('.add-meal-cat-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -273,11 +293,45 @@ export const attachTrackerEvents = () => {
     const topAiCategory = document.getElementById('tracker-top-ai-category');
     const topAiPhoto = document.getElementById('tracker-top-ai-photo');
     const topAiBtn = document.getElementById('tracker-top-ai-btn');
+    const topVoiceBtn = document.getElementById('tracker-top-voice-btn');
 
     const runTopAiAnalysis = (text, file) => {
         const chosenCat = topAiCategory?.value || 'Almuerzo';
         openAddMealModal(chosenCat, text, file);
     };
+
+    if (topVoiceBtn && topAiInput) {
+        attachVoiceDictation(topVoiceBtn, topAiInput, (transcript) => {
+            runTopAiAnalysis(transcript, null);
+        });
+    }
+
+    document.getElementById('tracker-open-fridge-btn')?.addEventListener('click', () => {
+        if (fridgeModal) {
+            openFridgeAiModal(fridgeModal, () => window.router.navigate('tracker'));
+        }
+    });
+
+    document.querySelectorAll('.tracker-fav-meal-chip').forEach(chip => {
+        chip.addEventListener('click', async () => {
+            try {
+                const fav = JSON.parse(chip.dataset.fav);
+                const chosenCat = topAiCategory?.value || fav.category || 'Almuerzo';
+                await addMeal({
+                    name: fav.name,
+                    calories: fav.calories,
+                    category: chosenCat,
+                    time: chosenCat,
+                    date: state.selectedDate || getArgentinaDate(),
+                    macros: fav.macros,
+                    satiety_score: 3,
+                    sensations: ['Saciedad temprana']
+                });
+                window.showAlert?.('¡Favorito Registrado!', `${fav.name} (${fav.calories} kcal) agregado en ${chosenCat}.`, 'success');
+                window.router.navigate('tracker');
+            } catch (e) {}
+        });
+    });
 
     topAiBtn?.addEventListener('click', () => {
         runTopAiAnalysis(topAiInput?.value || '', topAiPhoto?.files?.[0] || null);
