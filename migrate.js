@@ -50,35 +50,40 @@ async function runQueryViaAPI(sql) {
 }
 
 async function runMigration() {
-  const schemaFile = path.resolve('supabase_schema.sql');
-  console.log(`[GrowFit Migration] Leyendo esquema SQL seguro desde: ${schemaFile}`);
-  
-  const sql = fs.readFileSync(schemaFile, 'utf8');
+  const schemaFiles = ['supabase_schema.sql', 'supabase_whatsapp_schema.sql'];
 
-  // Enforce absolute safety: Reject any DROP TABLE, TRUNCATE, or DROP DATABASE
-  const forbidden = [
-    /\bDROP\s+TABLE\b/i,
-    /\bTRUNCATE\b/i,
-    /\bDROP\s+DATABASE\b/i,
-    /\bDROP\s+SCHEMA\b/i
-  ];
+  for (const fileName of schemaFiles) {
+    const schemaFile = path.resolve(fileName);
+    if (!fs.existsSync(schemaFile)) continue;
 
-  for (const pat of forbidden) {
-    if (pat.test(sql)) {
-      console.error(`[SEGURIDAD BLOQUEADA] Se detectó una sentencia no permitida: ${pat}`);
+    console.log(`[GrowFit Migration] Leyendo esquema SQL seguro desde: ${schemaFile}`);
+    const sql = fs.readFileSync(schemaFile, 'utf8');
+
+    // Enforce absolute safety: Reject any DROP TABLE, TRUNCATE, or DROP DATABASE
+    const forbidden = [
+      /\bDROP\s+TABLE\b/i,
+      /\bTRUNCATE\b/i,
+      /\bDROP\s+DATABASE\b/i,
+      /\bDROP\s+SCHEMA\b/i
+    ];
+
+    for (const pat of forbidden) {
+      if (pat.test(sql)) {
+        console.error(`[SEGURIDAD BLOQUEADA] Se detectó una sentencia no permitida en ${fileName}: ${pat}`);
+        process.exit(1);
+      }
+    }
+
+    console.log(`[GrowFit Migration] Validación de seguridad aprobada para ${fileName}.`);
+    console.log(`[GrowFit Migration] Ejecutando migración en Supabase ('${projectRef}')...`);
+
+    try {
+      await runQueryViaAPI(sql);
+      console.log(`[GrowFit Migration] ✅ ¡Esquema ${fileName} aplicado con éxito!`);
+    } catch (err) {
+      console.error(`[GrowFit Migration] ❌ Error ejecutando ${fileName}:`, err.message);
       process.exit(1);
     }
-  }
-
-  console.log("[GrowFit Migration] Validación de seguridad aprobada (0 sentencias destructivas).");
-  console.log(`[GrowFit Migration] Ejecutando migración en Supabase ('${projectRef}')...`);
-
-  try {
-    await runQueryViaAPI(sql);
-    console.log("[GrowFit Migration] ✅ ¡Migración aplicada con total éxito sin afectar ningún dato existente!");
-  } catch (err) {
-    console.error("[GrowFit Migration] ❌ Error ejecutando migración:", err.message);
-    process.exit(1);
   }
 }
 

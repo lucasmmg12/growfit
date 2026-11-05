@@ -5,6 +5,14 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_S
 const HUB_USER_ID = 'lmarinero_whatsapp_hub';
 const DEFAULT_BOT_ID = 'f7806984-3538-457b-b4a3-84c97293583b';
 
+const CIRCLE_LABELS = {
+  hijos: 'Hijos',
+  novia: 'Novia',
+  trabajo: 'Trabajo',
+  amigos: 'Amigos',
+  otros: 'General'
+};
+
 function classifyCircle(name = '', body = '', currentCircle = 'otros') {
   const text = `${name} ${body}`.toLowerCase();
   let circle = currentCircle && currentCircle !== 'otros' ? currentCircle : 'otros';
@@ -47,7 +55,7 @@ function classifyCircle(name = '', body = '', currentCircle = 'otros') {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-builderbot');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, apikey, x-client-info, x-api-builderbot');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).json({ ok: true });
@@ -56,16 +64,18 @@ export default async function handler(req, res) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
   if (req.method === 'GET') {
-    const { data: hubRow } = await supabase
-      .from('growfit_profiles')
-      .select('data, updated_at')
-      .eq('user_id', HUB_USER_ID)
-      .maybeSingle();
+    const [{ data: hubRow }, { data: botStatus }, { data: contacts }] = await Promise.all([
+      supabase.from('growfit_profiles').select('data, updated_at').eq('user_id', HUB_USER_ID).maybeSingle(),
+      supabase.from('growfit_bot_status').select('*').eq('id', 'builderbot_main').maybeSingle(),
+      supabase.from('growfit_whatsapp_contacts').select('*').order('last_message_at', { ascending: false }).limit(50)
+    ]);
 
     return res.status(200).json({
       ok: true,
       service: 'GrowFit BuilderBot Webhook (lmarinero personal assistant)',
-      botId: DEFAULT_BOT_ID,
+      botId: botStatus?.bot_id || DEFAULT_BOT_ID,
+      status: botStatus?.status || 'online',
+      contactsCount: contacts?.length || hubRow?.data?.contacts?.length || 0,
       updatedAt: hubRow?.updated_at || null,
       hub: hubRow?.data || null
     });
@@ -77,11 +87,62 @@ export default async function handler(req, res) {
 
   try {
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+
+    // Acción 1: Proxy de envío de mensajes BuilderBot API v2
+    if (payload.action === 'send_whatsapp') {
+      const botId = payload.botId || DEFAULT_BOT_ID;
+      const apiKey = payload.apiKey || process.env.VITE_BUILDERBOT_API_KEY || process.env.BUILDERBOT_API_KEY || '';
+      const endpoint = `https://app.builderbot.cloud/api/v2/${botId}/messages`;
+
+      if (!apiKey) {
+        return res.status(200).json({ ok: false, apiDispatched: false, error: 'Falta configurar x-api-builderbot API Key' });
+      }
+
+      const bbRes = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-builderbot': apiKey
+        },
+        body: JSON.stringify(payload.body)
+      });
+      const bbText = await bbRes.text();
+      return res.status(200).json({
+        ok: bbRes.ok,
+        apiDispatched: bbRes.ok,
+        status: bbRes.status,
+        response: bbText
+      });
+    }
+
+    // Acción 2: Proxy OpenAI Chat
+    if (payload.action === 'openai_chat') {
+      const openAiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY || payload.apiKey || '';
+      if (!openAiKey) {
+        return res.status(400).json({ error: { message: 'OPENAI_API_KEY no configurada en el servidor' } });
+      }
+      const oaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openAiKey}`
+        },
+        body: JSON.stringify({
+          model: payload.model || 'gpt-4o-mini',
+          messages: payload.messages || [],
+          max_tokens: payload.max_tokens || 500,
+          temperature: payload.temperature ?? 0.4,
+          ...(payload.response_format ? { response_format: payload.response_format } : {})
+        })
+      });
+      const oaiData = await oaiRes.json();
+      return res.status(oaiRes.status).json(oaiData);
+    }
+
     const eventName = payload.eventName || payload.event || 'message.incoming';
     const data = payload.data || payload;
     const argDate = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    // Load current hub state from growfit_profiles (which is guaranteed to exist in Supabase)
     const { data: existingProfile } = await supabase
       .from('growfit_profiles')
       .select('data')
@@ -107,7 +168,7 @@ export default async function handler(req, res) {
     if (!Array.isArray(hubData.contacts)) hubData.contacts = [];
     if (!Array.isArray(hubData.messages)) hubData.messages = [];
 
-    // 1. Handle Bot Status Events (status.online, status.ready, status.require_action, status.disconnect)
+    // 1. Eventos de estado del Bot
     if (eventName.startsWith('status.')) {
       const statusType = (eventName === 'status.ready' || eventName === 'status.online')
         ? 'online'
@@ -125,22 +186,21 @@ export default async function handler(req, res) {
         updated_at: new Date().toISOString()
       };
 
-      await supabase.from('growfit_profiles').upsert({
-        user_id: HUB_USER_ID,
-        full_name: 'WhatsApp Hub (lmarinero)',
-        display_name: 'WhatsApp Hub',
-        data: hubData,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
-
-      try {
-        await supabase.from('growfit_bot_status').upsert(hubData.botStatus);
-      } catch (e) {}
+      await Promise.all([
+        supabase.from('growfit_profiles').upsert({
+          user_id: HUB_USER_ID,
+          full_name: 'WhatsApp Hub (lmarinero)',
+          display_name: 'WhatsApp Hub',
+          data: hubData,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' }),
+        supabase.from('growfit_bot_status').upsert(hubData.botStatus)
+      ]);
 
       return res.status(200).json({ ok: true, handled: eventName, status: statusType });
     }
 
-    // 2. Handle Message & Call Events (message.incoming, message.outgoing, message.calling)
+    // 2. Eventos de Mensajes y Llamadas
     const phone = String(data.from || data.number || 'unknown').replace(/[^\d]/g, '') || 'unknown';
     const existingContact = hubData.contacts.find(c => c.phone === phone);
     const contactName = (eventName !== 'message.outgoing' && data.name)
@@ -165,8 +225,9 @@ export default async function handler(req, res) {
       existingContact?.circle || 'otros'
     );
 
+    const msgId = Date.now() + Math.floor(Math.random() * 1000);
     const newMsg = {
-      id: Date.now() + Math.floor(Math.random() * 1000),
+      id: msgId,
       phone,
       contact_name: contactName,
       direction,
@@ -198,12 +259,13 @@ export default async function handler(req, res) {
       name: contactName,
       circle,
       is_important: isImportant || Boolean(existingContact?.is_important),
-      short_summary: `${contactName}: "${latestIncoming.slice(0, 120)}"`,
+      short_summary: `${contactName} (${CIRCLE_LABELS[circle] || 'General'}): "${latestIncoming.slice(0, 120)}"`,
       detailed_analysis: existingContact?.detailed_analysis || `Conversación activa con ${contactName} (+${phone}). Se registran ${contactMsgs.length} mensajes totales.`,
       pending_promises: existingContact?.pending_promises || [],
       detected_calendar_events: detectedEvent
         ? [detectedEvent, ...(existingContact?.detected_calendar_events || []).slice(0, 3)]
         : (existingContact?.detected_calendar_events || []),
+      smart_replies: existingContact?.smart_replies || [],
       last_message_preview: bodyText.slice(0, 140),
       last_message_at: new Date().toISOString(),
       total_messages: contactMsgs.length
@@ -213,18 +275,16 @@ export default async function handler(req, res) {
     if (cIdx >= 0) hubData.contacts[cIdx] = updatedContact;
     else hubData.contacts.unshift(updatedContact);
 
-    // Save to guaranteed growfit_profiles row
-    await supabase.from('growfit_profiles').upsert({
-      user_id: HUB_USER_ID,
-      full_name: 'WhatsApp Hub (lmarinero)',
-      display_name: 'WhatsApp Hub',
-      data: hubData,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id' });
-
-    // Also save to dedicated tables if created
-    try {
-      await supabase.from('growfit_whatsapp_messages').insert({
+    await Promise.all([
+      supabase.from('growfit_profiles').upsert({
+        user_id: HUB_USER_ID,
+        full_name: 'WhatsApp Hub (lmarinero)',
+        display_name: 'WhatsApp Hub',
+        data: hubData,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' }),
+      supabase.from('growfit_whatsapp_messages').upsert({
+        id: newMsg.id,
         phone: newMsg.phone,
         contact_name: newMsg.contact_name,
         direction: newMsg.direction,
@@ -237,20 +297,25 @@ export default async function handler(req, res) {
         circle: newMsg.circle,
         is_important: newMsg.is_important,
         detected_event: newMsg.detected_event,
-        message_date: newMsg.message_date
-      });
-      await supabase.from('growfit_whatsapp_contacts').upsert({
+        message_date: newMsg.message_date,
+        created_at: newMsg.created_at
+      }, { onConflict: 'id' }),
+      supabase.from('growfit_whatsapp_contacts').upsert({
         phone: updatedContact.phone,
         name: updatedContact.name,
         circle: updatedContact.circle,
         is_important: updatedContact.is_important,
         short_summary: updatedContact.short_summary,
         detailed_analysis: updatedContact.detailed_analysis,
+        pending_promises: updatedContact.pending_promises,
+        detected_calendar_events: updatedContact.detected_calendar_events,
+        smart_replies: updatedContact.smart_replies,
         last_message_preview: updatedContact.last_message_preview,
         last_message_at: updatedContact.last_message_at,
-        total_messages: updatedContact.total_messages
-      }, { onConflict: 'phone' });
-    } catch (e) {}
+        total_messages: updatedContact.total_messages,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'phone' })
+    ]);
 
     return res.status(200).json({
       ok: true,
@@ -265,4 +330,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ ok: false, error: err?.message || 'Internal webhook error' });
   }
 }
-

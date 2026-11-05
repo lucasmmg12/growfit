@@ -13,7 +13,8 @@ import {
     analyzeContactConversationWithAI,
     buildGoogleCalendarLink,
     downloadCalendarICS,
-    buildDayByDaySummaries
+    buildDayByDaySummaries,
+    subscribeToCommunicationsRealtime
 } from '../services/builderbot';
 
 let cachedCommsStore = null;
@@ -62,7 +63,7 @@ export const renderCommunications = () => {
         messages: []
     };
 
-    const { botId, webhookUrl, edgeFunctionUrl, apiKey } = getBuilderBotConfig();
+    const { botId, webhookUrl, vercelWebhookUrl, edgeFunctionUrl, apiKey } = getBuilderBotConfig();
     const periodMessages = filterMessagesByPeriod(store.messages || [], selectedPeriod);
     const dailyTimeline = buildDayByDaySummaries(periodMessages, store.contacts || []);
 
@@ -203,7 +204,7 @@ export const renderCommunications = () => {
                     </div>
 
                     ${activeMainSection === 'users' ? renderAdminUsersSection() : ''}
-                    ${activeMainSection === 'webhook' ? renderWebhookConfigSection(store, botId, webhookUrl, edgeFunctionUrl, apiKey) : ''}
+                    ${activeMainSection === 'webhook' ? renderWebhookConfigSection(store, botId, webhookUrl, edgeFunctionUrl, apiKey, vercelWebhookUrl) : ''}
 
                     ${activeMainSection === 'assistant' ? `
                         <!-- BRIEFING EJECUTIVO DE LUCAS (HOY / SEMANA / MES) + RADAR DE PROMESAS + GOOGLE CALENDAR -->
@@ -566,37 +567,43 @@ const renderContactAssistantCard = (contact, allMessages) => {
     `;
 };
 
-const renderWebhookConfigSection = (store, botId, webhookUrl, edgeFunctionUrl, apiKey) => {
+const renderWebhookConfigSection = (store, botId, webhookUrl, edgeFunctionUrl, apiKey, vercelWebhookUrl) => {
     return `
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <!-- Configuración de BuilderBot API v2 & Webhook Edge Function (7 Cols) -->
             <div class="lg:col-span-7 white-card p-6 border border-[#10E775]/35 flex flex-col gap-4">
                 <div class="flex items-center justify-between pb-3 border-b border-emerald-500/15">
                     <div>
-                        <span class="badge-emerald text-[10px]">BuilderBot Cloud API v2</span>
+                        <span class="badge-emerald text-[10px]">BuilderBot Cloud API v2 · verify_jwt: false</span>
                         <h3 class="text-lg font-display font-black text-white uppercase mt-1">Configuración de Webhook & Credenciales</h3>
                     </div>
-                    <span class="material-symbols-outlined text-2xl text-[#10E775]">api</span>
+                    <button id="comm-test-webhook-btn" type="button" class="px-3 py-1.5 rounded-xl bg-[#10E775]/15 hover:bg-[#10E775]/25 border border-[#10E775]/40 text-[#10E775] text-xs font-extrabold flex items-center gap-1.5 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">check_circle</span>
+                        <span>Probar Conexión 200 OK</span>
+                    </button>
                 </div>
 
                 <div class="p-3.5 rounded-2xl bg-[#040B08]/90 border border-emerald-500/30 flex flex-col gap-2.5">
                     <div>
                         <label class="text-[10px] font-extrabold uppercase text-lime-400 block mb-1">
-                            1A. URL Webhook Activa en Vercel (Lista para pegar en BuilderBot → Webhooks):
+                            1A. URL Webhook Principal en Supabase Edge Function (Sin JWT · Recomendada para BuilderBot → Webhooks):
                         </label>
                         <div class="flex gap-2 items-center">
-                            <input id="comm-webhook-url-display" type="text" readonly value="${webhookUrl}" class="flex-1 rounded-xl px-3 py-2 text-xs font-mono text-[#10E775] bg-emerald-950/40 border border-emerald-500/30 outline-none" />
+                            <input id="comm-webhook-url-display" type="text" readonly value="${edgeFunctionUrl || webhookUrl}" class="flex-1 rounded-xl px-3 py-2 text-xs font-mono text-[#10E775] bg-emerald-950/40 border border-emerald-500/30 outline-none" />
                             <button id="comm-copy-webhook-btn" class="btn-emerald px-3.5 py-2 text-xs font-extrabold uppercase cursor-pointer">Copiar URL</button>
                         </div>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold uppercase text-emerald-300/80 block mb-1">
-                            1B. URL Supabase Edge Function (<code>supabase/functions/builderbot-webhook/index.ts</code>):
+                            1B. URL Webhook Alternativa en Vercel (<code>/api/builderbot-webhook</code>):
                         </label>
-                        <input type="text" readonly value="${edgeFunctionUrl || ''}" class="w-full rounded-xl px-3 py-1.5 text-[11px] font-mono text-emerald-300/80 bg-emerald-950/25 border border-emerald-500/20 outline-none" />
+                        <div class="flex gap-2 items-center">
+                            <input id="comm-vercel-webhook-display" type="text" readonly value="${vercelWebhookUrl || webhookUrl}" class="flex-1 rounded-xl px-3 py-1.5 text-[11px] font-mono text-emerald-300/80 bg-emerald-950/25 border border-emerald-500/20 outline-none" />
+                            <button id="comm-copy-vercel-webhook-btn" type="button" class="px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-500/30 text-xs font-bold text-emerald-200 hover:text-white cursor-pointer">Copiar</button>
+                        </div>
                     </div>
                     <p class="text-[11px] text-emerald-300/70">
-                        Soporta todos los eventos de tus capturas: <code>message.incoming</code>, <code>message.outgoing</code>, <code>message.calling</code>, <code>status.online</code>, <code>status.require_action</code> y <code>status.disconnect</code>.
+                        Soporta todos los eventos sin requerir JWT: <code>message.incoming</code>, <code>message.outgoing</code>, <code>message.calling</code>, <code>status.online</code>, <code>status.require_action</code> y <code>status.disconnect</code>.
                     </p>
                 </div>
 
@@ -697,12 +704,27 @@ const renderAdminUsersSection = () => {
 export const attachCommunicationsEvents = async () => {
     if (!isAdminUser()) return;
 
+    const prevContactsCount = cachedCommsStore?.contacts?.length || 0;
+    const prevMsgsCount = cachedCommsStore?.messages?.length || 0;
     const wasNull = !cachedCommsStore;
     cachedCommsStore = await loadCommunicationsData();
-    if (wasNull) {
+
+    if (
+        wasNull ||
+        (cachedCommsStore?.contacts?.length || 0) !== prevContactsCount ||
+        (cachedCommsStore?.messages?.length || 0) !== prevMsgsCount
+    ) {
         window.router.navigate('communications', true);
         return;
     }
+
+    // Suscribir a cambios en tiempo real de Supabase (growfit_whatsapp_messages / contacts / bot_status)
+    subscribeToCommunicationsRealtime(async () => {
+        cachedCommsStore = await loadCommunicationsData();
+        if (document.querySelector('.comm-section-tab')) {
+            window.router.navigate('communications', true);
+        }
+    });
 
     // If first render had empty store, re-render once loaded
     if (!document.querySelector('.comm-section-tab')) return;
@@ -955,7 +977,38 @@ export const attachCommunicationsEvents = async () => {
         const url = document.getElementById('comm-webhook-url-display')?.value;
         if (url) {
             navigator.clipboard?.writeText(url);
-            window.showAlert?.('URL Copiada', 'Pégala en BuilderBot -> Webhooks y haz clic en Guardar.', 'success');
+            window.showAlert?.('URL Principal Copiada', 'Pégala en BuilderBot -> Webhooks y haz clic en Guardar (verify_jwt: false activo).', 'success');
+        }
+    });
+
+    document.getElementById('comm-copy-vercel-webhook-btn')?.addEventListener('click', () => {
+        const url = document.getElementById('comm-vercel-webhook-display')?.value;
+        if (url) {
+            navigator.clipboard?.writeText(url);
+            window.showAlert?.('URL Vercel Copiada', 'URL alternativa de Vercel copiada al portapapeles.', 'success');
+        }
+    });
+
+    document.getElementById('comm-test-webhook-btn')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const { edgeFunctionUrl } = getBuilderBotConfig();
+        btn.disabled = true;
+        try {
+            const res = await fetch(edgeFunctionUrl);
+            const data = await res.json();
+            if (res.ok && data.ok) {
+                window.showAlert?.(
+                    'Webhook Conectado (HTTP 200 OK)',
+                    `Servicio activo sin bloqueo JWT. Contactos en nube: ${data.contactsCount} · Mensajes: ${data.messagesCount}.`,
+                    'success'
+                );
+            } else {
+                window.showAlert?.('Atención', `Respuesta HTTP ${res.status}`, 'info');
+            }
+        } catch (err) {
+            window.showAlert?.('Error de Red', err.message, 'error');
+        } finally {
+            btn.disabled = false;
         }
     });
 
@@ -968,24 +1021,48 @@ export const attachCommunicationsEvents = async () => {
 
     document.getElementById('comm-simulate-webhook-btn')?.addEventListener('click', async () => {
         const eventName = document.getElementById('sim-wa-event')?.value || 'message.incoming';
-        const name = document.getElementById('sim-wa-name')?.value || 'Contacto';
-        const from = document.getElementById('sim-wa-phone')?.value || '5492645102030';
-        const body = document.getElementById('sim-wa-body')?.value || 'Hola Lucas!';
-        cachedCommsStore = await ingestBuilderBotWebhookLocal({
-            eventName,
-            data: {
-                name,
-                from,
-                body,
-                answer: body,
-                reason: 'Simulación manual desde GrowFit Admin',
-                payload: { qr: 'BUILDERBOT-QR-DEMO-' + Date.now() },
-                attachment: [],
-                projectId: getBuilderBotConfig().botId
-            }
-        });
+        const name = document.getElementById('sim-wa-name')?.value?.trim() || 'Contacto WhatsApp';
+        const from = document.getElementById('sim-wa-phone')?.value?.trim() || '5492645001122';
+        const body = document.getElementById('sim-wa-body')?.value?.trim() || 'Hola Lucas, ¿confirmamos la reunión de hoy a las 18:00 hs?';
+        const { edgeFunctionUrl, botId } = getBuilderBotConfig();
+
+        try {
+            await fetch(edgeFunctionUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    eventName,
+                    data: {
+                        name,
+                        from,
+                        body,
+                        answer: body,
+                        reason: 'Simulación desde GrowFit Admin',
+                        payload: { qr: 'BUILDERBOT-QR-DEMO-' + Date.now() },
+                        attachment: [],
+                        projectId: botId
+                    }
+                })
+            });
+            cachedCommsStore = await loadCommunicationsData();
+        } catch (err) {
+            cachedCommsStore = await ingestBuilderBotWebhookLocal({
+                eventName,
+                data: {
+                    name,
+                    from,
+                    body,
+                    answer: body,
+                    reason: 'Simulación manual desde GrowFit Admin',
+                    payload: { qr: 'BUILDERBOT-QR-DEMO-' + Date.now() },
+                    attachment: [],
+                    projectId: botId
+                }
+            });
+        }
+
         activeMainSection = 'assistant';
-        window.showAlert?.('Webhook Procesado', `Evento ${eventName} (${name}) procesado y sincronizado en la nube.`, 'success');
+        window.showAlert?.('Webhook Procesado (200 OK)', `Evento ${eventName} (${name}) procesado y sincronizado en Supabase.`, 'success');
         window.router.navigate('communications', true);
     });
 

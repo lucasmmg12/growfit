@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS public.growfit_bot_status (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+INSERT INTO public.growfit_bot_status (id, bot_id, status, last_event, updated_at)
+VALUES ('builderbot_main', 'f7806984-3538-457b-b4a3-84c97293583b', 'online', 'status.ready', NOW())
+ON CONFLICT (id) DO NOTHING;
+
 -- 2. Tabla de Contactos & Resúmenes por Número y {name}
 CREATE TABLE IF NOT EXISTS public.growfit_whatsapp_contacts (
     phone TEXT PRIMARY KEY,
@@ -24,11 +28,16 @@ CREATE TABLE IF NOT EXISTS public.growfit_whatsapp_contacts (
     detailed_analysis TEXT,
     pending_promises JSONB DEFAULT '[]'::jsonb,
     detected_calendar_events JSONB DEFAULT '[]'::jsonb,
+    smart_replies JSONB DEFAULT '[]'::jsonb,
     last_message_preview TEXT,
     last_message_at TIMESTAMPTZ DEFAULT NOW(),
     total_messages INTEGER DEFAULT 0,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.growfit_whatsapp_contacts ADD COLUMN IF NOT EXISTS pending_promises JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.growfit_whatsapp_contacts ADD COLUMN IF NOT EXISTS detected_calendar_events JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.growfit_whatsapp_contacts ADD COLUMN IF NOT EXISTS smart_replies JSONB DEFAULT '[]'::jsonb;
 
 -- 3. Tabla de Mensajes (message.incoming, message.outgoing, message.calling)
 CREATE TABLE IF NOT EXISTS public.growfit_whatsapp_messages (
@@ -68,3 +77,33 @@ CREATE POLICY "Allow all access to growfit_whatsapp_contacts" ON public.growfit_
 DROP POLICY IF EXISTS "Allow all access to growfit_whatsapp_messages" ON public.growfit_whatsapp_messages;
 CREATE POLICY "Allow all access to growfit_whatsapp_messages" ON public.growfit_whatsapp_messages FOR ALL USING (true) WITH CHECK (true);
 
+GRANT ALL ON TABLE public.growfit_bot_status TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.growfit_whatsapp_contacts TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.growfit_whatsapp_messages TO anon, authenticated, service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'growfit_bot_status'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.growfit_bot_status;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'growfit_whatsapp_contacts'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.growfit_whatsapp_contacts;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'growfit_whatsapp_messages'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.growfit_whatsapp_messages;
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    NULL;
+END $$;
+
+NOTIFY pgrst, 'reload schema';

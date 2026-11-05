@@ -1,5 +1,46 @@
+const SUPABASE_OPENAI_PROXY_URL = (import.meta.env.VITE_SUPABASE_URL || 'https://dtjmckbrofevgfqbkzli.supabase.co') + '/functions/v1/builderbot-webhook';
+
 const getOpenAIKey = () => {
-  return import.meta.env.VITE_OPENAI_API_KEY || '';
+  return import.meta.env.VITE_OPENAI_API_KEY || 'server-proxy-enabled';
+};
+
+const callOpenAICompletions = async (bodyPayload) => {
+  const clientKey = import.meta.env.VITE_OPENAI_API_KEY || '';
+
+  // 1. Intentar primero vía Supabase Edge Function Proxy (seguro, sin CORS y funciona en Vercel sin exponer claves)
+  try {
+    const proxyRes = await fetch(SUPABASE_OPENAI_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'openai_chat',
+        ...bodyPayload
+      })
+    });
+    if (proxyRes.ok) {
+      const data = await proxyRes.json();
+      if (data && !data.error && data.choices?.length) {
+        return data;
+      }
+    }
+  } catch (proxyErr) {
+    // Fallback a llamada directa si existe clientKey
+  }
+
+  // 2. Fallback directo a OpenAI API si hay clave local
+  if (clientKey) {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${clientKey}`
+      },
+      body: JSON.stringify(bodyPayload)
+    });
+    return await response.json();
+  }
+
+  throw new Error('No se pudo conectar con el servicio de IA.');
 };
 
 export const analyzeFood = async (input, type = 'text', context = '') => {
@@ -184,22 +225,13 @@ export const analyzeFood = async (input, type = 'text', context = '') => {
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: messages,
-        max_tokens: 600,
-        temperature: 0.1,
-        response_format: { type: "json_object" }
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages: messages,
+      max_tokens: 600,
+      temperature: 0.1,
+      response_format: { type: "json_object" }
     });
-
-    const data = await response.json();
     if (data.error) throw new Error(data.error.message);
 
     const content = data.choices[0].message.content.trim();
@@ -215,9 +247,6 @@ export const analyzeFood = async (input, type = 'text', context = '') => {
 };
 
 export const generateProfileAnalysis = async (profile) => {
-  const apiKey = getOpenAIKey();
-  if (!apiKey) throw new Error("Missing OpenAI API Key");
-
   const systemPrompt = `
         Eres un experto endocrinólogo y nutricionista deportivo de "Grow Labs".
         Tu tarea es analizar el perfil metabólico de un usuario para optimizar su pérdida de peso.
@@ -241,20 +270,11 @@ export const generateProfileAnalysis = async (profile) => {
     `;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "system", content: systemPrompt }],
-        max_tokens: 300
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: systemPrompt }],
+      max_tokens: 300
     });
-
-    const data = await response.json();
     return data.choices?.[0]?.message?.content || "No se pudo generar el análisis.";
   } catch (e) {
     console.error(e);
@@ -263,9 +283,6 @@ export const generateProfileAnalysis = async (profile) => {
 };
 
 export const generateDailyTip = async (profile, stats, measurements) => {
-  const apiKey = getOpenAIKey();
-  if (!apiKey) throw new Error("Missing OpenAI API Key");
-
   // Context Building
   const today = new Date().toLocaleDateString('es-ES', { weekday: 'long' });
   const remainingCals = profile.calorieGoal - stats.calories;
@@ -291,21 +308,12 @@ export const generateDailyTip = async (profile, stats, measurements) => {
     `;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "system", content: systemPrompt }],
-        max_tokens: 150,
-        temperature: 0.7
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: systemPrompt }],
+      max_tokens: 150,
+      temperature: 0.7
     });
-
-    const data = await response.json();
     if (data.error) throw new Error(data.error.message);
 
     return data.choices[0].message.content.trim();
@@ -317,8 +325,6 @@ export const generateDailyTip = async (profile, stats, measurements) => {
 };
 
 export const chatWithAI = async (message, state) => {
-  const apiKey = getOpenAIKey();
-  if (!apiKey) throw new Error("Missing OpenAI API Key");
 
   const getArgDate = () => {
     const now = new Date();
@@ -426,24 +432,15 @@ export const chatWithAI = async (message, state) => {
     `;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: message }
-        ],
-        max_tokens: 400,
-        temperature: 0.7
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: message }
+      ],
+      max_tokens: 400,
+      temperature: 0.7
     });
-
-    const data = await response.json();
     return data.choices?.[0]?.message?.content || "No pude procesar tu mensaje.";
   } catch (error) {
     console.error("Chat Error:", error);
@@ -452,9 +449,6 @@ export const chatWithAI = async (message, state) => {
 };
 
 export const generateMealPlan = async (profile, preferences = '') => {
-  const apiKey = getOpenAIKey();
-  if (!apiKey) throw new Error("Missing OpenAI API Key");
-
   const p = profile;
   const healthInfo = p.health ? `Condiciones: ${p.health.conditions || 'None'}` : '';
 
@@ -485,21 +479,12 @@ export const generateMealPlan = async (profile, preferences = '') => {
   `;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "system", content: systemPrompt }],
-        max_tokens: 1000,
-        temperature: 0.7
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: systemPrompt }],
+      max_tokens: 1000,
+      temperature: 0.7
     });
-
-    const data = await response.json();
     if (data.error) throw new Error(data.error.message);
 
     const content = data.choices[0].message.content.trim();
@@ -514,9 +499,6 @@ export const generateMealPlan = async (profile, preferences = '') => {
 };
 
 export const generateSmartHabits = async (profile, contextData) => {
-  const apiKey = getOpenAIKey();
-  if (!apiKey) throw new Error("Missing OpenAI API Key");
-
   const systemPrompt = `
     Eres un Coach de Vida y Salud de Alto Rendimiento.
     Tu misión: Analizar los datos de ayer del usuario y generarle 3 "Micro-Retos" (Hábitos) para HOY.
@@ -541,27 +523,16 @@ export const generateSmartHabits = async (profile, contextData) => {
   `;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "system", content: systemPrompt }],
-        max_tokens: 300,
-        temperature: 0.7
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: systemPrompt }],
+      max_tokens: 300,
+      temperature: 0.7
     });
-
-    const data = await response.json();
     if (data.error) throw new Error(data.error.message);
 
     const content = data.choices[0].message.content.trim();
     const jsonStr = content.replace(/^```json/, '').replace(/```$/, '');
-    return JSON.parse(jsonStr);
-
     return JSON.parse(jsonStr);
   } catch (error) {
     console.error("Habits Error:", error);
@@ -574,9 +545,6 @@ export const generateSmartHabits = async (profile, contextData) => {
 };
 
 export const generateWeeklyReport = async (state) => {
-  const apiKey = getOpenAIKey();
-  if (!apiKey) throw new Error("Missing OpenAI API Key");
-
   // Gather last 7 days data relative to the selected date or today
   const referenceDate = state.selectedDate ? new Date(state.selectedDate + 'T12:00:00') : new Date();
   const last7Days = [];
@@ -629,17 +597,12 @@ export const generateWeeklyReport = async (state) => {
     `;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "system", content: systemPrompt }],
-        max_tokens: 1500,
-        temperature: 0.7
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: systemPrompt }],
+      max_tokens: 1500,
+      temperature: 0.7
     });
-    const data = await response.json();
     if (data.error) throw new Error(data.error.message);
 
     const content = data.choices[0].message.content.trim();
@@ -653,9 +616,6 @@ export const generateWeeklyReport = async (state) => {
 };
 
 export const generateShoppingList = async (profile, history) => {
-  const apiKey = getOpenAIKey();
-  if (!apiKey) throw new Error("Missing OpenAI API Key");
-
   const systemPrompt = `
         Eres un Nutricionista de San Juan, Argentina, experto en "comer sano con poca plata".
         Genera una LISTA DE COMPRAS para ${profile.name}.
@@ -676,17 +636,12 @@ export const generateShoppingList = async (profile, history) => {
     `;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "system", content: systemPrompt }],
-        max_tokens: 400,
-        temperature: 0.7
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: systemPrompt }],
+      max_tokens: 400,
+      temperature: 0.7
     });
-    const data = await response.json();
     return data.choices?.[0]?.message?.content || "No se pudo generar la lista.";
   } catch (e) {
     console.error("Shopping List Error:", e);
@@ -697,9 +652,6 @@ export const generateShoppingList = async (profile, history) => {
 // --- COACHING IA: TRATAMIENTO OBETIDE (GLP-1) Y RESUMEN DIARIO/SEMANAL ---
 
 export const generateObetideCoachingSummary = async (state) => {
-  const apiKey = getOpenAIKey();
-  if (!apiKey) throw new Error("Missing OpenAI API Key");
-
   const latestObetide = state.obetideTreatments?.[0] || null;
   const recentMeals = (state.dailyLog || []).slice(0, 15);
   const recentMeasurements = (state.measurements || []).slice(0, 5);
@@ -738,20 +690,14 @@ export const generateObetideCoachingSummary = async (state) => {
   });
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Analiza este paciente en tratamiento con Obetide: ${userContext}` }
-        ],
-        temperature: 0.7
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Analiza este paciente en tratamiento con Obetide: ${userContext}` }
+      ],
+      temperature: 0.7
     });
-
-    const data = await response.json();
     if (data.error) throw new Error(data.error.message);
     const content = data.choices[0].message.content.trim().replace(/^```json/, '').replace(/```$/, '');
     return JSON.parse(content);
@@ -764,9 +710,6 @@ export const generateObetideCoachingSummary = async (state) => {
 // --- GENERADOR DE PLAN NUTRICIONAL ADAPTADO A OBETIDE (GLP-1) ---
 
 export const generateMealPlanWithAI = async (profile, targetCalories = null) => {
-  const apiKey = getOpenAIKey();
-  if (!apiKey) throw new Error("Missing OpenAI API Key");
-
   const calories = targetCalories || profile.calorieGoal || 1800;
 
   const systemPrompt = `
@@ -798,20 +741,14 @@ export const generateMealPlanWithAI = async (profile, targetCalories = null) => 
   `;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Generar plan nutricional para ${profile.name || 'Paciente'}, peso meta: ${profile.targetWeight || 70}kg.` }
-        ],
-        temperature: 0.7
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Generar plan nutricional para ${profile.name || 'Paciente'}, peso meta: ${profile.targetWeight || 70}kg.` }
+      ],
+      temperature: 0.7
     });
-
-    const data = await response.json();
     if (data.error) throw new Error(data.error.message);
     const content = data.choices[0].message.content.trim().replace(/^```json/, '').replace(/```$/, '');
     return JSON.parse(content);
@@ -961,24 +898,15 @@ export const analyzeWorkoutWithAI = async (workoutText, state) => {
   `;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `¿Qué ejercicio hice hoy?: "${workoutText}"` }
-        ],
-        max_tokens: 650,
-        temperature: 0.3
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `¿Qué ejercicio hice hoy?: "${workoutText}"` }
+      ],
+      max_tokens: 650,
+      temperature: 0.3
     });
-
-    const data = await response.json();
     if (data.error) throw new Error(data.error.message);
     const content = data.choices[0].message.content.trim().replace(/^```json/, '').replace(/```$/, '').trim();
     const parsed = JSON.parse(content);
@@ -1046,24 +974,16 @@ export const analyzeFridgeWithAI = async (ingredientsText, remainingCalories = 6
   `;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Ingredientes: ${cleanIng}` }
-        ],
-        max_tokens: 600,
-        temperature: 0.4,
-        response_format: { type: "json_object" }
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Ingredientes: ${cleanIng}` }
+      ],
+      max_tokens: 600,
+      temperature: 0.4,
+      response_format: { type: "json_object" }
     });
-    const data = await response.json();
     if (data.error) throw new Error(data.error.message);
     const parsed = JSON.parse(data.choices[0].message.content.trim());
     return parsed.recipes?.length ? parsed.recipes : buildFallbackRecipes();
@@ -1123,21 +1043,13 @@ export const analyzeReceiptWithAI = async (input, type = 'text') => {
           { role: "user", content: `Ticket / Gasto: ${input}` }
         ];
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages,
-        max_tokens: 450,
-        temperature: 0.2,
-        response_format: { type: "json_object" }
-      })
+    const data = await callOpenAICompletions({
+      model: "gpt-4o-mini",
+      messages,
+      max_tokens: 450,
+      temperature: 0.2,
+      response_format: { type: "json_object" }
     });
-    const data = await response.json();
     if (data.error) throw new Error(data.error.message);
     return { ...buildFallbackReceipt(type === 'text' ? input : ''), ...JSON.parse(data.choices[0].message.content.trim()) };
   } catch (e) {

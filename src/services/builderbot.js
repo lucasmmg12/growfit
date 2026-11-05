@@ -16,9 +16,11 @@ export const getBuilderBotConfig = () => {
     const originUrl = (typeof window !== 'undefined' && window.location?.origin && !window.location.origin.includes('localhost'))
         ? window.location.origin
         : 'https://growfit.vercel.app';
-    const webhookUrl = `${originUrl}/api/builderbot-webhook`;
     const edgeFunctionUrl = `${supabaseUrl}/functions/v1/builderbot-webhook`;
-    return { apiKey, botId, webhookUrl, edgeFunctionUrl };
+    const vercelWebhookUrl = `${originUrl}/api/builderbot-webhook`;
+    // Usamos la Edge Function de Supabase (con verify_jwt: false) como URL principal garantizada
+    const webhookUrl = edgeFunctionUrl;
+    return { apiKey, botId, webhookUrl, vercelWebhookUrl, edgeFunctionUrl };
 };
 
 export const saveBuilderBotConfig = ({ apiKey, botId }) => {
@@ -129,14 +131,6 @@ export const classifyMessageContext = (name = '', body = '', currentCircle = 'ot
     return { circle, isImportant, detectedEvent };
 };
 
-const DEMO_FAKE_PHONES = new Set([
-    '5492645102030',
-    '5492644889900',
-    '5492644112233',
-    '5492645776655'
-]);
-
-// Estado inicial 100% limpio (sin conversaciones ni eventos inventados)
 const getInitialSeedData = () => {
     return {
         botStatus: {
@@ -153,14 +147,27 @@ const getInitialSeedData = () => {
     };
 };
 
-const purgeFakeSeedEntries = (store) => {
-    if (!store || typeof store !== 'object') return getInitialSeedData();
-    const prevContactsLen = Array.isArray(store.contacts) ? store.contacts.length : 0;
-    const prevMsgsLen = Array.isArray(store.messages) ? store.messages.length : 0;
-    store.contacts = (store.contacts || []).filter(c => !DEMO_FAKE_PHONES.has(String(c.phone)));
-    store.messages = (store.messages || []).filter(m => !DEMO_FAKE_PHONES.has(String(m.phone)) && ![1001,1002,1003,1004,1005,1006,1007,1008,1009].includes(Number(m.id)));
-    const purged = (store.contacts.length !== prevContactsLen) || (store.messages.length !== prevMsgsLen);
-    return { store, purged };
+const deduplicateMessages = (messages = []) => {
+    const byId = new Map();
+    const seenSignatures = new Set();
+
+    for (const m of messages) {
+        if (!m) continue;
+        // Skip legacy hardcoded demo IDs 1001..1009
+        if ([1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009].includes(Number(m.id))) continue;
+
+        const idKey = String(m.id || '');
+        const tsMinute = m.created_at ? String(m.created_at).slice(0, 16) : '';
+        const sig = `${m.phone}|${m.direction}|${(m.body || '').trim()}|${tsMinute}`;
+
+        if (idKey && byId.has(idKey)) continue;
+        if (seenSignatures.has(sig)) continue;
+
+        seenSignatures.add(sig);
+        byId.set(idKey || sig, m);
+    }
+
+    return Array.from(byId.values()).sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
 };
 
 export const loadCommunicationsData = async () => {
@@ -176,13 +183,7 @@ export const loadCommunicationsData = async () => {
         localData = getInitialSeedData();
     }
 
-    const { store: cleanedLocal, purged: localPurged } = purgeFakeSeedEntries(localData);
-    localData = cleanedLocal;
-    if (localPurged) {
-        localStorage.setItem(LOCAL_COMMS_KEY, JSON.stringify(localData));
-    }
-
-    // 1. Sync with guaranteed Supabase growfit_profiles hub row (user_id = 'lmarinero_whatsapp_hub')
+    // 1. Sync with Supabase growfit_profiles hub row (user_id = 'lmarinero_whatsapp_hub')
     try {
         const { data: hubProfile } = await supabase
             .from('growfit_profiles')
@@ -191,7 +192,7 @@ export const loadCommunicationsData = async () => {
             .maybeSingle();
 
         if (hubProfile?.data && typeof hubProfile.data === 'object') {
-            const { store: remoteHub, purged: remotePurged } = purgeFakeSeedEntries(hubProfile.data);
+            const remoteHub = hubProfile.data;
             if (remoteHub.botStatus) {
                 localData.botStatus = remoteHub.botStatus;
             }
@@ -202,34 +203,22 @@ export const loadCommunicationsData = async () => {
                     const prev = byPhone.get(rc.phone) || {};
                     byPhone.set(rc.phone, { ...prev, ...rc });
                 });
-                localData.contacts = Array.from(byPhone.values()).sort((a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0));
+                localData.contacts = Array.from(byPhone.values());
             }
             if (Array.isArray(remoteHub.messages) && remoteHub.messages.length > 0) {
-                const byId = new Map();
-                localData.messages.forEach(m => byId.set(String(m.id), m));
-                remoteHub.messages.forEach(rm => byId.set(String(rm.id), rm));
-                localData.messages = Array.from(byId.values()).sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
-            }
-            if (remotePurged) {
-                await supabase.from('growfit_profiles').upsert({
-                    user_id: HUB_USER_ID,
-                    full_name: 'WhatsApp Hub (lmarinero)',
-                    display_name: 'WhatsApp Hub',
-                    data: localData,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id' });
+                localData.messages = deduplicateMessages([...localData.messages, ...remoteHub.messages]);
             }
         }
     } catch (e) {
         // Ignore network errors
     }
 
-    // 2. Also merge live data from dedicated Supabase tables if created
+    // 2. Merge live data from dedicated Supabase WhatsApp tables
     try {
         const [{ data: remoteStatus }, { data: remoteContacts }, { data: remoteMessages }] = await Promise.all([
             supabase.from('growfit_bot_status').select('*').eq('id', 'builderbot_main').maybeSingle(),
-            supabase.from('growfit_whatsapp_contacts').select('*').order('last_message_at', { ascending: false }).limit(100),
-            supabase.from('growfit_whatsapp_messages').select('*').order('created_at', { ascending: true }).limit(400)
+            supabase.from('growfit_whatsapp_contacts').select('*').order('last_message_at', { ascending: false }).limit(150),
+            supabase.from('growfit_whatsapp_messages').select('*').order('created_at', { ascending: true }).limit(500)
         ]);
 
         if (remoteStatus) {
@@ -244,23 +233,51 @@ export const loadCommunicationsData = async () => {
                 byPhone.set(rc.phone, {
                     ...prev,
                     ...rc,
+                    pending_promises: Array.isArray(rc.pending_promises) && rc.pending_promises.length ? rc.pending_promises : (prev.pending_promises || []),
+                    detected_calendar_events: Array.isArray(rc.detected_calendar_events) && rc.detected_calendar_events.length ? rc.detected_calendar_events : (prev.detected_calendar_events || []),
+                    smart_replies: Array.isArray(rc.smart_replies) && rc.smart_replies.length ? rc.smart_replies : (prev.smart_replies || []),
                     short_summary: rc.short_summary || prev.short_summary || rc.last_message_preview || 'Conversación activa en WhatsApp.',
                     detailed_analysis: rc.detailed_analysis || prev.detailed_analysis || `Contacto ${rc.name} (${rc.phone}) clasificado en círculo ${CIRCLE_META[rc.circle]?.label || 'General'}.`
                 });
             });
-            localData.contacts = Array.from(byPhone.values()).sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
+            localData.contacts = Array.from(byPhone.values());
         }
 
         if (Array.isArray(remoteMessages) && remoteMessages.length > 0) {
-            const byId = new Map();
-            localData.messages.forEach(m => byId.set(String(m.id), m));
-            remoteMessages.forEach(rm => byId.set(String(rm.id), rm));
-            localData.messages = Array.from(byId.values()).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            localData.messages = deduplicateMessages([...localData.messages, ...remoteMessages]);
         }
+
+        // Ensure every contact in messages exists in contacts list
+        const contactByPhone = new Map();
+        localData.contacts.forEach(c => contactByPhone.set(c.phone, c));
+        localData.messages.forEach(m => {
+            if (!m.phone) return;
+            if (!contactByPhone.has(m.phone)) {
+                const cCircle = m.circle || 'otros';
+                contactByPhone.set(m.phone, {
+                    phone: m.phone,
+                    name: m.contact_name || m.phone,
+                    circle: cCircle,
+                    is_important: Boolean(m.is_important),
+                    short_summary: `${m.contact_name || m.phone}: "${(m.body || '').slice(0, 110)}"`,
+                    detailed_analysis: `Conversación activa con ${m.contact_name || m.phone} (+${m.phone}).`,
+                    pending_promises: [],
+                    detected_calendar_events: m.detected_event ? [m.detected_event] : [],
+                    smart_replies: [],
+                    last_message_preview: (m.body || '').slice(0, 140),
+                    last_message_at: m.created_at || new Date().toISOString(),
+                    total_messages: 1
+                });
+            }
+        });
+
+        localData.contacts = Array.from(contactByPhone.values()).sort(
+            (a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0)
+        );
 
         localStorage.setItem(LOCAL_COMMS_KEY, JSON.stringify(localData));
     } catch (e) {
-        // Fallback to local state silently if tables are not yet created in Supabase
+        console.warn('[GrowFit Comms] Error sincronizando tablas remotas:', e);
     }
 
     return localData;
@@ -281,19 +298,25 @@ export const clearAllCommunicationsData = async () => {
     const empty = getInitialSeedData();
     localStorage.setItem(LOCAL_COMMS_KEY, JSON.stringify(empty));
     try {
-        await supabase.from('growfit_profiles').upsert({
-            user_id: HUB_USER_ID,
-            full_name: 'WhatsApp Hub (lmarinero)',
-            display_name: 'WhatsApp Hub',
-            data: empty,
-            updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-    } catch (e) {}
+        await Promise.all([
+            supabase.from('growfit_profiles').upsert({
+                user_id: HUB_USER_ID,
+                full_name: 'WhatsApp Hub (lmarinero)',
+                display_name: 'WhatsApp Hub',
+                data: empty,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' }),
+            supabase.from('growfit_whatsapp_messages').delete().neq('id', 0),
+            supabase.from('growfit_whatsapp_contacts').delete().neq('phone', '')
+        ]);
+    } catch (e) {
+        console.warn('Error vaciando tablas de comunicaciones:', e);
+    }
     return empty;
 };
 
 /**
- * Envía un mensaje real por BuilderBot API v2 (Imagen 1) y lo guarda en el historial
+ * Envía un mensaje real por BuilderBot API v2 (vía Edge Function proxy libre de CORS + fallback directo) y lo guarda en el historial
  */
 export const sendBuilderBotWhatsApp = async ({ number, content, mediaUrl = '', contactName = 'Contacto', circle = 'otros' }) => {
     const cleanNumber = String(number || '').replace(/[^\d]/g, '');
@@ -302,7 +325,7 @@ export const sendBuilderBotWhatsApp = async ({ number, content, mediaUrl = '', c
         throw new Error('Debes indicar número de destino y mensaje.');
     }
 
-    const { apiKey, botId } = getBuilderBotConfig();
+    const { apiKey, botId, edgeFunctionUrl } = getBuilderBotConfig();
     const endpoint = `https://app.builderbot.cloud/api/v2/${botId}/messages`;
 
     const payload = {
@@ -318,23 +341,44 @@ export const sendBuilderBotWhatsApp = async ({ number, content, mediaUrl = '', c
     let apiErrorMsg = null;
 
     if (apiKey) {
+        // 1. Intentar despacho vía Supabase Edge Function Proxy (evita bloqueos CORS del navegador)
         try {
-            const response = await fetch(endpoint, {
+            const proxyRes = await fetch(edgeFunctionUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-builderbot': apiKey
-                },
-                body: JSON.stringify(payload)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'send_whatsapp',
+                    botId,
+                    apiKey,
+                    body: payload
+                })
             });
-            if (response.ok) {
+            const proxyData = await proxyRes.json();
+            if (proxyData.apiDispatched) {
                 apiDispatched = true;
-            } else {
-                const errText = await response.text();
-                apiErrorMsg = `HTTP ${response.status}: ${errText.slice(0, 100)}`;
+            } else if (proxyData.response || proxyData.error) {
+                apiErrorMsg = String(proxyData.response || proxyData.error).slice(0, 120);
             }
-        } catch (err) {
-            apiErrorMsg = err.message;
+        } catch (proxyErr) {
+            // 2. Fallback directo a BuilderBot API v2
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-builderbot': apiKey
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    apiDispatched = true;
+                } else {
+                    const errText = await response.text();
+                    apiErrorMsg = `HTTP ${response.status}: ${errText.slice(0, 100)}`;
+                }
+            } catch (err) {
+                apiErrorMsg = err.message;
+            }
         }
     }
 
@@ -390,7 +434,7 @@ export const ingestBuilderBotWebhookLocal = async ({ eventName = 'message.incomi
         return store;
     }
 
-    const phone = String(data.from || data.number || '5492640000000').replace(/[^\d]/g, '');
+    const phone = String(data.from || data.number || '5492645001122').replace(/[^\d]/g, '') || '5492645001122';
     const existingContact = store.contacts.find(c => c.phone === phone);
     const contactName = (eventName !== 'message.outgoing' && data.name)
         ? data.name
@@ -414,8 +458,11 @@ export const ingestBuilderBotWebhookLocal = async ({ eventName = 'message.incomi
         forcedCircle || existingContact?.circle || 'otros'
     );
 
+    const msgId = Date.now() + Math.floor(Math.random() * 1000);
+    const nowIso = new Date().toISOString();
+
     const newMsg = {
-        id: Date.now() + Math.floor(Math.random() * 1000),
+        id: msgId,
         phone,
         contact_name: contactName,
         direction,
@@ -429,7 +476,7 @@ export const ingestBuilderBotWebhookLocal = async ({ eventName = 'message.incomi
         is_important: isImportant,
         detected_event: detectedEvent,
         message_date: today,
-        created_at: new Date().toISOString()
+        created_at: nowIso
     };
 
     store.messages.push(newMsg);
@@ -449,8 +496,9 @@ export const ingestBuilderBotWebhookLocal = async ({ eventName = 'message.incomi
         detected_calendar_events: detectedEvent
             ? [detectedEvent, ...(existingContact?.detected_calendar_events || []).slice(0, 2)]
             : (existingContact?.detected_calendar_events || []),
+        smart_replies: existingContact?.smart_replies || [],
         last_message_preview: bodyText.slice(0, 140),
-        last_message_at: new Date().toISOString(),
+        last_message_at: nowIso,
         total_messages: contactMsgs.length
     };
 
@@ -461,33 +509,43 @@ export const ingestBuilderBotWebhookLocal = async ({ eventName = 'message.incomi
     saveCommunicationsDataLocal(store);
 
     try {
-        await supabase.from('growfit_whatsapp_messages').insert({
-            phone: newMsg.phone,
-            contact_name: newMsg.contact_name,
-            direction: newMsg.direction,
-            event_name: newMsg.event_name,
-            body: newMsg.body,
-            media_url: newMsg.media_url,
-            ai_voice: newMsg.ai_voice,
-            ai_image: newMsg.ai_image,
-            ai_response: newMsg.ai_response,
-            circle: newMsg.circle,
-            is_important: newMsg.is_important,
-            detected_event: newMsg.detected_event,
-            message_date: newMsg.message_date
-        });
-        await supabase.from('growfit_whatsapp_contacts').upsert({
-            phone: updatedContact.phone,
-            name: updatedContact.name,
-            circle: updatedContact.circle,
-            is_important: updatedContact.is_important,
-            short_summary: updatedContact.short_summary,
-            detailed_analysis: updatedContact.detailed_analysis,
-            last_message_preview: updatedContact.last_message_preview,
-            last_message_at: updatedContact.last_message_at,
-            total_messages: updatedContact.total_messages
-        }, { onConflict: 'phone' });
-    } catch (e) {}
+        await Promise.all([
+            supabase.from('growfit_whatsapp_messages').upsert({
+                id: newMsg.id,
+                phone: newMsg.phone,
+                contact_name: newMsg.contact_name,
+                direction: newMsg.direction,
+                event_name: newMsg.event_name,
+                body: newMsg.body,
+                media_url: newMsg.media_url,
+                ai_voice: newMsg.ai_voice,
+                ai_image: newMsg.ai_image,
+                ai_response: newMsg.ai_response,
+                circle: newMsg.circle,
+                is_important: newMsg.is_important,
+                detected_event: newMsg.detected_event,
+                message_date: newMsg.message_date,
+                created_at: newMsg.created_at
+            }, { onConflict: 'id' }),
+            supabase.from('growfit_whatsapp_contacts').upsert({
+                phone: updatedContact.phone,
+                name: updatedContact.name,
+                circle: updatedContact.circle,
+                is_important: updatedContact.is_important,
+                short_summary: updatedContact.short_summary,
+                detailed_analysis: updatedContact.detailed_analysis,
+                pending_promises: updatedContact.pending_promises,
+                detected_calendar_events: updatedContact.detected_calendar_events,
+                smart_replies: updatedContact.smart_replies,
+                last_message_preview: updatedContact.last_message_preview,
+                last_message_at: updatedContact.last_message_at,
+                total_messages: updatedContact.total_messages,
+                updated_at: nowIso
+            }, { onConflict: 'phone' })
+        ]);
+    } catch (e) {
+        console.warn('[GrowFit Comms] Error guardando mensaje en Supabase:', e);
+    }
 
     return store;
 };
@@ -510,7 +568,8 @@ export const updateContactCircleAdmin = async (phone, newCircle, customName = nu
             await supabase.from('growfit_whatsapp_contacts').update({
                 circle: newCircle,
                 name: target.name,
-                is_important: target.is_important
+                is_important: target.is_important,
+                updated_at: new Date().toISOString()
             }).eq('phone', phone);
         } catch (e) {}
     }
@@ -527,27 +586,16 @@ export const analyzeContactConversationWithAI = async (phone) => {
     if (!contact || !msgs.length) return null;
 
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY || '';
+    const { edgeFunctionUrl } = getBuilderBotConfig();
     const transcript = msgs
         .slice(-20)
         .map(m => `[${m.direction === 'outgoing' ? 'Lucas' : contact.name}]: ${m.body} ${m.ai_voice ? `(Audio: ${m.ai_voice})` : ''}`)
         .join('\n');
 
-    if (apiKey) {
-        try {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: 'gpt-4o-mini',
-                    response_format: { type: 'json_object' },
-                    temperature: 0.2,
-                    messages: [
-                        {
-                            role: 'system',
-                            content: `Eres el Asistente Ejecutivo Personal de Lucas Marinero.
+    const aiMessages = [
+        {
+            role: 'system',
+            content: `Eres el Asistente Ejecutivo Personal de Lucas Marinero.
 Analiza esta conversación de WhatsApp con "${contact.name}" (${contact.phone}).
 Clasifícala en uno de los 4 círculos prioritarios de Lucas: "hijos", "novia", "trabajo", "amigos" (o "otros").
 Devuelve ÚNICAMENTE un JSON válido:
@@ -558,25 +606,80 @@ Devuelve ÚNICAMENTE un JSON válido:
   "pending_promises": ["Tarea o compromiso 1", "Tarea 2"],
   "smart_replies": ["Respuesta sugerida 1", "Respuesta sugerida 2", "Respuesta sugerida 3"]
 }`
-                        },
-                        { role: 'user', content: transcript }
-                    ]
+        },
+        { role: 'user', content: transcript }
+    ];
+
+    try {
+        let data = null;
+
+        // 1. Intentar vía Edge Function (funciona en producción aunque no haya VITE_OPENAI_API_KEY en el cliente)
+        try {
+            const proxyRes = await fetch(edgeFunctionUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'openai_chat',
+                    model: 'gpt-4o-mini',
+                    response_format: { type: 'json_object' },
+                    temperature: 0.2,
+                    messages: aiMessages
                 })
             });
-            const data = await response.json();
-            if (!data.error) {
-                const parsed = JSON.parse(data.choices[0].message.content.trim());
-                contact.circle = parsed.circle || contact.circle;
-                contact.short_summary = parsed.short_summary || contact.short_summary;
-                contact.detailed_analysis = parsed.detailed_analysis || contact.detailed_analysis;
-                contact.pending_promises = parsed.pending_promises || contact.pending_promises;
-                contact.smart_replies = parsed.smart_replies || [];
-                saveCommunicationsDataLocal(store);
-                return contact;
+            if (proxyRes.ok) {
+                data = await proxyRes.json();
             }
-        } catch (e) {
-            console.warn('Fallback local AI summary:', e);
+        } catch (proxyErr) {
+            // Ignorar y pasar a llamada directa
         }
+
+        // 2. Fallback directo con VITE_OPENAI_API_KEY
+        if ((!data || data.error) && apiKey) {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4o-mini',
+                    response_format: { type: 'json_object' },
+                    temperature: 0.2,
+                    messages: aiMessages
+                })
+            });
+            data = await response.json();
+        }
+
+        if (data && !data.error && data.choices?.[0]?.message?.content) {
+            const parsed = JSON.parse(data.choices[0].message.content.trim());
+            contact.circle = parsed.circle || contact.circle;
+            contact.short_summary = parsed.short_summary || contact.short_summary;
+            contact.detailed_analysis = parsed.detailed_analysis || contact.detailed_analysis;
+            contact.pending_promises = parsed.pending_promises || contact.pending_promises;
+            contact.smart_replies = parsed.smart_replies || [];
+            saveCommunicationsDataLocal(store);
+            try {
+                await supabase.from('growfit_whatsapp_contacts').upsert({
+                    phone: contact.phone,
+                    name: contact.name,
+                    circle: contact.circle,
+                    is_important: contact.is_important,
+                    short_summary: contact.short_summary,
+                    detailed_analysis: contact.detailed_analysis,
+                    pending_promises: contact.pending_promises,
+                    detected_calendar_events: contact.detected_calendar_events || [],
+                    smart_replies: contact.smart_replies,
+                    last_message_preview: contact.last_message_preview,
+                    last_message_at: contact.last_message_at,
+                    total_messages: contact.total_messages,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'phone' });
+            } catch (e) {}
+            return contact;
+        }
+    } catch (e) {
+        console.warn('Fallback local AI summary:', e);
     }
 
     // Fallback instantáneo enriquecido
@@ -587,6 +690,32 @@ Devuelve ÚNICAMENTE un JSON válido:
     contact.detailed_analysis = `Análisis del vínculo (${CIRCLE_META[contact.circle]?.label || 'General'}): Se registran ${msgs.length} interacciones totales. El contacto planteó: "${lastIn}". Se recomienda confirmar horario en Google Calendar si aplica.`;
     saveCommunicationsDataLocal(store);
     return contact;
+};
+
+let activeRealtimeChannel = null;
+
+export const subscribeToCommunicationsRealtime = (onRealtimeChange) => {
+    if (activeRealtimeChannel) {
+        try {
+            supabase.removeChannel(activeRealtimeChannel);
+        } catch (e) {}
+        activeRealtimeChannel = null;
+    }
+
+    activeRealtimeChannel = supabase
+        .channel('growfit-whatsapp-live-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'growfit_whatsapp_messages' }, () => {
+            if (typeof onRealtimeChange === 'function') onRealtimeChange();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'growfit_whatsapp_contacts' }, () => {
+            if (typeof onRealtimeChange === 'function') onRealtimeChange();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'growfit_bot_status' }, () => {
+            if (typeof onRealtimeChange === 'function') onRealtimeChange();
+        })
+        .subscribe();
+
+    return activeRealtimeChannel;
 };
 
 /**
@@ -691,4 +820,3 @@ export const buildDayByDaySummaries = (messages = [], contacts = []) => {
             })
         }));
 };
-
