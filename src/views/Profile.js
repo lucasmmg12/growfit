@@ -1,6 +1,7 @@
 import { getState, saveState } from '../state';
 import { supabase } from '../supabase-client';
 import { renderSidebar, renderMobileHeader, renderBottomNav } from '../components/Navigation';
+import { isAdminUser } from '../services/auth';
 
 export const renderProfile = () => {
     const state = getState();
@@ -44,6 +45,23 @@ export const renderProfile = () => {
                             </button>
                         </div>
                     </div>
+
+                    ${isAdminUser() ? `
+                    <!-- Exclusivo Administrador (@lmarinero): Comunicaciones & Gestión de Usuarios -->
+                    <div class="white-card card-glow-emerald p-6 border border-[#10E775]/45 shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <span class="badge-emerald text-[10px]">👑 Exclusivo Admin · @lmarinero</span>
+                            <h3 class="text-lg font-display font-black text-white uppercase mt-1">Comunicaciones WhatsApp IA & Gestión de Usuarios</h3>
+                            <p class="text-xs text-emerald-300/75 mt-0.5">
+                                Accede a tu Asistente Personal de WhatsApp (Hijos, Novia, Trabajo, Amigos), configuración de BuilderBot Webhook y administración de cuentas de usuarios.
+                            </p>
+                        </div>
+                        <button onclick="window.router.navigate('communications')" class="btn-emerald px-5 py-3 text-xs font-extrabold uppercase tracking-wider shrink-0 cursor-pointer">
+                            <span class="material-symbols-outlined text-base">support_agent</span>
+                            Abrir Comunicaciones & Admin
+                        </button>
+                    </div>
+                    ` : ''}
 
                     <!-- Medical & Treatment Goals (Obetide Focus) -->
                     <div class="white-card p-6 border-l-4 border-l-emerald-500 border border-slate-700/60 shadow-xl">

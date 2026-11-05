@@ -3,6 +3,7 @@ import { getArgentinaDate } from '../state';
 
 const DEFAULT_BOT_ID = 'f7806984-3538-457b-b4a3-84c97293583b';
 const LOCAL_COMMS_KEY = 'growfit_admin_communications_v1';
+const HUB_USER_ID = 'lmarinero_whatsapp_hub';
 const BUILDERBOT_KEY_STORAGE = 'growfit_builderbot_api_key';
 const BUILDERBOT_BOT_ID_STORAGE = 'growfit_builderbot_bot_id';
 const GCAL_CLIENT_ID_STORAGE = 'growfit_gcal_client_id';
@@ -12,8 +13,12 @@ export const getBuilderBotConfig = () => {
     const apiKey = localStorage.getItem(BUILDERBOT_KEY_STORAGE) || import.meta.env.VITE_BUILDERBOT_API_KEY || '';
     const botId = localStorage.getItem(BUILDERBOT_BOT_ID_STORAGE) || import.meta.env.VITE_BUILDERBOT_BOT_ID || DEFAULT_BOT_ID;
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://dtjmckbrofevgfqbkzli.supabase.co';
-    const webhookUrl = `${supabaseUrl}/functions/v1/builderbot-webhook`;
-    return { apiKey, botId, webhookUrl };
+    const originUrl = (typeof window !== 'undefined' && window.location?.origin && !window.location.origin.includes('localhost'))
+        ? window.location.origin
+        : 'https://growfit.vercel.app';
+    const webhookUrl = `${originUrl}/api/builderbot-webhook`;
+    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/builderbot-webhook`;
+    return { apiKey, botId, webhookUrl, edgeFunctionUrl };
 };
 
 export const saveBuilderBotConfig = ({ apiKey, botId }) => {
@@ -360,7 +365,49 @@ export const loadCommunicationsData = async () => {
         localStorage.setItem(LOCAL_COMMS_KEY, JSON.stringify(localData));
     }
 
-    // Try merging live data from Supabase tables if available
+    // 1. Sync with guaranteed Supabase growfit_profiles hub row (user_id = 'lmarinero_whatsapp_hub')
+    try {
+        const { data: hubProfile } = await supabase
+            .from('growfit_profiles')
+            .select('data, updated_at')
+            .eq('user_id', HUB_USER_ID)
+            .maybeSingle();
+
+        if (hubProfile?.data && typeof hubProfile.data === 'object') {
+            const remoteHub = hubProfile.data;
+            if (remoteHub.botStatus) {
+                localData.botStatus = remoteHub.botStatus;
+            }
+            if (Array.isArray(remoteHub.contacts) && remoteHub.contacts.length > 0) {
+                const byPhone = new Map();
+                localData.contacts.forEach(c => byPhone.set(c.phone, c));
+                remoteHub.contacts.forEach(rc => {
+                    const prev = byPhone.get(rc.phone) || {};
+                    byPhone.set(rc.phone, { ...prev, ...rc });
+                });
+                localData.contacts = Array.from(byPhone.values()).sort((a, b) => new Date(b.last_message_at || 0) - new Date(a.last_message_at || 0));
+            }
+            if (Array.isArray(remoteHub.messages) && remoteHub.messages.length > 0) {
+                const byId = new Map();
+                localData.messages.forEach(m => byId.set(String(m.id), m));
+                remoteHub.messages.forEach(rm => byId.set(String(rm.id), rm));
+                localData.messages = Array.from(byId.values()).sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+            }
+        } else {
+            // Seed the cloud hub row if it doesn't exist yet
+            await supabase.from('growfit_profiles').upsert({
+                user_id: HUB_USER_ID,
+                full_name: 'WhatsApp Hub (lmarinero)',
+                display_name: 'WhatsApp Hub',
+                data: localData,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+        }
+    } catch (e) {
+        // Ignore network errors
+    }
+
+    // 2. Also merge live data from dedicated Supabase tables if created
     try {
         const [{ data: remoteStatus }, { data: remoteContacts }, { data: remoteMessages }] = await Promise.all([
             supabase.from('growfit_bot_status').select('*').eq('id', 'builderbot_main').maybeSingle(),
@@ -404,6 +451,13 @@ export const loadCommunicationsData = async () => {
 
 export const saveCommunicationsDataLocal = (data) => {
     localStorage.setItem(LOCAL_COMMS_KEY, JSON.stringify(data));
+    supabase.from('growfit_profiles').upsert({
+        user_id: HUB_USER_ID,
+        full_name: 'WhatsApp Hub (lmarinero)',
+        display_name: 'WhatsApp Hub',
+        data,
+        updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' }).then(() => {}).catch(() => {});
 };
 
 /**
@@ -719,3 +773,90 @@ export const buildGoogleCalendarLink = (eventData = {}) => {
     const details = encodeURIComponent(eventData.description || 'Agendado desde GrowFit Comunicaciones & WhatsApp IA');
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${details}&authuser=lucasmmarinerosanarg@gmail.com`;
 };
+
+/**
+ * Descarga archivo .ICS compatible con Google Calendar / Apple Calendar / Outlook
+ */
+export const downloadCalendarICS = (eventData = {}) => {
+    const title = eventData.title || 'Evento Asistente Lucas';
+    const dateStr = (eventData.date || getArgentinaDate()).replace(/-/g, '');
+    const [hh, mm] = (eventData.startTime || '18:00').split(':').map(Number);
+    const startH = String(hh || 18).padStart(2, '0');
+    const startM = String(mm || 0).padStart(2, '0');
+    const endHourNum = Math.min(23, (hh || 18) + 1);
+    const endH = String(endHourNum).padStart(2, '0');
+    const description = (eventData.description || 'Agendado por el Asistente Personal de Lucas (GrowFit)').replace(/\n/g, '\\n');
+
+    const icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//GrowFit//Asistente Personal Lucas//ES',
+        'BEGIN:VEVENT',
+        `UID:growfit-${Date.now()}@growfit.vercel.app`,
+        `DTSTAMP:${dateStr}T${startH}${startM}00`,
+        `DTSTART:${dateStr}T${startH}${startM}00`,
+        `DTEND:${dateStr}T${endH}${startM}00`,
+        `SUMMARY:${title}`,
+        `DESCRIPTION:${description}`,
+        'END:VEVENT',
+        'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `evento-lucas-${dateStr}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+
+/**
+ * Genera el resumen día a día de quién escribió y qué quiso
+ */
+export const buildDayByDaySummaries = (messages = [], contacts = []) => {
+    const byDate = new Map();
+    const contactMap = new Map();
+    contacts.forEach(c => contactMap.set(c.phone, c));
+
+    messages.forEach(m => {
+        const dateKey = m.message_date || (m.created_at ? m.created_at.split('T')[0] : getArgentinaDate());
+        if (!byDate.has(dateKey)) {
+            byDate.set(dateKey, new Map());
+        }
+        const dayContacts = byDate.get(dateKey);
+        if (!dayContacts.has(m.phone)) {
+            const cInfo = contactMap.get(m.phone);
+            dayContacts.set(m.phone, {
+                phone: m.phone,
+                name: cInfo?.name || m.contact_name || m.phone,
+                circle: cInfo?.circle || m.circle || 'otros',
+                incoming: [],
+                outgoing: [],
+                calls: []
+            });
+        }
+        const entry = dayContacts.get(m.phone);
+        if (m.direction === 'outgoing') entry.outgoing.push(m);
+        else if (m.direction === 'call') entry.calls.push(m);
+        else entry.incoming.push(m);
+    });
+
+    return Array.from(byDate.entries())
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .map(([date, phoneMap]) => ({
+            date,
+            items: Array.from(phoneMap.values()).map(item => {
+                const lastIn = item.incoming[item.incoming.length - 1]?.body || (item.calls.length ? 'Llamada telefónica por WhatsApp' : 'Solo mensajes enviados por Lucas');
+                const lastOut = item.outgoing[item.outgoing.length - 1]?.body || null;
+                return {
+                    ...item,
+                    whatTheyWanted: lastIn,
+                    whatLucasReplied: lastOut
+                };
+            })
+        }));
+};
+

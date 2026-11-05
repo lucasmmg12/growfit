@@ -67,3 +67,4 @@ CREATE POLICY "Allow all access to growfit_whatsapp_contacts" ON public.growfit_
 
 DROP POLICY IF EXISTS "Allow all access to growfit_whatsapp_messages" ON public.growfit_whatsapp_messages;
 CREATE POLICY "Allow all access to growfit_whatsapp_messages" ON public.growfit_whatsapp_messages FOR ALL USING (true) WITH CHECK (true);
+

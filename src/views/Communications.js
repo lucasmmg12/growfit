@@ -10,7 +10,9 @@ import {
     ingestBuilderBotWebhookLocal,
     updateContactCircleAdmin,
     analyzeContactConversationWithAI,
-    buildGoogleCalendarLink
+    buildGoogleCalendarLink,
+    downloadCalendarICS,
+    buildDayByDaySummaries
 } from '../services/builderbot';
 
 let cachedCommsStore = null;
@@ -59,8 +61,9 @@ export const renderCommunications = () => {
         messages: []
     };
 
-    const { botId, webhookUrl, apiKey } = getBuilderBotConfig();
+    const { botId, webhookUrl, edgeFunctionUrl, apiKey } = getBuilderBotConfig();
     const periodMessages = filterMessagesByPeriod(store.messages || [], selectedPeriod);
+    const dailyTimeline = buildDayByDaySummaries(periodMessages, store.contacts || []);
 
     // Contacts active in the selected period (or all contacts if none in today filter yet)
     const activePhonesInPeriod = new Set(periodMessages.map(m => m.phone));
@@ -199,7 +202,7 @@ export const renderCommunications = () => {
                     </div>
 
                     ${activeMainSection === 'users' ? renderAdminUsersSection() : ''}
-                    ${activeMainSection === 'webhook' ? renderWebhookConfigSection(store, botId, webhookUrl, apiKey) : ''}
+                    ${activeMainSection === 'webhook' ? renderWebhookConfigSection(store, botId, webhookUrl, edgeFunctionUrl, apiKey) : ''}
 
                     ${activeMainSection === 'assistant' ? `
                         <!-- BRIEFING EJECUTIVO DE LUCAS (HOY / SEMANA / MES) + RADAR DE PROMESAS + GOOGLE CALENDAR -->
@@ -278,17 +281,22 @@ export const renderCommunications = () => {
                                     </div>
 
                                     <div class="flex flex-col gap-2.5 max-h-[260px] overflow-y-auto custom-scrollbar pr-1">
-                                        ${allCalendarEvents.length ? allCalendarEvents.map(ev => `
+                                        ${allCalendarEvents.length ? allCalendarEvents.map((ev, evIdx) => `
                                             <div class="p-3 rounded-2xl bg-[#040B08]/85 border border-emerald-500/25 flex items-center justify-between gap-3">
                                                 <div class="min-w-0">
                                                     <span class="text-[10px] font-mono font-bold text-lime-400 block">${ev.date || getArgentinaDate()} · ${ev.startTime || '18:00'} hs</span>
                                                     <h4 class="text-xs font-bold text-white truncate mt-0.5">${ev.title}</h4>
                                                     <span class="text-[10px] text-emerald-300/70">De: ${ev.contact}</span>
                                                 </div>
-                                                <a href="${buildGoogleCalendarLink(ev)}" target="_blank" rel="noopener" class="btn-emerald px-3 py-1.5 text-[10px] font-extrabold uppercase shrink-0 flex items-center gap-1">
-                                                    <span class="material-symbols-outlined text-sm">event_available</span>
-                                                    Agendar
-                                                </a>
+                                                <div class="flex items-center gap-1.5 shrink-0">
+                                                    <button type="button" class="comm-download-ics-btn px-2.5 py-1.5 rounded-xl bg-emerald-950 border border-emerald-500/30 text-[10px] font-bold text-lime-300 hover:text-white cursor-pointer" data-ev-idx="${evIdx}" title="Descargar archivo .ICS">
+                                                        .ICS
+                                                    </button>
+                                                    <a href="${buildGoogleCalendarLink(ev)}" target="_blank" rel="noopener" class="btn-emerald px-3 py-1.5 text-[10px] font-extrabold uppercase flex items-center gap-1">
+                                                        <span class="material-symbols-outlined text-sm">event_available</span>
+                                                        Agendar
+                                                    </a>
+                                                </div>
                                             </div>
                                         `).join('') : `
                                             <p class="text-xs text-emerald-300/60 py-6 text-center">No se detectaron eventos con fecha/hora en las charlas actuales.</p>
@@ -307,6 +315,51 @@ export const renderCommunications = () => {
                                         </button>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- RESUMEN DÍA A DÍA: QUIÉN ESCRIBIÓ Y QUÉ QUISO EN CADA JORNADA -->
+                        <div class="white-card p-5 md:p-6 border border-emerald-500/25">
+                            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-4 border-b border-emerald-500/15">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="size-9 rounded-2xl bg-[#10E775]/15 border border-[#10E775]/35 flex items-center justify-center text-[#10E775]">
+                                        <span class="material-symbols-outlined text-lg">today</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-[#10E775]">Bitácora Cronológica</span>
+                                        <h3 class="text-base font-display font-black text-white uppercase">Resumen Día a Día: Quién Escribió y Qué Quiso (${periodLabelMap[selectedPeriod]})</h3>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-mono text-emerald-300/75">${dailyTimeline.length} jornada(s) con actividad</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                ${dailyTimeline.length ? dailyTimeline.map(day => `
+                                    <div class="p-3.5 rounded-2xl bg-[#040B08]/85 border border-emerald-500/20 flex flex-col gap-2.5">
+                                        <div class="flex items-center justify-between pb-2 border-b border-emerald-500/15">
+                                            <span class="text-xs font-mono font-extrabold text-lime-400">📅 ${day.date === getArgentinaDate() ? `HOY (${day.date})` : day.date}</span>
+                                            <span class="text-[10px] font-mono text-emerald-300/70">${day.items.length} contacto(s)</span>
+                                        </div>
+                                        <div class="flex flex-col gap-2">
+                                            ${day.items.map(it => `
+                                                <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/15 flex flex-col gap-1">
+                                                    <div class="flex items-center justify-between gap-1">
+                                                        <span class="text-xs font-bold text-white truncate">${CIRCLE_META[it.circle]?.emoji || '💬'} ${it.name}</span>
+                                                        <span class="text-[9px] font-mono text-emerald-400">+${it.phone}</span>
+                                                    </div>
+                                                    <p class="text-[11px] text-emerald-200/85 leading-snug">
+                                                        <strong class="text-[#10E775]">Quiso:</strong> "${it.whatTheyWanted.slice(0, 90)}"
+                                                    </p>
+                                                    ${it.whatLucasReplied ? `
+                                                        <p class="text-[10px] text-lime-300/85 leading-snug">
+                                                            <strong>Lucas respondió:</strong> "${it.whatLucasReplied.slice(0, 80)}"
+                                                        </p>
+                                                    ` : ''}
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                `).join('') : `<p class="text-xs text-emerald-300/60 col-span-full py-4 text-center">Sin actividad registrada en el período seleccionado.</p>`}
                             </div>
                         </div>
 
@@ -427,6 +480,20 @@ const renderContactAssistantCard = (contact, allMessages) => {
                             </ul>
                         </div>
                     ` : ''}
+                    <div class="pt-2 border-t border-emerald-500/15">
+                        <span class="text-[10px] font-bold uppercase text-emerald-300/80 block mb-1.5">⚡ Respuestas Rápidas Sugeridas (1 clic para responder por WhatsApp):</span>
+                        <div class="flex flex-wrap gap-2">
+                            ${(contact.smart_replies && contact.smart_replies.length ? contact.smart_replies : [
+                                '¡Recibido! Ya lo agendo y te confirmo en un rato.',
+                                'Perfecto, contá conmigo a esa hora.',
+                                '¡Gracias por avisar! Salgo del Sanatorio y te escribo.'
+                            ]).map(sr => `
+                                <button type="button" class="comm-smart-reply-chip px-3 py-1.5 rounded-xl bg-emerald-950/70 hover:bg-[#10E775]/20 border border-emerald-500/30 text-[11px] font-semibold text-emerald-100 hover:text-white cursor-pointer transition-all" data-phone="${contact.phone}" data-reply="${sr.replace(/"/g, '&quot;')}">
+                                    💬 "${sr}"
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
                 </div>
             ` : ''}
 
@@ -471,7 +538,7 @@ const renderContactAssistantCard = (contact, allMessages) => {
     `;
 };
 
-const renderWebhookConfigSection = (store, botId, webhookUrl, apiKey) => {
+const renderWebhookConfigSection = (store, botId, webhookUrl, edgeFunctionUrl, apiKey) => {
     return `
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <!-- Configuración de BuilderBot API v2 & Webhook Edge Function (7 Cols) -->
@@ -484,15 +551,23 @@ const renderWebhookConfigSection = (store, botId, webhookUrl, apiKey) => {
                     <span class="material-symbols-outlined text-2xl text-[#10E775]">api</span>
                 </div>
 
-                <div class="p-3.5 rounded-2xl bg-[#040B08]/90 border border-emerald-500/30">
-                    <label class="text-[10px] font-extrabold uppercase text-lime-400 block mb-1">
-                        1. URL del Webhook para pegar en BuilderBot → Developer Settings → Webhooks:
-                    </label>
-                    <div class="flex gap-2 items-center">
-                        <input id="comm-webhook-url-display" type="text" readonly value="${webhookUrl}" class="flex-1 rounded-xl px-3 py-2 text-xs font-mono text-[#10E775] bg-emerald-950/40 border border-emerald-500/30 outline-none" />
-                        <button id="comm-copy-webhook-btn" class="btn-emerald px-3.5 py-2 text-xs font-extrabold uppercase cursor-pointer">Copiar URL</button>
+                <div class="p-3.5 rounded-2xl bg-[#040B08]/90 border border-emerald-500/30 flex flex-col gap-2.5">
+                    <div>
+                        <label class="text-[10px] font-extrabold uppercase text-lime-400 block mb-1">
+                            1A. URL Webhook Activa en Vercel (Lista para pegar en BuilderBot → Webhooks):
+                        </label>
+                        <div class="flex gap-2 items-center">
+                            <input id="comm-webhook-url-display" type="text" readonly value="${webhookUrl}" class="flex-1 rounded-xl px-3 py-2 text-xs font-mono text-[#10E775] bg-emerald-950/40 border border-emerald-500/30 outline-none" />
+                            <button id="comm-copy-webhook-btn" class="btn-emerald px-3.5 py-2 text-xs font-extrabold uppercase cursor-pointer">Copiar URL</button>
+                        </div>
                     </div>
-                    <p class="text-[11px] text-emerald-300/70 mt-1.5">
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-emerald-300/80 block mb-1">
+                            1B. URL Supabase Edge Function (<code>supabase/functions/builderbot-webhook/index.ts</code>):
+                        </label>
+                        <input type="text" readonly value="${edgeFunctionUrl || ''}" class="w-full rounded-xl px-3 py-1.5 text-[11px] font-mono text-emerald-300/80 bg-emerald-950/25 border border-emerald-500/20 outline-none" />
+                    </div>
+                    <p class="text-[11px] text-emerald-300/70">
                         Soporta todos los eventos de tus capturas: <code>message.incoming</code>, <code>message.outgoing</code>, <code>message.calling</code>, <code>status.online</code>, <code>status.require_action</code> y <code>status.disconnect</code>.
                     </p>
                 </div>
@@ -517,12 +592,20 @@ const renderWebhookConfigSection = (store, botId, webhookUrl, apiKey) => {
             <div class="lg:col-span-5 white-card p-6 border border-[#34D399]/35 flex flex-col justify-between">
                 <div>
                     <span class="badge-emerald text-[10px]">Pruebas en Tiempo Real</span>
-                    <h3 class="text-lg font-display font-black text-white uppercase mt-1">Simular Llegada de Webhook</h3>
+                    <h3 class="text-lg font-display font-black text-white uppercase mt-1">Simular Eventos Webhook BuilderBot</h3>
                     <p class="text-xs text-emerald-300/75 mt-1">
-                        Prueba cómo reacciona el Asistente de Lucas cuando BuilderBot dispara un evento entrante o saliente:
+                        Dispara cualquiera de los eventos de BuilderBot para verificar cómo los procesa el Asistente:
                     </p>
 
-                    <div class="flex flex-col gap-2.5 mt-4">
+                    <div class="flex flex-col gap-2.5 mt-3">
+                        <select id="sim-wa-event" class="w-full rounded-xl px-3 py-2 text-xs font-mono font-bold text-[#10E775] bg-[#040B08] border border-emerald-500/30 outline-none">
+                            <option value="message.incoming">📥 message.incoming (Mensaje Recibido)</option>
+                            <option value="message.outgoing">📤 message.outgoing (Mensaje Enviado por Bot/Lucas)</option>
+                            <option value="message.calling">📞 message.calling (Llamada Entrante)</option>
+                            <option value="status.ready">🟢 status.ready / status.online</option>
+                            <option value="status.require_action">🟡 status.require_action (Requiere QR)</option>
+                            <option value="status.disconnect">🔴 status.disconnect (Bot Desconectado)</option>
+                        </select>
                         <input id="sim-wa-name" type="text" value="Seño Laura (Colegio Hijos)" placeholder="{name} Nombre del contacto" class="w-full rounded-xl px-3 py-2 text-xs text-white bg-[#040B08] border border-emerald-500/30 outline-none" />
                         <input id="sim-wa-phone" type="text" value="5492645102030" placeholder="{from} Número de teléfono" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-emerald-300 bg-[#040B08] border border-emerald-500/30 outline-none" />
                         <textarea id="sim-wa-body" rows="2" class="w-full rounded-xl px-3 py-2 text-xs text-white bg-[#040B08] border border-emerald-500/30 outline-none" placeholder="{body} Mensaje de WhatsApp...">Hola Lucas! Mañana a las 11:00 hs es la reunión de padres en el colegio.</textarea>
@@ -530,7 +613,7 @@ const renderWebhookConfigSection = (store, botId, webhookUrl, apiKey) => {
                 </div>
 
                 <button id="comm-simulate-webhook-btn" class="btn-emerald w-full py-3 mt-4 text-xs font-extrabold uppercase tracking-wider cursor-pointer">
-                    ⚡ Disparar Evento message.incoming
+                    ⚡ Disparar Evento Webhook
                 </button>
             </div>
         </div>
@@ -648,6 +731,45 @@ export const attachCommunicationsEvents = async () => {
             cachedCommsStore = await loadCommunicationsData();
             activeContactViewTab[phone] = 'detailed';
             window.router.navigate('communications', true);
+        });
+    });
+
+    // Smart Reply 1-Click Chips
+    document.querySelectorAll('.comm-smart-reply-chip').forEach(chip => {
+        chip.addEventListener('click', async () => {
+            const phone = chip.dataset.phone;
+            const replyText = chip.dataset.reply;
+            const contact = (cachedCommsStore?.contacts || []).find(c => c.phone === phone);
+            if (!phone || !replyText) return;
+            await sendBuilderBotWhatsApp({
+                number: phone,
+                content: replyText,
+                contactName: contact?.name || phone,
+                circle: contact?.circle || 'otros'
+            });
+            cachedCommsStore = await loadCommunicationsData();
+            activeContactViewTab[phone] = 'messages';
+            window.showAlert?.('Respuesta Rápida Enviada', `Se envió "${replyText}" a ${contact?.name || phone}.`, 'success');
+            window.router.navigate('communications', true);
+        });
+    });
+
+    // Download .ICS Calendar Event
+    document.querySelectorAll('.comm-download-ics-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = Number(btn.dataset.evIdx || 0);
+            const allEvents = [];
+            (cachedCommsStore?.contacts || []).forEach(c => {
+                if (['hijos', 'novia', 'trabajo', 'amigos'].includes(c.circle)) {
+                    (c.detected_calendar_events || []).forEach(ev => {
+                        allEvents.push({ ...ev, contact: c.name, phone: c.phone, circle: c.circle });
+                    });
+                }
+            });
+            const targetEv = allEvents[idx];
+            if (targetEv) {
+                downloadCalendarICS(targetEv);
+            }
         });
     });
 
@@ -795,15 +917,25 @@ export const attachCommunicationsEvents = async () => {
     });
 
     document.getElementById('comm-simulate-webhook-btn')?.addEventListener('click', async () => {
+        const eventName = document.getElementById('sim-wa-event')?.value || 'message.incoming';
         const name = document.getElementById('sim-wa-name')?.value || 'Contacto';
         const from = document.getElementById('sim-wa-phone')?.value || '5492645102030';
         const body = document.getElementById('sim-wa-body')?.value || 'Hola Lucas!';
         cachedCommsStore = await ingestBuilderBotWebhookLocal({
-            eventName: 'message.incoming',
-            data: { name, from, body, attachment: [], projectId: getBuilderBotConfig().botId }
+            eventName,
+            data: {
+                name,
+                from,
+                body,
+                answer: body,
+                reason: 'Simulación manual desde GrowFit Admin',
+                payload: { qr: 'BUILDERBOT-QR-DEMO-' + Date.now() },
+                attachment: [],
+                projectId: getBuilderBotConfig().botId
+            }
         });
         activeMainSection = 'assistant';
-        window.showAlert?.('Webhook Procesado', `Mensaje de ${name} clasificado y resumido por el Asistente.`, 'success');
+        window.showAlert?.('Webhook Procesado', `Evento ${eventName} (${name}) procesado y sincronizado en la nube.`, 'success');
         window.router.navigate('communications', true);
     });
 
@@ -865,3 +997,4 @@ export const attachCommunicationsEvents = async () => {
         });
     }
 };
+
