@@ -235,7 +235,18 @@ serve(async (req: Request) => {
     }
 
     // 3B. Eventos de Mensajes y Llamadas (message.incoming, message.outgoing, message.calling)
-    const phone = String(data.from || data.number || "desconocido").replace(/[^\d]/g, "") || "desconocido";
+    const rawPhoneSource =
+      data.from ||
+      data.to ||
+      data.number ||
+      data.phone ||
+      data.remoteJid ||
+      data?.key?.remoteJid ||
+      payload.from ||
+      payload.number ||
+      "desconocido";
+    const phone = String(rawPhoneSource).split("@")[0].replace(/[^\d]/g, "") || "desconocido";
+
     const { data: existingContact } = await supabase
       .from("growfit_whatsapp_contacts")
       .select("*")
@@ -245,10 +256,11 @@ serve(async (req: Request) => {
     const hubContact = hubData.contacts.find((c: { phone: string }) => c.phone === phone);
     const baseContact = existingContact || hubContact || null;
 
+    const incomingName = data.name || data.pushName || data.notifyName || data.contactName || payload.name || "";
     const contactName =
-      eventName !== "message.outgoing" && data.name
-        ? data.name
-        : baseContact?.name || data.name || phone;
+      eventName !== "message.outgoing" && incomingName
+        ? incomingName
+        : baseContact?.name || incomingName || phone;
 
     const direction =
       eventName === "message.outgoing"
@@ -257,12 +269,13 @@ serve(async (req: Request) => {
         ? "call"
         : "incoming";
 
-    const rawBody =
+    const rawTextCandidate =
       direction === "outgoing"
-        ? data.answer || data.body || data.aiResponse || ""
+        ? data.answer || data.body || data.message || data.text || data.content || data?.messages?.content || data.aiResponse || ""
         : direction === "call"
         ? `📞 Llamada entrante de WhatsApp (${contactName})`
-        : data.body || data.aiVoice || data.aiImage || "";
+        : data.body || data.message || data.text || data.content || data?.messages?.content || data.aiVoice || data.aiImage || data.answer || "";
+    const rawBody = typeof rawTextCandidate === "string" ? rawTextCandidate : JSON.stringify(rawTextCandidate);
 
     const mediaUrl =
       data.urlTempFile ||

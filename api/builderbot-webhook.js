@@ -201,11 +201,22 @@ export default async function handler(req, res) {
     }
 
     // 2. Eventos de Mensajes y Llamadas
-    const phone = String(data.from || data.number || 'unknown').replace(/[^\d]/g, '') || 'unknown';
+    const rawPhoneSource =
+      data.from ||
+      data.to ||
+      data.number ||
+      data.phone ||
+      data.remoteJid ||
+      data?.key?.remoteJid ||
+      payload.from ||
+      payload.number ||
+      'unknown';
+    const phone = String(rawPhoneSource).split('@')[0].replace(/[^\d]/g, '') || 'unknown';
     const existingContact = hubData.contacts.find(c => c.phone === phone);
-    const contactName = (eventName !== 'message.outgoing' && data.name)
-      ? data.name
-      : (existingContact?.name || data.name || phone);
+    const incomingName = data.name || data.pushName || data.notifyName || data.contactName || payload.name || '';
+    const contactName = (eventName !== 'message.outgoing' && incomingName)
+      ? incomingName
+      : (existingContact?.name || incomingName || phone);
 
     const direction = eventName === 'message.outgoing'
       ? 'outgoing'
@@ -213,11 +224,12 @@ export default async function handler(req, res) {
       ? 'call'
       : 'incoming';
 
-    const bodyText = direction === 'outgoing'
-      ? (data.answer || data.body || data.aiResponse || '')
+    const rawTextCandidate = direction === 'outgoing'
+      ? (data.answer || data.body || data.message || data.text || data.content || data?.messages?.content || data.aiResponse || '')
       : direction === 'call'
       ? `📞 Llamada entrante de WhatsApp (${contactName})`
-      : (data.body || data.aiVoice || data.aiImage || '');
+      : (data.body || data.message || data.text || data.content || data?.messages?.content || data.aiVoice || data.aiImage || data.answer || '');
+    const bodyText = typeof rawTextCandidate === 'string' ? rawTextCandidate : JSON.stringify(rawTextCandidate);
 
     const { circle, isImportant, detectedEvent } = classifyCircle(
       contactName,
