@@ -129,14 +129,15 @@ export const classifyMessageContext = (name = '', body = '', currentCircle = 'ot
     return { circle, isImportant, detectedEvent };
 };
 
-// Datos iniciales demostrativos para que Lucas vea inmediatamente cómo opera cada círculo
-const getInitialSeedData = () => {
-    const today = getArgentinaDate();
-    const yesterdayObj = new Date(new Date(today + 'T12:00:00').getTime() - 86400000);
-    const yesterday = yesterdayObj.toISOString().split('T')[0];
-    const fiveDaysAgoObj = new Date(new Date(today + 'T12:00:00').getTime() - 5 * 86400000);
-    const fiveDaysAgo = fiveDaysAgoObj.toISOString().split('T')[0];
+const DEMO_FAKE_PHONES = new Set([
+    '5492645102030',
+    '5492644889900',
+    '5492644112233',
+    '5492645776655'
+]);
 
+// Estado inicial 100% limpio (sin conversaciones ni eventos inventados)
+const getInitialSeedData = () => {
     return {
         botStatus: {
             id: 'builderbot_main',
@@ -147,208 +148,19 @@ const getInitialSeedData = () => {
             last_event: 'status.ready',
             updated_at: new Date().toISOString()
         },
-        contacts: [
-            {
-                phone: '5492645102030',
-                name: 'Colegio & Actividades Hijos',
-                circle: 'hijos',
-                is_important: true,
-                short_summary: 'Recordatorio de salida escolar mañana a las 17:30 hs y llevar autorización firmada.',
-                detailed_analysis: 'Prioridad Alta (Círculo Hijos): Coordinación de retiro a las 17:30 hs y confirmación de asistencia a la muestra deportiva del viernes. Lucas ya respondió confirmando que pasa él a buscarlos.',
-                pending_promises: ['Llevar autorización impresa y firmada mañana', 'Retirar a los chicos a las 17:30 hs'],
-                detected_calendar_events: [
-                    {
-                        title: '👶 Retirar a los chicos del Colegio + Autorización',
-                        date: today,
-                        startTime: '17:30',
-                        durationMinutes: 45,
-                        description: 'Pasar a buscar a los chicos y entregar autorización firmada.'
-                    }
-                ],
-                last_message_preview: 'Dale genial Lucas, te esperamos mañana 17:30 hs entonces!',
-                last_message_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-                total_messages: 4
-            },
-            {
-                phone: '5492644889900',
-                name: 'Mi Amor ❤️ (Novia)',
-                circle: 'novia',
-                is_important: true,
-                short_summary: 'Propone cenar juntos hoy a las 21:30 hs y pregunta cómo te fue en el Sanatorio.',
-                detailed_analysis: 'Prioridad Afectiva (Círculo Novia): Tono cariñoso y cercano. Quiere organizar cena tranquila hoy a las 21:30 hs después de tu entrenamiento. Pendiente confirmar si pasan a comprar sushi o cocinan en casa.',
-                pending_promises: ['Confirmar menú para la cena de las 21:30 hs'],
-                detected_calendar_events: [
-                    {
-                        title: '❤️ Cena con mi Novia',
-                        date: today,
-                        startTime: '21:30',
-                        durationMinutes: 90,
-                        description: 'Cena juntos post-entreno.'
-                    }
-                ],
-                last_message_preview: 'Amor! Cómo venís hoy en el Sanatorio? Cenamos juntos a las 21:30?',
-                last_message_at: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-                total_messages: 4
-            },
-            {
-                phone: '5492644112233',
-                name: 'Coordinación Sanatorio Argentino / Grow Labs',
-                circle: 'trabajo',
-                is_important: true,
-                short_summary: 'Solicitan revisar el tablero de auditoría de calidad y confirmar reunión mañana 10:00 hs.',
-                detailed_analysis: 'Prioridad Ejecutiva (Círculo Trabajo): Solicitud de revisión de indicadores QOAG y cierre de sprint de Grow Labs. Se envió audio transcripto con `{aiVoice}` detallando los puntos de la reunión de mañana a las 10:00 hs.',
-                pending_promises: ['Revisar métricas de auditoría antes de las 10:00 hs de mañana'],
-                detected_calendar_events: [
-                    {
-                        title: '💼 Reunión Ejecutiva Sanatorio Argentino & Grow Labs',
-                        date: today,
-                        startTime: '10:00',
-                        durationMinutes: 60,
-                        description: 'Revisión de indicadores de calidad y automatizaciones IA.'
-                    }
-                ],
-                last_message_preview: 'Perfecto Lucas, agendado mañana 10:00 hs en sala de directorio.',
-                last_message_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-                total_messages: 3
-            },
-            {
-                phone: '5492645776655',
-                name: 'Matías (Grupo Fútbol & Amigos)',
-                circle: 'amigos',
-                is_important: true,
-                short_summary: 'Confirma cancha de Fútbol 7 para mañana a las 20:00 hs y tercer tiempo.',
-                detailed_analysis: 'Círculo Amigos: Armado del partido semanal. Ya son 13 confirmados y te guardaron lugar de titular a las 20:00 hs.',
-                pending_promises: ['Confirmar asistencia al partido de las 20:00 hs'],
-                detected_calendar_events: [
-                    {
-                        title: '🤝 Fútbol con Amigos (Cancha 2)',
-                        date: today,
-                        startTime: '20:00',
-                        durationMinutes: 75,
-                        description: 'Partido semanal con los amigos.'
-                    }
-                ],
-                last_message_preview: 'Lukitas! Tenemos cancha reservada a las 20hs, contás seguro no?',
-                last_message_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-                total_messages: 3
-            }
-        ],
-        messages: [
-            // Hijos
-            {
-                id: 1001,
-                phone: '5492645102030',
-                contact_name: 'Colegio & Actividades Hijos',
-                direction: 'incoming',
-                event_name: 'message.incoming',
-                body: 'Hola Lucas! Te recordamos que mañana los chicos salen 17:30 hs de la práctica y hay que traer la autorización firmada para el viernes.',
-                circle: 'hijos',
-                is_important: true,
-                message_date: today,
-                created_at: new Date(Date.now() - 40 * 60 * 1000).toISOString()
-            },
-            {
-                id: 1002,
-                phone: '5492645102030',
-                contact_name: 'Colegio & Actividades Hijos',
-                direction: 'outgoing',
-                event_name: 'message.outgoing',
-                body: 'Hola! Muchas gracias por avisar, mañana 17:30 hs paso yo a buscarlos y llevo la planilla firmada.',
-                circle: 'hijos',
-                is_important: true,
-                message_date: today,
-                created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString()
-            },
-            {
-                id: 1003,
-                phone: '5492645102030',
-                contact_name: 'Colegio & Actividades Hijos',
-                direction: 'incoming',
-                event_name: 'message.incoming',
-                body: 'Dale genial Lucas, te esperamos mañana 17:30 hs entonces!',
-                circle: 'hijos',
-                is_important: true,
-                message_date: today,
-                created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString()
-            },
-            // Novia
-            {
-                id: 1004,
-                phone: '5492644889900',
-                contact_name: 'Mi Amor ❤️ (Novia)',
-                direction: 'incoming',
-                event_name: 'message.incoming',
-                body: 'Amor! Cómo venís hoy en el Sanatorio? Cenamos juntos a las 21:30?',
-                circle: 'novia',
-                is_important: true,
-                message_date: today,
-                created_at: new Date(Date.now() - 55 * 60 * 1000).toISOString()
-            },
-            {
-                id: 1005,
-                phone: '5492644889900',
-                contact_name: 'Mi Amor ❤️ (Novia)',
-                direction: 'outgoing',
-                event_name: 'message.outgoing',
-                body: 'Hola mi amor! Todo muy bien, salgo de entrenar tipo 20:30 y voy para allá a las 21:30 ❤️',
-                circle: 'novia',
-                is_important: true,
-                message_date: today,
-                created_at: new Date(Date.now() - 48 * 60 * 1000).toISOString()
-            },
-            // Trabajo
-            {
-                id: 1006,
-                phone: '5492644112233',
-                contact_name: 'Coordinación Sanatorio Argentino / Grow Labs',
-                direction: 'incoming',
-                event_name: 'message.incoming',
-                body: 'Lucas, te dejo audio con el resumen de los indicadores de auditoría para la reunión de mañana 10:00 hs.',
-                ai_voice: 'Transcripción IA ({aiVoice}): "Hola Lucas, necesitamos validar el dashboard de liquidaciones y calidad mañana a las 10 de la mañana con dirección médica."',
-                circle: 'trabajo',
-                is_important: true,
-                message_date: today,
-                created_at: new Date(Date.now() - 130 * 60 * 1000).toISOString()
-            },
-            {
-                id: 1007,
-                phone: '5492644112233',
-                contact_name: 'Coordinación Sanatorio Argentino / Grow Labs',
-                direction: 'outgoing',
-                event_name: 'message.outgoing',
-                body: 'Recibido! Ya tengo listo el reporte actualizado, nos vemos mañana 10:00 hs.',
-                circle: 'trabajo',
-                is_important: true,
-                message_date: today,
-                created_at: new Date(Date.now() - 120 * 60 * 1000).toISOString()
-            },
-            // Amigos
-            {
-                id: 1008,
-                phone: '5492645776655',
-                contact_name: 'Matías (Grupo Fútbol & Amigos)',
-                direction: 'incoming',
-                event_name: 'message.incoming',
-                body: 'Lukitas! Tenemos cancha reservada a las 20hs, contás seguro no? Después hacemos asado liviano.',
-                circle: 'amigos',
-                is_important: true,
-                message_date: yesterday,
-                created_at: new Date(Date.now() - 240 * 60 * 1000).toISOString()
-            },
-            {
-                id: 1009,
-                phone: '5492645776655',
-                contact_name: 'Matías (Grupo Fútbol & Amigos)',
-                direction: 'outgoing',
-                event_name: 'message.outgoing',
-                body: 'Firme ahí! Cuenten conmigo para el partido de las 20hs ⚽',
-                circle: 'amigos',
-                is_important: true,
-                message_date: fiveDaysAgo,
-                created_at: new Date(Date.now() - 360 * 60 * 1000).toISOString()
-            }
-        ]
+        contacts: [],
+        messages: []
     };
+};
+
+const purgeFakeSeedEntries = (store) => {
+    if (!store || typeof store !== 'object') return getInitialSeedData();
+    const prevContactsLen = Array.isArray(store.contacts) ? store.contacts.length : 0;
+    const prevMsgsLen = Array.isArray(store.messages) ? store.messages.length : 0;
+    store.contacts = (store.contacts || []).filter(c => !DEMO_FAKE_PHONES.has(String(c.phone)));
+    store.messages = (store.messages || []).filter(m => !DEMO_FAKE_PHONES.has(String(m.phone)) && ![1001,1002,1003,1004,1005,1006,1007,1008,1009].includes(Number(m.id)));
+    const purged = (store.contacts.length !== prevContactsLen) || (store.messages.length !== prevMsgsLen);
+    return { store, purged };
 };
 
 export const loadCommunicationsData = async () => {
@@ -360,8 +172,13 @@ export const loadCommunicationsData = async () => {
         localData = null;
     }
 
-    if (!localData || !Array.isArray(localData.contacts) || localData.contacts.length === 0) {
+    if (!localData || !Array.isArray(localData.contacts) || !Array.isArray(localData.messages)) {
         localData = getInitialSeedData();
+    }
+
+    const { store: cleanedLocal, purged: localPurged } = purgeFakeSeedEntries(localData);
+    localData = cleanedLocal;
+    if (localPurged) {
         localStorage.setItem(LOCAL_COMMS_KEY, JSON.stringify(localData));
     }
 
@@ -374,7 +191,7 @@ export const loadCommunicationsData = async () => {
             .maybeSingle();
 
         if (hubProfile?.data && typeof hubProfile.data === 'object') {
-            const remoteHub = hubProfile.data;
+            const { store: remoteHub, purged: remotePurged } = purgeFakeSeedEntries(hubProfile.data);
             if (remoteHub.botStatus) {
                 localData.botStatus = remoteHub.botStatus;
             }
@@ -393,15 +210,15 @@ export const loadCommunicationsData = async () => {
                 remoteHub.messages.forEach(rm => byId.set(String(rm.id), rm));
                 localData.messages = Array.from(byId.values()).sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
             }
-        } else {
-            // Seed the cloud hub row if it doesn't exist yet
-            await supabase.from('growfit_profiles').upsert({
-                user_id: HUB_USER_ID,
-                full_name: 'WhatsApp Hub (lmarinero)',
-                display_name: 'WhatsApp Hub',
-                data: localData,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id' });
+            if (remotePurged) {
+                await supabase.from('growfit_profiles').upsert({
+                    user_id: HUB_USER_ID,
+                    full_name: 'WhatsApp Hub (lmarinero)',
+                    display_name: 'WhatsApp Hub',
+                    data: localData,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
+            }
         }
     } catch (e) {
         // Ignore network errors
@@ -458,6 +275,21 @@ export const saveCommunicationsDataLocal = (data) => {
         data,
         updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' }).then(() => {}).catch(() => {});
+};
+
+export const clearAllCommunicationsData = async () => {
+    const empty = getInitialSeedData();
+    localStorage.setItem(LOCAL_COMMS_KEY, JSON.stringify(empty));
+    try {
+        await supabase.from('growfit_profiles').upsert({
+            user_id: HUB_USER_ID,
+            full_name: 'WhatsApp Hub (lmarinero)',
+            display_name: 'WhatsApp Hub',
+            data: empty,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+    } catch (e) {}
+    return empty;
 };
 
 /**

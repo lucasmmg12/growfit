@@ -4,6 +4,7 @@ import { getArgentinaDate } from '../state';
 import {
     CIRCLE_META,
     loadCommunicationsData,
+    clearAllCommunicationsData,
     getBuilderBotConfig,
     saveBuilderBotConfig,
     sendBuilderBotWhatsApp,
@@ -367,15 +368,42 @@ export const renderCommunications = () => {
                         <div class="flex flex-col gap-4">
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <h3 class="text-lg font-display font-black text-white uppercase tracking-tight">
-                                    Conversaciones por Contacto y Número (${filteredContacts.length})
+                                    Conversaciones Reales por Contacto y Número (${filteredContacts.length})
                                 </h3>
-                                <button id="comm-new-message-modal-btn" class="btn-emerald px-4 py-2 text-xs font-extrabold uppercase tracking-wider cursor-pointer">
-                                    <span class="material-symbols-outlined text-base">send</span>
-                                    + Enviar Nuevo WhatsApp (BuilderBot)
-                                </button>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button id="comm-sync-now-btn" class="px-3.5 py-2 rounded-2xl bg-[#040B08] border border-emerald-500/30 text-emerald-300 hover:text-white text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer">
+                                        <span class="material-symbols-outlined text-base">sync</span>
+                                        Sincronizar
+                                    </button>
+                                    ${(store.contacts || []).length > 0 ? `
+                                        <button id="comm-clear-all-btn" class="px-3.5 py-2 rounded-2xl bg-emerald-950/70 border border-lime-400/30 text-lime-300 hover:text-white text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer">
+                                            <span class="material-symbols-outlined text-base">delete_sweep</span>
+                                            Limpiar Bandeja
+                                        </button>
+                                    ` : ''}
+                                    <button id="comm-new-message-modal-btn" class="btn-emerald px-4 py-2 text-xs font-extrabold uppercase tracking-wider cursor-pointer">
+                                        <span class="material-symbols-outlined text-base">send</span>
+                                        + Enviar Nuevo WhatsApp (BuilderBot)
+                                    </button>
+                                </div>
                             </div>
 
-                            ${filteredContacts.map(contact => renderContactAssistantCard(contact, store.messages || [])).join('')}
+                            ${filteredContacts.length > 0
+                                ? filteredContacts.map(contact => renderContactAssistantCard(contact, store.messages || [])).join('')
+                                : `
+                                <div class="white-card p-8 border border-emerald-500/25 text-center flex flex-col items-center gap-3">
+                                    <div class="size-12 rounded-2xl bg-[#10E775]/15 border border-[#10E775]/35 flex items-center justify-center text-[#10E775]">
+                                        <span class="material-symbols-outlined text-2xl">webhook</span>
+                                    </div>
+                                    <h4 class="text-base font-display font-black text-white uppercase">Sin mensajes recibidos aún desde BuilderBot</h4>
+                                    <p class="text-xs text-emerald-300/75 max-w-xl leading-relaxed">
+                                        La bandeja está 100% limpia (sin datos de demostración). En cuanto BuilderBot envíe eventos reales a tu webhook
+                                        <code class="text-[#10E775] font-mono px-1.5 py-0.5 rounded bg-[#040B08]">${webhookUrl}</code>
+                                        o envíes un mensaje desde aquí, aparecerán automáticamente tus conversaciones reales.
+                                    </p>
+                                </div>
+                                `
+                            }
                         </div>
                     ` : ''}
 
@@ -606,9 +634,9 @@ const renderWebhookConfigSection = (store, botId, webhookUrl, edgeFunctionUrl, a
                             <option value="status.require_action">🟡 status.require_action (Requiere QR)</option>
                             <option value="status.disconnect">🔴 status.disconnect (Bot Desconectado)</option>
                         </select>
-                        <input id="sim-wa-name" type="text" value="Seño Laura (Colegio Hijos)" placeholder="{name} Nombre del contacto" class="w-full rounded-xl px-3 py-2 text-xs text-white bg-[#040B08] border border-emerald-500/30 outline-none" />
-                        <input id="sim-wa-phone" type="text" value="5492645102030" placeholder="{from} Número de teléfono" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-emerald-300 bg-[#040B08] border border-emerald-500/30 outline-none" />
-                        <textarea id="sim-wa-body" rows="2" class="w-full rounded-xl px-3 py-2 text-xs text-white bg-[#040B08] border border-emerald-500/30 outline-none" placeholder="{body} Mensaje de WhatsApp...">Hola Lucas! Mañana a las 11:00 hs es la reunión de padres en el colegio.</textarea>
+                        <input id="sim-wa-name" type="text" value="" placeholder="{name} Nombre del contacto en WhatsApp" class="w-full rounded-xl px-3 py-2 text-xs text-white bg-[#040B08] border border-emerald-500/30 outline-none" />
+                        <input id="sim-wa-phone" type="text" value="" placeholder="{from} Número de teléfono (ej. 549264...)" class="w-full rounded-xl px-3 py-2 text-xs font-mono text-emerald-300 bg-[#040B08] border border-emerald-500/30 outline-none" />
+                        <textarea id="sim-wa-body" rows="2" class="w-full rounded-xl px-3 py-2 text-xs text-white bg-[#040B08] border border-emerald-500/30 outline-none" placeholder="{body} Contenido del mensaje..."></textarea>
                     </div>
                 </div>
 
@@ -669,10 +697,32 @@ const renderAdminUsersSection = () => {
 export const attachCommunicationsEvents = async () => {
     if (!isAdminUser()) return;
 
+    const wasNull = !cachedCommsStore;
     cachedCommsStore = await loadCommunicationsData();
+    if (wasNull) {
+        window.router.navigate('communications', true);
+        return;
+    }
 
     // If first render had empty store, re-render once loaded
     if (!document.querySelector('.comm-section-tab')) return;
+
+    document.getElementById('comm-sync-now-btn')?.addEventListener('click', async () => {
+        cachedCommsStore = await loadCommunicationsData();
+        window.showAlert?.('Sincronizado', 'Bandeja sincronizada con el Webhook en tiempo real.', 'success');
+        window.router.navigate('communications', true);
+    });
+
+    document.getElementById('comm-clear-all-btn')?.addEventListener('click', () => {
+        window.showConfirm?.(
+            '¿Vaciar Bandeja de Comunicaciones?',
+            'Se eliminarán todas las conversaciones almacenadas actualmente.',
+            async () => {
+                cachedCommsStore = await clearAllCommunicationsData();
+                window.router.navigate('communications', true);
+            }
+        );
+    });
 
     // Section Switching (Asistente / Webhook / Usuarios)
     document.querySelectorAll('.comm-section-tab').forEach(btn => {
