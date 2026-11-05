@@ -1,0 +1,721 @@
+import { supabase } from '../supabase-client';
+import { getArgentinaDate } from '../state';
+
+const DEFAULT_BOT_ID = 'f7806984-3538-457b-b4a3-84c97293583b';
+const LOCAL_COMMS_KEY = 'growfit_admin_communications_v1';
+const BUILDERBOT_KEY_STORAGE = 'growfit_builderbot_api_key';
+const BUILDERBOT_BOT_ID_STORAGE = 'growfit_builderbot_bot_id';
+const GCAL_CLIENT_ID_STORAGE = 'growfit_gcal_client_id';
+const GCAL_TOKEN_STORAGE = 'growfit_gcal_access_token';
+
+export const getBuilderBotConfig = () => {
+    const apiKey = localStorage.getItem(BUILDERBOT_KEY_STORAGE) || import.meta.env.VITE_BUILDERBOT_API_KEY || '';
+    const botId = localStorage.getItem(BUILDERBOT_BOT_ID_STORAGE) || import.meta.env.VITE_BUILDERBOT_BOT_ID || DEFAULT_BOT_ID;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://dtjmckbrofevgfqbkzli.supabase.co';
+    const webhookUrl = `${supabaseUrl}/functions/v1/builderbot-webhook`;
+    return { apiKey, botId, webhookUrl };
+};
+
+export const saveBuilderBotConfig = ({ apiKey, botId }) => {
+    if (apiKey !== undefined) localStorage.setItem(BUILDERBOT_KEY_STORAGE, apiKey.trim());
+    if (botId !== undefined && botId.trim()) localStorage.setItem(BUILDERBOT_BOT_ID_STORAGE, botId.trim());
+};
+
+export const getGoogleCalendarConfig = () => {
+    return {
+        clientId: localStorage.getItem(GCAL_CLIENT_ID_STORAGE) || import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
+        accessToken: localStorage.getItem(GCAL_TOKEN_STORAGE) || '',
+        primaryEmail: 'lucasmmarinerosanarg@gmail.com'
+    };
+};
+
+export const saveGoogleCalendarConfig = ({ clientId, accessToken }) => {
+    if (clientId !== undefined) localStorage.setItem(GCAL_CLIENT_ID_STORAGE, clientId.trim());
+    if (accessToken !== undefined) localStorage.setItem(GCAL_TOKEN_STORAGE, accessToken.trim());
+};
+
+export const CIRCLE_META = {
+    hijos: {
+        id: 'hijos',
+        label: 'Hijos',
+        icon: 'child_care',
+        emoji: '👶',
+        badgeClass: 'bg-[#10E775]/20 text-[#10E775] border-[#10E775]/40',
+        priority: 1,
+        desc: 'Escuela, salud, actividades y horarios de los chicos'
+    },
+    novia: {
+        id: 'novia',
+        label: 'Novia',
+        icon: 'favorite',
+        emoji: '❤️',
+        badgeClass: 'bg-lime-400/20 text-lime-300 border-lime-400/40',
+        priority: 2,
+        desc: 'Planes juntos, cenas, mensajes afectivos y fechas importantes'
+    },
+    trabajo: {
+        id: 'trabajo',
+        label: 'Trabajo',
+        icon: 'business_center',
+        emoji: '💼',
+        badgeClass: 'bg-[#34D399]/20 text-[#34D399] border-[#34D399]/40',
+        priority: 3,
+        desc: 'Sanatorio Argentino, Grow Labs, sistemas, auditorías y reuniones'
+    },
+    amigos: {
+        id: 'amigos',
+        label: 'Amigos',
+        icon: 'sports_soccer',
+        emoji: '🤝',
+        badgeClass: 'bg-teal-400/20 text-teal-300 border-teal-400/40',
+        priority: 4,
+        desc: 'Fútbol, asados, juntadas y charlas del grupo'
+    },
+    otros: {
+        id: 'otros',
+        label: 'Otros / General',
+        icon: 'forum',
+        emoji: '📁',
+        badgeClass: 'bg-emerald-950/80 text-emerald-300/70 border-emerald-500/25',
+        priority: 5,
+        desc: 'Consultas generales, servicios y notificaciones'
+    }
+};
+
+// Clasificador automático de círculo e importancia
+export const classifyMessageContext = (name = '', body = '', currentCircle = 'otros') => {
+    const text = `${name} ${body}`.toLowerCase();
+    let circle = currentCircle && currentCircle !== 'otros' ? currentCircle : 'otros';
+
+    if (/hijo|hija|chicos|cole|escuela|jard[ií]n|pediatra|maestra|pap[aá]|acto|uniforme|entrenamiento de los chicos/.test(text)) {
+        circle = 'hijos';
+    } else if (/amor|novia|mi vida|cenamos|te amo|te extrañ|pareja|aniversario|finde juntos/.test(text)) {
+        circle = 'novia';
+    } else if (/sanatorio|grow\s*labs|servidor|sistema|cliente|presupuesto|reuni[oó]n|factura|auditor[ií]a|m[eé]dico|deploy|proyecto/.test(text)) {
+        circle = 'trabajo';
+    } else if (/f[uú]tbol|asado|amigo|juntada|cancha|previa|partido|pibes|padel/.test(text)) {
+        circle = 'amigos';
+    }
+
+    const isImportant = ['hijos', 'novia', 'trabajo', 'amigos'].includes(circle) ||
+        /urgente|importante|hoy|mañana|reuni[oó]n|turno|confirm|avisame/.test(text);
+
+    // Extraer evento para Google Calendar si menciona día/hora
+    let detectedEvent = null;
+    const timeMatch = body.match(/(\d{1,2})[:.]?(\d{2})?\s*(hs|horas|am|pm)?/i);
+    if (/mañana|hoy|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|turno|reuni[oó]n|cena|acto|partido/i.test(body)) {
+        const hour = timeMatch ? Math.min(23, Math.max(7, parseInt(timeMatch[1], 10))) : 18;
+        const minute = timeMatch && timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+        const isTomorrow = /mañana/i.test(body);
+        const eventDateObj = new Date();
+        if (isTomorrow) eventDateObj.setDate(eventDateObj.getDate() + 1);
+        const dateStr = eventDateObj.toISOString().split('T')[0];
+
+        detectedEvent = {
+            title: `${CIRCLE_META[circle]?.emoji || '📅'} ${name || 'WhatsApp'}: ${body.slice(0, 46)}`,
+            date: dateStr,
+            startTime: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+            durationMinutes: 60,
+            description: `Agendado automáticamente por Asistente IA de Lucas desde WhatsApp.\nContacto: ${name}\nMensaje original: "${body}"`,
+            circle
+        };
+    }
+
+    return { circle, isImportant, detectedEvent };
+};
+
+// Datos iniciales demostrativos para que Lucas vea inmediatamente cómo opera cada círculo
+const getInitialSeedData = () => {
+    const today = getArgentinaDate();
+    const yesterdayObj = new Date(new Date(today + 'T12:00:00').getTime() - 86400000);
+    const yesterday = yesterdayObj.toISOString().split('T')[0];
+    const fiveDaysAgoObj = new Date(new Date(today + 'T12:00:00').getTime() - 5 * 86400000);
+    const fiveDaysAgo = fiveDaysAgoObj.toISOString().split('T')[0];
+
+    return {
+        botStatus: {
+            id: 'builderbot_main',
+            bot_id: DEFAULT_BOT_ID,
+            status: 'online',
+            qr_code: null,
+            reason: null,
+            last_event: 'status.ready',
+            updated_at: new Date().toISOString()
+        },
+        contacts: [
+            {
+                phone: '5492645102030',
+                name: 'Colegio & Actividades Hijos',
+                circle: 'hijos',
+                is_important: true,
+                short_summary: 'Recordatorio de salida escolar mañana a las 17:30 hs y llevar autorización firmada.',
+                detailed_analysis: 'Prioridad Alta (Círculo Hijos): Coordinación de retiro a las 17:30 hs y confirmación de asistencia a la muestra deportiva del viernes. Lucas ya respondió confirmando que pasa él a buscarlos.',
+                pending_promises: ['Llevar autorización impresa y firmada mañana', 'Retirar a los chicos a las 17:30 hs'],
+                detected_calendar_events: [
+                    {
+                        title: '👶 Retirar a los chicos del Colegio + Autorización',
+                        date: today,
+                        startTime: '17:30',
+                        durationMinutes: 45,
+                        description: 'Pasar a buscar a los chicos y entregar autorización firmada.'
+                    }
+                ],
+                last_message_preview: 'Dale genial Lucas, te esperamos mañana 17:30 hs entonces!',
+                last_message_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+                total_messages: 4
+            },
+            {
+                phone: '5492644889900',
+                name: 'Mi Amor ❤️ (Novia)',
+                circle: 'novia',
+                is_important: true,
+                short_summary: 'Propone cenar juntos hoy a las 21:30 hs y pregunta cómo te fue en el Sanatorio.',
+                detailed_analysis: 'Prioridad Afectiva (Círculo Novia): Tono cariñoso y cercano. Quiere organizar cena tranquila hoy a las 21:30 hs después de tu entrenamiento. Pendiente confirmar si pasan a comprar sushi o cocinan en casa.',
+                pending_promises: ['Confirmar menú para la cena de las 21:30 hs'],
+                detected_calendar_events: [
+                    {
+                        title: '❤️ Cena con mi Novia',
+                        date: today,
+                        startTime: '21:30',
+                        durationMinutes: 90,
+                        description: 'Cena juntos post-entreno.'
+                    }
+                ],
+                last_message_preview: 'Amor! Cómo venís hoy en el Sanatorio? Cenamos juntos a las 21:30?',
+                last_message_at: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+                total_messages: 4
+            },
+            {
+                phone: '5492644112233',
+                name: 'Coordinación Sanatorio Argentino / Grow Labs',
+                circle: 'trabajo',
+                is_important: true,
+                short_summary: 'Solicitan revisar el tablero de auditoría de calidad y confirmar reunión mañana 10:00 hs.',
+                detailed_analysis: 'Prioridad Ejecutiva (Círculo Trabajo): Solicitud de revisión de indicadores QOAG y cierre de sprint de Grow Labs. Se envió audio transcripto con `{aiVoice}` detallando los puntos de la reunión de mañana a las 10:00 hs.',
+                pending_promises: ['Revisar métricas de auditoría antes de las 10:00 hs de mañana'],
+                detected_calendar_events: [
+                    {
+                        title: '💼 Reunión Ejecutiva Sanatorio Argentino & Grow Labs',
+                        date: today,
+                        startTime: '10:00',
+                        durationMinutes: 60,
+                        description: 'Revisión de indicadores de calidad y automatizaciones IA.'
+                    }
+                ],
+                last_message_preview: 'Perfecto Lucas, agendado mañana 10:00 hs en sala de directorio.',
+                last_message_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+                total_messages: 3
+            },
+            {
+                phone: '5492645776655',
+                name: 'Matías (Grupo Fútbol & Amigos)',
+                circle: 'amigos',
+                is_important: true,
+                short_summary: 'Confirma cancha de Fútbol 7 para mañana a las 20:00 hs y tercer tiempo.',
+                detailed_analysis: 'Círculo Amigos: Armado del partido semanal. Ya son 13 confirmados y te guardaron lugar de titular a las 20:00 hs.',
+                pending_promises: ['Confirmar asistencia al partido de las 20:00 hs'],
+                detected_calendar_events: [
+                    {
+                        title: '🤝 Fútbol con Amigos (Cancha 2)',
+                        date: today,
+                        startTime: '20:00',
+                        durationMinutes: 75,
+                        description: 'Partido semanal con los amigos.'
+                    }
+                ],
+                last_message_preview: 'Lukitas! Tenemos cancha reservada a las 20hs, contás seguro no?',
+                last_message_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+                total_messages: 3
+            }
+        ],
+        messages: [
+            // Hijos
+            {
+                id: 1001,
+                phone: '5492645102030',
+                contact_name: 'Colegio & Actividades Hijos',
+                direction: 'incoming',
+                event_name: 'message.incoming',
+                body: 'Hola Lucas! Te recordamos que mañana los chicos salen 17:30 hs de la práctica y hay que traer la autorización firmada para el viernes.',
+                circle: 'hijos',
+                is_important: true,
+                message_date: today,
+                created_at: new Date(Date.now() - 40 * 60 * 1000).toISOString()
+            },
+            {
+                id: 1002,
+                phone: '5492645102030',
+                contact_name: 'Colegio & Actividades Hijos',
+                direction: 'outgoing',
+                event_name: 'message.outgoing',
+                body: 'Hola! Muchas gracias por avisar, mañana 17:30 hs paso yo a buscarlos y llevo la planilla firmada.',
+                circle: 'hijos',
+                is_important: true,
+                message_date: today,
+                created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString()
+            },
+            {
+                id: 1003,
+                phone: '5492645102030',
+                contact_name: 'Colegio & Actividades Hijos',
+                direction: 'incoming',
+                event_name: 'message.incoming',
+                body: 'Dale genial Lucas, te esperamos mañana 17:30 hs entonces!',
+                circle: 'hijos',
+                is_important: true,
+                message_date: today,
+                created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString()
+            },
+            // Novia
+            {
+                id: 1004,
+                phone: '5492644889900',
+                contact_name: 'Mi Amor ❤️ (Novia)',
+                direction: 'incoming',
+                event_name: 'message.incoming',
+                body: 'Amor! Cómo venís hoy en el Sanatorio? Cenamos juntos a las 21:30?',
+                circle: 'novia',
+                is_important: true,
+                message_date: today,
+                created_at: new Date(Date.now() - 55 * 60 * 1000).toISOString()
+            },
+            {
+                id: 1005,
+                phone: '5492644889900',
+                contact_name: 'Mi Amor ❤️ (Novia)',
+                direction: 'outgoing',
+                event_name: 'message.outgoing',
+                body: 'Hola mi amor! Todo muy bien, salgo de entrenar tipo 20:30 y voy para allá a las 21:30 ❤️',
+                circle: 'novia',
+                is_important: true,
+                message_date: today,
+                created_at: new Date(Date.now() - 48 * 60 * 1000).toISOString()
+            },
+            // Trabajo
+            {
+                id: 1006,
+                phone: '5492644112233',
+                contact_name: 'Coordinación Sanatorio Argentino / Grow Labs',
+                direction: 'incoming',
+                event_name: 'message.incoming',
+                body: 'Lucas, te dejo audio con el resumen de los indicadores de auditoría para la reunión de mañana 10:00 hs.',
+                ai_voice: 'Transcripción IA ({aiVoice}): "Hola Lucas, necesitamos validar el dashboard de liquidaciones y calidad mañana a las 10 de la mañana con dirección médica."',
+                circle: 'trabajo',
+                is_important: true,
+                message_date: today,
+                created_at: new Date(Date.now() - 130 * 60 * 1000).toISOString()
+            },
+            {
+                id: 1007,
+                phone: '5492644112233',
+                contact_name: 'Coordinación Sanatorio Argentino / Grow Labs',
+                direction: 'outgoing',
+                event_name: 'message.outgoing',
+                body: 'Recibido! Ya tengo listo el reporte actualizado, nos vemos mañana 10:00 hs.',
+                circle: 'trabajo',
+                is_important: true,
+                message_date: today,
+                created_at: new Date(Date.now() - 120 * 60 * 1000).toISOString()
+            },
+            // Amigos
+            {
+                id: 1008,
+                phone: '5492645776655',
+                contact_name: 'Matías (Grupo Fútbol & Amigos)',
+                direction: 'incoming',
+                event_name: 'message.incoming',
+                body: 'Lukitas! Tenemos cancha reservada a las 20hs, contás seguro no? Después hacemos asado liviano.',
+                circle: 'amigos',
+                is_important: true,
+                message_date: yesterday,
+                created_at: new Date(Date.now() - 240 * 60 * 1000).toISOString()
+            },
+            {
+                id: 1009,
+                phone: '5492645776655',
+                contact_name: 'Matías (Grupo Fútbol & Amigos)',
+                direction: 'outgoing',
+                event_name: 'message.outgoing',
+                body: 'Firme ahí! Cuenten conmigo para el partido de las 20hs ⚽',
+                circle: 'amigos',
+                is_important: true,
+                message_date: fiveDaysAgo,
+                created_at: new Date(Date.now() - 360 * 60 * 1000).toISOString()
+            }
+        ]
+    };
+};
+
+export const loadCommunicationsData = async () => {
+    let localData = null;
+    try {
+        const raw = localStorage.getItem(LOCAL_COMMS_KEY);
+        if (raw) localData = JSON.parse(raw);
+    } catch (e) {
+        localData = null;
+    }
+
+    if (!localData || !Array.isArray(localData.contacts) || localData.contacts.length === 0) {
+        localData = getInitialSeedData();
+        localStorage.setItem(LOCAL_COMMS_KEY, JSON.stringify(localData));
+    }
+
+    // Try merging live data from Supabase tables if available
+    try {
+        const [{ data: remoteStatus }, { data: remoteContacts }, { data: remoteMessages }] = await Promise.all([
+            supabase.from('growfit_bot_status').select('*').eq('id', 'builderbot_main').maybeSingle(),
+            supabase.from('growfit_whatsapp_contacts').select('*').order('last_message_at', { ascending: false }).limit(100),
+            supabase.from('growfit_whatsapp_messages').select('*').order('created_at', { ascending: true }).limit(400)
+        ]);
+
+        if (remoteStatus) {
+            localData.botStatus = remoteStatus;
+        }
+
+        if (Array.isArray(remoteContacts) && remoteContacts.length > 0) {
+            const byPhone = new Map();
+            localData.contacts.forEach(c => byPhone.set(c.phone, c));
+            remoteContacts.forEach(rc => {
+                const prev = byPhone.get(rc.phone) || {};
+                byPhone.set(rc.phone, {
+                    ...prev,
+                    ...rc,
+                    short_summary: rc.short_summary || prev.short_summary || rc.last_message_preview || 'Conversación activa en WhatsApp.',
+                    detailed_analysis: rc.detailed_analysis || prev.detailed_analysis || `Contacto ${rc.name} (${rc.phone}) clasificado en círculo ${CIRCLE_META[rc.circle]?.label || 'General'}.`
+                });
+            });
+            localData.contacts = Array.from(byPhone.values()).sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
+        }
+
+        if (Array.isArray(remoteMessages) && remoteMessages.length > 0) {
+            const byId = new Map();
+            localData.messages.forEach(m => byId.set(String(m.id), m));
+            remoteMessages.forEach(rm => byId.set(String(rm.id), rm));
+            localData.messages = Array.from(byId.values()).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        }
+
+        localStorage.setItem(LOCAL_COMMS_KEY, JSON.stringify(localData));
+    } catch (e) {
+        // Fallback to local state silently if tables are not yet created in Supabase
+    }
+
+    return localData;
+};
+
+export const saveCommunicationsDataLocal = (data) => {
+    localStorage.setItem(LOCAL_COMMS_KEY, JSON.stringify(data));
+};
+
+/**
+ * Envía un mensaje real por BuilderBot API v2 (Imagen 1) y lo guarda en el historial
+ */
+export const sendBuilderBotWhatsApp = async ({ number, content, mediaUrl = '', contactName = 'Contacto', circle = 'otros' }) => {
+    const cleanNumber = String(number || '').replace(/[^\d]/g, '');
+    const cleanContent = (content || '').trim();
+    if (!cleanNumber || !cleanContent) {
+        throw new Error('Debes indicar número de destino y mensaje.');
+    }
+
+    const { apiKey, botId } = getBuilderBotConfig();
+    const endpoint = `https://app.builderbot.cloud/api/v2/${botId}/messages`;
+
+    const payload = {
+        messages: {
+            content: cleanContent,
+            ...(mediaUrl && mediaUrl.trim() ? { mediaUrl: mediaUrl.trim() } : {})
+        },
+        number: cleanNumber,
+        checkIfExists: false
+    };
+
+    let apiDispatched = false;
+    let apiErrorMsg = null;
+
+    if (apiKey) {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-builderbot': apiKey
+                },
+                body: JSON.stringify(payload)
+            });
+            if (response.ok) {
+                apiDispatched = true;
+            } else {
+                const errText = await response.text();
+                apiErrorMsg = `HTTP ${response.status}: ${errText.slice(0, 100)}`;
+            }
+        } catch (err) {
+            apiErrorMsg = err.message;
+        }
+    }
+
+    // Registrar inmediatamente como message.outgoing en el historial local y Supabase
+    await ingestBuilderBotWebhookLocal({
+        eventName: 'message.outgoing',
+        data: {
+            answer: cleanContent,
+            from: cleanNumber,
+            name: contactName,
+            attachment: mediaUrl ? [mediaUrl] : [],
+            projectId: botId
+        },
+        forcedCircle: circle
+    });
+
+    return {
+        ok: true,
+        apiDispatched,
+        apiErrorMsg,
+        endpoint,
+        payload
+    };
+};
+
+/**
+ * Procesa cualquier evento de BuilderBot (message.incoming, message.outgoing, message.calling, status.*)
+ */
+export const ingestBuilderBotWebhookLocal = async ({ eventName = 'message.incoming', data = {}, forcedCircle = null }) => {
+    const store = await loadCommunicationsData();
+    const today = getArgentinaDate();
+
+    if (eventName.startsWith('status.')) {
+        const statusType = (eventName === 'status.ready' || eventName === 'status.online')
+            ? 'online'
+            : eventName === 'status.require_action'
+            ? 'require_action'
+            : 'disconnect';
+
+        store.botStatus = {
+            id: 'builderbot_main',
+            bot_id: getBuilderBotConfig().botId,
+            status: statusType,
+            qr_code: data?.payload?.qr || null,
+            reason: data?.reason || null,
+            last_event: eventName,
+            updated_at: new Date().toISOString()
+        };
+        saveCommunicationsDataLocal(store);
+        try {
+            await supabase.from('growfit_bot_status').upsert(store.botStatus);
+        } catch (e) {}
+        return store;
+    }
+
+    const phone = String(data.from || data.number || '5492640000000').replace(/[^\d]/g, '');
+    const existingContact = store.contacts.find(c => c.phone === phone);
+    const contactName = (eventName !== 'message.outgoing' && data.name)
+        ? data.name
+        : (existingContact?.name || data.name || phone);
+
+    const direction = eventName === 'message.outgoing'
+        ? 'outgoing'
+        : eventName === 'message.calling'
+        ? 'call'
+        : 'incoming';
+
+    const bodyText = direction === 'outgoing'
+        ? (data.answer || data.body || data.aiResponse || '')
+        : direction === 'call'
+        ? `📞 Llamada entrante de WhatsApp (${contactName})`
+        : (data.body || data.aiVoice || data.aiImage || '');
+
+    const { circle, isImportant, detectedEvent } = classifyMessageContext(
+        contactName,
+        bodyText,
+        forcedCircle || existingContact?.circle || 'otros'
+    );
+
+    const newMsg = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        phone,
+        contact_name: contactName,
+        direction,
+        event_name: eventName,
+        body: bodyText,
+        media_url: data.urlTempFile || (Array.isArray(data.attachment) && data.attachment[0]) || null,
+        ai_voice: data.aiVoice || null,
+        ai_image: data.aiImage || null,
+        ai_response: data.aiResponse || data.answer || null,
+        circle,
+        is_important: isImportant,
+        detected_event: detectedEvent,
+        message_date: today,
+        created_at: new Date().toISOString()
+    };
+
+    store.messages.push(newMsg);
+
+    const contactMsgs = store.messages.filter(m => m.phone === phone);
+    const incomingMsgs = contactMsgs.filter(m => m.direction === 'incoming');
+    const latestIncoming = incomingMsgs[incomingMsgs.length - 1]?.body || bodyText;
+
+    const updatedContact = {
+        phone,
+        name: contactName,
+        circle,
+        is_important: isImportant || Boolean(existingContact?.is_important),
+        short_summary: `${contactName} (${CIRCLE_META[circle]?.label || 'General'}): "${latestIncoming.slice(0, 110)}"`,
+        detailed_analysis: existingContact?.detailed_analysis || `Conversación activa con ${contactName}. Última interacción registrada hoy (${contactMsgs.length} mensajes en el hilo).`,
+        pending_promises: existingContact?.pending_promises || [],
+        detected_calendar_events: detectedEvent
+            ? [detectedEvent, ...(existingContact?.detected_calendar_events || []).slice(0, 2)]
+            : (existingContact?.detected_calendar_events || []),
+        last_message_preview: bodyText.slice(0, 140),
+        last_message_at: new Date().toISOString(),
+        total_messages: contactMsgs.length
+    };
+
+    const idx = store.contacts.findIndex(c => c.phone === phone);
+    if (idx >= 0) store.contacts[idx] = updatedContact;
+    else store.contacts.unshift(updatedContact);
+
+    saveCommunicationsDataLocal(store);
+
+    try {
+        await supabase.from('growfit_whatsapp_messages').insert({
+            phone: newMsg.phone,
+            contact_name: newMsg.contact_name,
+            direction: newMsg.direction,
+            event_name: newMsg.event_name,
+            body: newMsg.body,
+            media_url: newMsg.media_url,
+            ai_voice: newMsg.ai_voice,
+            ai_image: newMsg.ai_image,
+            ai_response: newMsg.ai_response,
+            circle: newMsg.circle,
+            is_important: newMsg.is_important,
+            detected_event: newMsg.detected_event,
+            message_date: newMsg.message_date
+        });
+        await supabase.from('growfit_whatsapp_contacts').upsert({
+            phone: updatedContact.phone,
+            name: updatedContact.name,
+            circle: updatedContact.circle,
+            is_important: updatedContact.is_important,
+            short_summary: updatedContact.short_summary,
+            detailed_analysis: updatedContact.detailed_analysis,
+            last_message_preview: updatedContact.last_message_preview,
+            last_message_at: updatedContact.last_message_at,
+            total_messages: updatedContact.total_messages
+        }, { onConflict: 'phone' });
+    } catch (e) {}
+
+    return store;
+};
+
+export const updateContactCircleAdmin = async (phone, newCircle, customName = null) => {
+    const store = await loadCommunicationsData();
+    const target = store.contacts.find(c => c.phone === phone);
+    if (target) {
+        target.circle = newCircle;
+        target.is_important = ['hijos', 'novia', 'trabajo', 'amigos'].includes(newCircle);
+        if (customName && customName.trim()) target.name = customName.trim();
+        store.messages.forEach(m => {
+            if (m.phone === phone) {
+                m.circle = newCircle;
+                if (customName && customName.trim()) m.contact_name = customName.trim();
+            }
+        });
+        saveCommunicationsDataLocal(store);
+        try {
+            await supabase.from('growfit_whatsapp_contacts').update({
+                circle: newCircle,
+                name: target.name,
+                is_important: target.is_important
+            }).eq('phone', phone);
+        } catch (e) {}
+    }
+    return store;
+};
+
+/**
+ * Analiza con OpenAI GPT-4o-mini una conversación completa y devuelve Resumen Corto, Análisis Detallado, Promesas y Eventos de Calendario
+ */
+export const analyzeContactConversationWithAI = async (phone) => {
+    const store = await loadCommunicationsData();
+    const contact = store.contacts.find(c => c.phone === phone);
+    const msgs = store.messages.filter(m => m.phone === phone);
+    if (!contact || !msgs.length) return null;
+
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY || '';
+    const transcript = msgs
+        .slice(-20)
+        .map(m => `[${m.direction === 'outgoing' ? 'Lucas' : contact.name}]: ${m.body} ${m.ai_voice ? `(Audio: ${m.ai_voice})` : ''}`)
+        .join('\n');
+
+    if (apiKey) {
+        try {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4o-mini',
+                    response_format: { type: 'json_object' },
+                    temperature: 0.2,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: `Eres el Asistente Ejecutivo Personal de Lucas Marinero.
+Analiza esta conversación de WhatsApp con "${contact.name}" (${contact.phone}).
+Clasifícala en uno de los 4 círculos prioritarios de Lucas: "hijos", "novia", "trabajo", "amigos" (o "otros").
+Devuelve ÚNICAMENTE un JSON válido:
+{
+  "circle": "hijos" | "novia" | "trabajo" | "amigos" | "otros",
+  "short_summary": "Resumen ejecutivo corto (1-2 líneas) de quién escribió y qué necesitó",
+  "detailed_analysis": "Análisis profundo: intención, contexto emocional, qué pidió exactamente y qué respondió o acordó Lucas",
+  "pending_promises": ["Tarea o compromiso 1", "Tarea 2"],
+  "smart_replies": ["Respuesta sugerida 1", "Respuesta sugerida 2", "Respuesta sugerida 3"]
+}`
+                        },
+                        { role: 'user', content: transcript }
+                    ]
+                })
+            });
+            const data = await response.json();
+            if (!data.error) {
+                const parsed = JSON.parse(data.choices[0].message.content.trim());
+                contact.circle = parsed.circle || contact.circle;
+                contact.short_summary = parsed.short_summary || contact.short_summary;
+                contact.detailed_analysis = parsed.detailed_analysis || contact.detailed_analysis;
+                contact.pending_promises = parsed.pending_promises || contact.pending_promises;
+                contact.smart_replies = parsed.smart_replies || [];
+                saveCommunicationsDataLocal(store);
+                return contact;
+            }
+        } catch (e) {
+            console.warn('Fallback local AI summary:', e);
+        }
+    }
+
+    // Fallback instantáneo enriquecido
+    const incomingCount = msgs.filter(m => m.direction === 'incoming').length;
+    const outgoingCount = msgs.filter(m => m.direction === 'outgoing').length;
+    const lastIn = [...msgs].reverse().find(m => m.direction === 'incoming')?.body || '';
+    contact.short_summary = `${contact.name} envió ${incomingCount} msj(s): "${lastIn.slice(0, 95)}". Lucas respondió ${outgoingCount} vez/veces.`;
+    contact.detailed_analysis = `Análisis del vínculo (${CIRCLE_META[contact.circle]?.label || 'General'}): Se registran ${msgs.length} interacciones totales. El contacto planteó: "${lastIn}". Se recomienda confirmar horario en Google Calendar si aplica.`;
+    saveCommunicationsDataLocal(store);
+    return contact;
+};
+
+/**
+ * Construye link directo de 1 clic para Google Calendar + Descarga ICS
+ */
+export const buildGoogleCalendarLink = (eventData = {}) => {
+    const title = encodeURIComponent(eventData.title || 'Evento Asistente Lucas');
+    const dateStr = (eventData.date || getArgentinaDate()).replace(/-/g, '');
+    const [hh, mm] = (eventData.startTime || '18:00').split(':').map(Number);
+    const startH = String(hh || 18).padStart(2, '0');
+    const startM = String(mm || 0).padStart(2, '0');
+    const endHourNum = Math.min(23, (hh || 18) + 1);
+    const endH = String(endHourNum).padStart(2, '0');
+
+    const dates = `${dateStr}T${startH}${startM}00/${dateStr}T${endH}${startM}00`;
+    const details = encodeURIComponent(eventData.description || 'Agendado desde GrowFit Comunicaciones & WhatsApp IA');
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${details}&authuser=lucasmmarinerosanarg@gmail.com`;
+};

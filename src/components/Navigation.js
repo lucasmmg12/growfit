@@ -1,5 +1,5 @@
 import { getState } from '../state';
-import { getCurrentUser } from '../services/auth';
+import { getCurrentUser, isAdminUser } from '../services/auth';
 
 export const renderAmbientGreenGraphics = () => {
     return `
@@ -126,6 +126,7 @@ export const renderSidebar = (activeRoute = 'dashboard') => {
 
     const navItems = [
         { id: 'dashboard', label: 'Centro de Control', icon: 'space_dashboard' },
+        ...(isAdminUser() ? [{ id: 'communications', label: 'Comunicaciones', icon: 'support_agent', badge: 'ADMIN', shade: 'lime' }] : []),
         { id: 'obetide', label: 'Tratamiento Obetide', icon: 'vaccines', badge: 'GLP-1', shade: 'teal' },
         { id: 'tracker', label: 'Diario de Comidas', icon: 'restaurant' },
         { id: 'wallet', label: 'Mi Billetera', icon: 'account_balance_wallet', badge: 'ARS', shade: 'lime' },
@@ -256,6 +257,12 @@ export const renderMobileHeader = (title = 'GrowFit') => {
             </div>
         </div>
         <div class="flex items-center gap-2">
+            ${isAdminUser() ? `
+            <button onclick="window.router.navigate('communications')" class="px-2.5 h-8 rounded-xl border border-lime-500/40 bg-lime-950/60 flex items-center gap-1 text-lime-300 font-bold text-[10px] cursor-pointer active:scale-95" title="Comunicaciones & Admin">
+                <span class="material-symbols-outlined text-sm">support_agent</span>
+                <span>Admin</span>
+            </button>
+            ` : ''}
             <button onclick="window.openQuickActionsModal()" class="size-8 rounded-xl btn-emerald flex items-center justify-center active:scale-95 transition-transform" title="Acción Rápida">
                 <span class="material-symbols-outlined text-lg">add</span>
             </button>

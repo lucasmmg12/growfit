@@ -411,3 +411,4 @@ export const openMedicalReportModal = (modalContainer, onUpdatedCallback = null)
         if (onUpdatedCallback) onUpdatedCallback();
     };
 };
+

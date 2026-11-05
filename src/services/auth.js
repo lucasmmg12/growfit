@@ -336,3 +336,154 @@ export const logout = async () => {
         window.router.navigate('auth');
     }
 };
+
+// --- CONTROL DE ACCESO EXCLUSIVO ADMIN (SOLO lmarinero) ---
+
+export const isAdminUser = (user = getCurrentUser()) => {
+    if (!user) return false;
+    const uname = (user.username || user.userId || '').toLowerCase();
+    return uname === 'lmarinero';
+};
+
+export const listAllUsersAdmin = async () => {
+    if (!isAdminUser()) return [];
+    seedDefaultUsers();
+
+    let localUsers = [];
+    try {
+        localUsers = JSON.parse(localStorage.getItem(USERS_DIR_KEY) || '[]');
+    } catch (e) {
+        localUsers = [];
+    }
+
+    const byUsername = new Map();
+    localUsers.forEach(u => {
+        if (u && u.username) {
+            byUsername.set(u.username.toLowerCase(), {
+                username: u.username.toLowerCase(),
+                displayName: u.displayName || u.username,
+                password: u.password || '******',
+                userId: u.userId || (u.username.toLowerCase() === 'lmarinero' ? 'lmarinero' : `user-${u.username.toLowerCase()}`),
+                role: u.username.toLowerCase() === 'lmarinero' ? 'admin' : (u.role || 'user'),
+                createdAt: u.createdAt || new Date().toISOString()
+            });
+        }
+    });
+
+    try {
+        const { data: cloudProfiles } = await supabase
+            .from('growfit_profiles')
+            .select('user_id, username, password, display_name, full_name, role, updated_at');
+
+        if (Array.isArray(cloudProfiles)) {
+            cloudProfiles.forEach(cp => {
+                const rawName = (cp.username || (cp.user_id || '').replace(/^user-/, '')).toLowerCase();
+                if (!rawName) return;
+                const existing = byUsername.get(rawName);
+                byUsername.set(rawName, {
+                    username: rawName,
+                    displayName: cp.display_name || cp.full_name || existing?.displayName || rawName,
+                    password: cp.password || existing?.password || '123456',
+                    userId: cp.user_id || existing?.userId || `user-${rawName}`,
+                    role: rawName === 'lmarinero' ? 'admin' : (cp.role || existing?.role || 'user'),
+                    createdAt: cp.updated_at || existing?.createdAt || new Date().toISOString()
+                });
+            });
+        }
+    } catch (e) {
+        console.warn('[GrowFit Admin] No se pudo listar usuarios remotos:', e);
+    }
+
+    const merged = Array.from(byUsername.values());
+    localStorage.setItem(USERS_DIR_KEY, JSON.stringify(merged));
+    return merged;
+};
+
+export const adminSaveUser = async ({ username, password, displayName, role = 'user' }) => {
+    if (!isAdminUser()) {
+        return { success: false, error: 'Acceso denegado. Solo lmarinero puede gestionar usuarios.' };
+    }
+
+    const cleanUser = (username || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const cleanPass = (password || '').trim();
+    const cleanName = (displayName || '').trim() || cleanUser;
+
+    if (!cleanUser || cleanUser.length < 3) {
+        return { success: false, error: 'El usuario debe tener al menos 3 caracteres.' };
+    }
+    if (!cleanPass || cleanPass.length < 4) {
+        return { success: false, error: 'La contraseña debe tener al menos 4 caracteres.' };
+    }
+
+    let users = [];
+    try {
+        users = JSON.parse(localStorage.getItem(USERS_DIR_KEY) || '[]');
+    } catch (e) {
+        users = [];
+    }
+
+    const userId = cleanUser === 'lmarinero' ? 'lmarinero' : `user-${cleanUser}`;
+    const finalRole = cleanUser === 'lmarinero' ? 'admin' : role;
+
+    const existingIdx = users.findIndex(u => u.username?.toLowerCase() === cleanUser);
+    const entry = {
+        username: cleanUser,
+        password: cleanPass,
+        displayName: cleanName,
+        userId,
+        role: finalRole,
+        createdAt: existingIdx >= 0 ? users[existingIdx].createdAt : new Date().toISOString()
+    };
+
+    if (existingIdx >= 0) {
+        users[existingIdx] = entry;
+    } else {
+        users.push(entry);
+    }
+    localStorage.setItem(USERS_DIR_KEY, JSON.stringify(users));
+
+    try {
+        await supabase.from('growfit_profiles').upsert({
+            user_id: userId,
+            username: cleanUser,
+            password: cleanPass,
+            display_name: cleanName,
+            full_name: cleanName,
+            role: finalRole,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+    } catch (e) {
+        console.warn('[GrowFit Admin] Aviso guardando usuario en nube:', e);
+    }
+
+    return { success: true, user: entry };
+};
+
+export const adminDeleteUser = async (username) => {
+    if (!isAdminUser()) {
+        return { success: false, error: 'Acceso denegado.' };
+    }
+    const cleanUser = (username || '').trim().toLowerCase();
+    if (cleanUser === 'lmarinero') {
+        return { success: false, error: 'No se puede eliminar la cuenta administradora principal (lmarinero).' };
+    }
+
+    let users = [];
+    try {
+        users = JSON.parse(localStorage.getItem(USERS_DIR_KEY) || '[]');
+    } catch (e) {
+        users = [];
+    }
+
+    users = users.filter(u => u.username?.toLowerCase() !== cleanUser);
+    localStorage.setItem(USERS_DIR_KEY, JSON.stringify(users));
+
+    try {
+        await supabase
+            .from('growfit_profiles')
+            .delete()
+            .or(`user_id.eq.user-${cleanUser},username.ilike.${cleanUser}`);
+    } catch (e) {}
+
+    return { success: true };
+};

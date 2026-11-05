@@ -3,7 +3,7 @@ import { initializeState, addMeasurement, addMeal, getArgentinaDate, getState } 
 import { analyzeFood } from './services/openai';
 import { supabase } from './supabase-client';
 import { setLocalUserId } from './services/db';
-import { getCurrentUser, logout } from './services/auth';
+import { getCurrentUser, logout, isAdminUser } from './services/auth';
 
 import { renderDashboard, attachDashboardEvents } from './views/Dashboard';
 import { renderTracker, attachTrackerEvents } from './views/Tracker';
@@ -16,6 +16,7 @@ import { renderCalendar, attachCalendarEvents } from './views/CalendarView';
 import { renderObetide, attachObetideEvents } from './views/Obetide';
 import { renderWallet, attachWalletEvents } from './views/Wallet';
 import { renderMealPlan, attachMealPlanEvents } from './views/MealPlan';
+import { renderCommunications, attachCommunicationsEvents } from './views/Communications';
 import { renderAuth, attachAuthEvents } from './views/Auth';
 
 const app = document.querySelector('#app');
@@ -34,6 +35,7 @@ const initChat = () => {
 // --- ROUTER ---
 const routes = {
   'dashboard': { render: renderDashboard, attach: attachDashboardEvents },
+  'communications': { render: renderCommunications, attach: attachCommunicationsEvents },
   'obetide': { render: renderObetide, attach: attachObetideEvents },
   'tracker': { render: renderTracker, attach: attachTrackerEvents },
   'wallet': { render: renderWallet, attach: attachWalletEvents },
@@ -51,7 +53,11 @@ let activeRoutePath = 'dashboard';
 window.router = {
   navigate: (path, preserveScroll = false) => {
     const currentUser = getCurrentUser();
-    const targetPath = (!currentUser && path !== 'auth') ? 'auth' : path;
+    let targetPath = (!currentUser && path !== 'auth') ? 'auth' : path;
+    if (targetPath === 'communications' && !isAdminUser()) {
+      window.showAlert?.('Acceso Restringido', 'Solo el administrador (@lmarinero) tiene permisos para ingresar a Comunicaciones y Gestión de Usuarios.', 'error');
+      targetPath = 'dashboard';
+    }
     const route = routes[targetPath] || (currentUser ? routes['dashboard'] : routes['auth']);
     if (route) {
       activeRoutePath = routes[targetPath] ? targetPath : (currentUser ? 'dashboard' : 'auth');
