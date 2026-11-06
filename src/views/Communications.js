@@ -7,10 +7,17 @@ import {
     clearAllCommunicationsData,
     getBuilderBotConfig,
     saveBuilderBotConfig,
+    getGoogleCalendarConfig,
+    saveGoogleCalendarConfig,
     sendBuilderBotWhatsApp,
     ingestBuilderBotWebhookLocal,
     updateContactCircleAdmin,
     analyzeContactConversationWithAI,
+    collectAllCalendarEvents,
+    addQuickCalendarEvent,
+    deleteCalendarEvent,
+    syncGoogleCalendarEvents,
+    connectGoogleCalendarOAuth,
     buildGoogleCalendarLink,
     downloadCalendarICS,
     buildDayByDaySummaries,
@@ -22,6 +29,7 @@ let selectedPeriod = 'today'; // 'today' | 'week' | 'month'
 let selectedCircle = 'all';   // 'all' | 'hijos' | 'novia' | 'trabajo' | 'amigos' | 'otros'
 let activeContactViewTab = {}; // { [phone]: 'short' | 'detailed' | 'messages' }
 let activeMainSection = 'assistant'; // 'assistant' | 'users' | 'webhook'
+let activeGcalTab = 'events'; // 'events' | 'embed' | 'config'
 
 const filterMessagesByPeriod = (messages = [], period = 'today') => {
     const todayStr = getArgentinaDate();
@@ -93,19 +101,15 @@ export const renderCommunications = () => {
         amigos: (store.contacts || []).filter(c => c.circle === 'amigos').length
     };
 
-    // Collect all pending promises and calendar events across important circles
+    // Collect all pending promises and calendar events across all circles & synced Google Calendar
     const allPromises = [];
-    const allCalendarEvents = [];
     (store.contacts || []).forEach(c => {
-        if (['hijos', 'novia', 'trabajo', 'amigos'].includes(c.circle)) {
-            (c.pending_promises || []).forEach(p => {
-                allPromises.push({ contact: c.name, phone: c.phone, circle: c.circle, text: p });
-            });
-            (c.detected_calendar_events || []).forEach(ev => {
-                allCalendarEvents.push({ ...ev, contact: c.name, phone: c.phone, circle: c.circle });
-            });
-        }
+        (c.pending_promises || []).forEach(p => {
+            allPromises.push({ contact: c.name, phone: c.phone, circle: c.circle || 'otros', text: p });
+        });
     });
+    const allCalendarEvents = collectAllCalendarEvents(store);
+    const gcalConfig = getGoogleCalendarConfig();
 
     const periodLabelMap = {
         today: 'Hoy (' + getArgentinaDate() + ')',
@@ -266,53 +270,165 @@ export const renderCommunications = () => {
                             <!-- Agenda Inteligente & Google Calendar Sync (5 Cols) -->
                             <div class="lg:col-span-5 white-card p-5 md:p-6 border border-[#34D399]/35 flex flex-col justify-between">
                                 <div>
-                                    <div class="flex items-center justify-between pb-3 mb-4 border-b border-emerald-500/15">
+                                    <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-emerald-500/15">
                                         <div class="flex items-center gap-2.5">
                                             <div class="size-10 rounded-2xl bg-[#34D399]/15 border border-[#34D399]/35 flex items-center justify-center text-[#34D399]">
                                                 <span class="material-symbols-outlined text-xl">calendar_month</span>
                                             </div>
                                             <div>
-                                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-[#34D399]">Google Calendar Conectado</span>
-                                                <h3 class="text-base font-display font-black text-white uppercase">Eventos Detectados en WhatsApp</h3>
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-[#34D399]">
+                                                        ${gcalConfig.isApiConnected ? '🟢 Google Calendar Sincronizado' : '📅 Google Calendar Conectado'}
+                                                    </span>
+                                                </div>
+                                                <h3 class="text-base font-display font-black text-white uppercase">Agenda & Eventos en WhatsApp</h3>
                                             </div>
                                         </div>
-                                        <a href="https://calendar.google.com/calendar/u/0/r?authuser=lucasmmarinerosanarg@gmail.com" target="_blank" rel="noopener" class="px-2.5 py-1.5 rounded-xl bg-emerald-950 border border-emerald-500/30 text-[11px] font-bold text-[#10E775] hover:text-white flex items-center gap-1">
-                                            <span>Abrir Calendar</span>
-                                            <span class="material-symbols-outlined text-xs">open_in_new</span>
-                                        </a>
+                                        <div class="flex items-center gap-1.5">
+                                            <button type="button" id="comm-gcal-sync-btn" class="px-2.5 py-1.5 rounded-xl bg-[#10E775]/15 hover:bg-[#10E775]/25 border border-[#10E775]/35 text-[11px] font-extrabold text-[#10E775] flex items-center gap-1 cursor-pointer" title="Sincronizar eventos con Google Calendar">
+                                                <span class="material-symbols-outlined text-xs">sync</span>
+                                                <span>Sync</span>
+                                            </button>
+                                            <a href="https://calendar.google.com/calendar/u/0/r?authuser=${encodeURIComponent(gcalConfig.primaryEmail)}" target="_blank" rel="noopener" class="px-2.5 py-1.5 rounded-xl bg-emerald-950 border border-emerald-500/30 text-[11px] font-bold text-[#10E775] hover:text-white flex items-center gap-1">
+                                                <span>Abrir Calendar</span>
+                                                <span class="material-symbols-outlined text-xs">open_in_new</span>
+                                            </a>
+                                        </div>
                                     </div>
 
-                                    <div class="flex flex-col gap-2.5 max-h-[260px] overflow-y-auto custom-scrollbar pr-1">
-                                        ${allCalendarEvents.length ? allCalendarEvents.map((ev, evIdx) => `
-                                            <div class="p-3 rounded-2xl bg-[#040B08]/85 border border-emerald-500/25 flex items-center justify-between gap-3">
-                                                <div class="min-w-0">
-                                                    <span class="text-[10px] font-mono font-bold text-lime-400 block">${ev.date || getArgentinaDate()} · ${ev.startTime || '18:00'} hs</span>
-                                                    <h4 class="text-xs font-bold text-white truncate mt-0.5">${ev.title}</h4>
-                                                    <span class="text-[10px] text-emerald-300/70">De: ${ev.contact}</span>
+                                    <!-- Pestañas Internas del Calendario: 1. Eventos / 2. Calendario en Vivo / 3. Conectar API/iCal -->
+                                    <div class="grid grid-cols-3 gap-1 p-1 mb-3 bg-[#040B08] rounded-xl border border-emerald-500/25 text-[11px] font-extrabold">
+                                        <button type="button" data-gcal-tab="events" class="comm-gcal-tab py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 cursor-pointer transition-all ${activeGcalTab === 'events' ? 'bg-[#10E775]/20 text-[#10E775] border border-[#10E775]/45' : 'text-emerald-300/70 hover:text-white'}">
+                                            <span class="material-symbols-outlined text-xs">event_note</span>
+                                            <span>Eventos (${allCalendarEvents.length})</span>
+                                        </button>
+                                        <button type="button" data-gcal-tab="embed" class="comm-gcal-tab py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 cursor-pointer transition-all ${activeGcalTab === 'embed' ? 'bg-[#10E775]/20 text-[#10E775] border border-[#10E775]/45' : 'text-emerald-300/70 hover:text-white'}">
+                                            <span class="material-symbols-outlined text-xs">calendar_view_day</span>
+                                            <span>En Vivo</span>
+                                        </button>
+                                        <button type="button" data-gcal-tab="config" class="comm-gcal-tab py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 cursor-pointer transition-all ${activeGcalTab === 'config' ? 'bg-[#10E775]/20 text-[#10E775] border border-[#10E775]/45' : 'text-emerald-300/70 hover:text-white'}">
+                                            <span class="material-symbols-outlined text-xs">link</span>
+                                            <span>Conectar</span>
+                                        </button>
+                                    </div>
+
+                                    ${activeGcalTab === 'events' ? `
+                                        <div class="flex flex-col gap-2.5 max-h-[250px] overflow-y-auto custom-scrollbar pr-1">
+                                            ${allCalendarEvents.length ? allCalendarEvents.map((ev, evIdx) => {
+                                                const evId = ev.id || `${ev.date}|${ev.startTime}|${ev.title}`;
+                                                const isTodayEv = (ev.date || getArgentinaDate()) === getArgentinaDate();
+                                                const sourceBadge = ev.source?.startsWith('gcal')
+                                                    ? 'bg-[#34D399]/20 text-[#34D399]'
+                                                    : ev.source === 'manual'
+                                                    ? 'bg-lime-400/20 text-lime-300'
+                                                    : 'bg-[#10E775]/20 text-[#10E775]';
+                                                const sourceLabel = ev.source?.startsWith('gcal')
+                                                    ? 'Google Calendar'
+                                                    : ev.source === 'manual'
+                                                    ? 'Recordatorio'
+                                                    : 'WhatsApp IA';
+                                                return `
+                                                <div class="p-3 rounded-2xl bg-[#040B08]/85 border border-emerald-500/25 flex items-center justify-between gap-2.5">
+                                                    <div class="min-w-0 flex-1">
+                                                        <div class="flex flex-wrap items-center gap-1.5">
+                                                            <span class="text-[10px] font-mono font-bold text-lime-400">${isTodayEv ? 'HOY' : (ev.date || getArgentinaDate())} · ${ev.startTime || '18:00'} hs</span>
+                                                            <span class="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase ${sourceBadge}">${sourceLabel}</span>
+                                                        </div>
+                                                        <h4 class="text-xs font-bold text-white truncate mt-0.5">${ev.title}</h4>
+                                                        <span class="text-[10px] text-emerald-300/70">De: ${ev.contact || 'Lucas'}</span>
+                                                    </div>
+                                                    <div class="flex items-center gap-1 shrink-0">
+                                                        <button type="button" class="comm-download-ics-btn px-2 py-1.5 rounded-xl bg-emerald-950 border border-emerald-500/30 text-[10px] font-bold text-lime-300 hover:text-white cursor-pointer" data-ev-idx="${evIdx}" title="Descargar archivo .ICS">
+                                                            .ICS
+                                                        </button>
+                                                        <a href="${ev.htmlLink || buildGoogleCalendarLink(ev)}" target="_blank" rel="noopener" class="btn-emerald px-2.5 py-1.5 text-[10px] font-extrabold uppercase flex items-center gap-1" title="Abrir y guardar en Google Calendar">
+                                                            <span class="material-symbols-outlined text-sm">event_available</span>
+                                                            Agendar
+                                                        </a>
+                                                        <button type="button" class="comm-delete-gcal-ev-btn size-7 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/25 text-emerald-300/70 hover:text-white flex items-center justify-center cursor-pointer" data-ev-id="${evId.replace(/"/g, '&quot;')}" title="Quitar de la lista">
+                                                            <span class="material-symbols-outlined text-xs">close</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                <div class="flex items-center gap-1.5 shrink-0">
-                                                    <button type="button" class="comm-download-ics-btn px-2.5 py-1.5 rounded-xl bg-emerald-950 border border-emerald-500/30 text-[10px] font-bold text-lime-300 hover:text-white cursor-pointer" data-ev-idx="${evIdx}" title="Descargar archivo .ICS">
-                                                        .ICS
-                                                    </button>
-                                                    <a href="${buildGoogleCalendarLink(ev)}" target="_blank" rel="noopener" class="btn-emerald px-3 py-1.5 text-[10px] font-extrabold uppercase flex items-center gap-1">
-                                                        <span class="material-symbols-outlined text-sm">event_available</span>
-                                                        Agendar
-                                                    </a>
+                                                `;
+                                            }).join('') : `
+                                                <div class="py-5 px-3 text-center flex flex-col items-center gap-2 rounded-2xl bg-[#040B08]/60 border border-emerald-500/15">
+                                                    <p class="text-xs text-emerald-300/70">No hay eventos agendados todavía. Creá un recordatorio abajo, enviá un mensaje con fecha/hora o sincronizá tu cuenta.</p>
+                                                    <div class="flex flex-wrap items-center justify-center gap-2 mt-1">
+                                                        <button type="button" class="comm-gcal-tab px-3 py-1.5 rounded-xl bg-[#10E775]/15 border border-[#10E775]/40 text-[#10E775] text-[11px] font-extrabold cursor-pointer" data-gcal-tab="embed">
+                                                            📅 Ver Calendario en Vivo
+                                                        </button>
+                                                        <button type="button" class="comm-gcal-tab px-3 py-1.5 rounded-xl bg-emerald-950 border border-emerald-500/30 text-emerald-200 text-[11px] font-bold cursor-pointer" data-gcal-tab="config">
+                                                            🔗 Sincronizar Google Calendar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            `}
+                                        </div>
+                                    ` : ''}
+
+                                    ${activeGcalTab === 'embed' ? `
+                                        <div class="flex flex-col gap-2">
+                                            <div class="rounded-2xl overflow-hidden border border-emerald-500/30 bg-white h-[240px]">
+                                                <iframe
+                                                    src="${gcalConfig.embedUrl}&mode=AGENDA"
+                                                    style="border: 0"
+                                                    width="100%"
+                                                    height="240"
+                                                    frameborder="0"
+                                                    scrolling="yes"
+                                                    title="Google Calendar de ${gcalConfig.primaryEmail}">
+                                                </iframe>
+                                            </div>
+                                            <p class="text-[10px] text-emerald-300/70 leading-snug">
+                                                💡 Vista en vivo de <strong>${gcalConfig.primaryEmail}</strong>. Si ves el aviso de permisos de Google, asegúrate de haber iniciado sesión con tu cuenta de Google en este navegador o conecta el link iCal en la pestaña <strong>Conectar</strong>.
+                                            </p>
+                                        </div>
+                                    ` : ''}
+
+                                    ${activeGcalTab === 'config' ? `
+                                        <div class="p-3.5 rounded-2xl bg-[#040B08]/90 border border-emerald-500/30 flex flex-col gap-2.5 max-h-[260px] overflow-y-auto custom-scrollbar">
+                                            <div>
+                                                <label class="text-[10px] font-extrabold uppercase text-lime-400 block mb-1">
+                                                    Opción 1 (Recomendada · Sin API Keys): Dirección secreta iCal (.ics) de Google Calendar
+                                                </label>
+                                                <input id="comm-gcal-ical-input" type="text" value="${gcalConfig.icalUrl}" placeholder="https://calendar.google.com/calendar/ical/lucas.../basic.ics" class="w-full rounded-xl px-3 py-1.5 text-[11px] font-mono text-[#10E775] bg-emerald-950/40 border border-emerald-500/30 outline-none" />
+                                                <p class="text-[10px] text-emerald-300/65 mt-1 leading-snug">
+                                                    En <a href="https://calendar.google.com/calendar/u/0/r/settings" target="_blank" rel="noopener" class="text-[#10E775] underline">Google Calendar → Configuración</a> → clic en <strong>${gcalConfig.primaryEmail}</strong> → baja hasta <em>"Dirección secreta en formato iCal"</em>, cópiala y pégala aquí.
+                                                </p>
+                                            </div>
+
+                                            <div class="pt-2 border-t border-emerald-500/15 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                <div>
+                                                    <label class="text-[10px] font-bold uppercase text-emerald-300/75 block mb-1">Google Client ID (Opcional OAuth)</label>
+                                                    <input id="comm-gcal-client-id-input" type="text" value="${gcalConfig.clientId}" placeholder="xxxx.apps.googleusercontent.com" class="w-full rounded-xl px-2.5 py-1.5 text-[11px] font-mono text-white bg-emerald-950/30 border border-emerald-500/25 outline-none" />
+                                                </div>
+                                                <div>
+                                                    <label class="text-[10px] font-bold uppercase text-emerald-300/75 block mb-1">Token OAuth 2.0 (Opcional)</label>
+                                                    <input id="comm-gcal-token-input" type="password" value="${gcalConfig.accessToken}" placeholder="ya29.a0..." class="w-full rounded-xl px-2.5 py-1.5 text-[11px] font-mono text-white bg-emerald-950/30 border border-emerald-500/25 outline-none" />
                                                 </div>
                                             </div>
-                                        `).join('') : `
-                                            <p class="text-xs text-emerald-300/60 py-6 text-center">No se detectaron eventos con fecha/hora en las charlas actuales.</p>
-                                        `}
-                                    </div>
+
+                                            <div class="flex flex-wrap gap-2 mt-1">
+                                                <button type="button" id="comm-gcal-save-sync-btn" class="flex-1 btn-emerald py-2 px-3 text-[11px] font-extrabold uppercase cursor-pointer">
+                                                    💾 Guardar y Sincronizar Calendar
+                                                </button>
+                                                <button type="button" id="comm-gcal-oauth-btn" class="px-3 py-2 rounded-xl bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/35 text-[11px] font-bold text-lime-300 hover:text-white cursor-pointer">
+                                                    🔐 OAuth Google
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ` : ''}
                                 </div>
 
-                                <!-- Crear Evento Rápido en Google Calendar -->
+                                <!-- Crear Evento Rápido en Google Calendar (Se guarda en la lista + abre/crea en Google Calendar) -->
                                 <div class="mt-4 pt-3 border-t border-emerald-500/15">
                                     <label class="text-[10px] font-bold uppercase text-emerald-300/80 block mb-1.5">Agendar recordatorio rápido en Google Calendar:</label>
-                                    <div class="flex gap-2">
-                                        <input id="comm-quick-gcal-title" type="text" placeholder="Ej: Buscar a los chicos 17:30hs..." class="flex-1 rounded-xl px-3 py-1.5 text-xs text-white bg-[#040B08] border border-emerald-500/30 outline-none" />
+                                    <div class="flex flex-wrap sm:flex-nowrap gap-1.5">
+                                        <input id="comm-quick-gcal-title" type="text" placeholder="Ej: Buscar a los chicos 17:30hs..." class="flex-1 min-w-[140px] rounded-xl px-3 py-1.5 text-xs text-white bg-[#040B08] border border-emerald-500/30 outline-none focus:border-[#10E775]" />
+                                        <input id="comm-quick-gcal-date" type="date" value="${getArgentinaDate()}" class="rounded-xl px-2 py-1.5 text-[11px] font-mono text-emerald-200 bg-[#040B08] border border-emerald-500/30 outline-none" />
                                         <input id="comm-quick-gcal-time" type="time" value="18:00" class="rounded-xl px-2 py-1.5 text-xs font-mono text-[#10E775] bg-[#040B08] border border-emerald-500/30 outline-none" />
-                                        <button id="comm-quick-gcal-btn" class="btn-emerald px-3 py-1.5 text-[11px] font-extrabold uppercase cursor-pointer">
+                                        <button type="button" id="comm-quick-gcal-btn" class="btn-emerald px-3 py-1.5 text-[11px] font-extrabold uppercase cursor-pointer shrink-0">
                                             + Calendar
                                         </button>
                                     </div>
@@ -826,18 +942,104 @@ export const attachCommunicationsEvents = async () => {
         });
     });
 
+    // Google Calendar Sub-tabs (Eventos / En Vivo / Conectar)
+    document.querySelectorAll('.comm-gcal-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            activeGcalTab = btn.dataset.gcalTab || 'events';
+            window.router.navigate('communications', true);
+        });
+    });
+
+    // Sync Google Calendar Button
+    document.getElementById('comm-gcal-sync-btn')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        const res = await syncGoogleCalendarEvents();
+        cachedCommsStore = res.store || await loadCommunicationsData();
+        btn.disabled = false;
+        if (res.ok) {
+            activeGcalTab = 'events';
+            window.showAlert?.(
+                'Google Calendar Sincronizado',
+                `Se sincronizaron ${res.importedCount} evento(s) mediante ${res.syncMethod}. Total en lista: ${res.totalEvents}.`,
+                'success'
+            );
+        } else {
+            activeGcalTab = 'config';
+            window.showAlert?.(
+                'Conectar Google Calendar',
+                'Para importar tus eventos privados automáticamente, pega tu "Dirección secreta en formato iCal (.ics)" de Google Calendar o conecta OAuth en esta pestaña.',
+                'info'
+            );
+        }
+        window.router.navigate('communications', true);
+    });
+
+    // Save Google Calendar Config (iCal URL / Client ID / OAuth Token) & Sync
+    document.getElementById('comm-gcal-save-sync-btn')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const icalUrl = document.getElementById('comm-gcal-ical-input')?.value?.trim() || '';
+        const clientId = document.getElementById('comm-gcal-client-id-input')?.value?.trim() || '';
+        const accessToken = document.getElementById('comm-gcal-token-input')?.value?.trim() || '';
+
+        saveGoogleCalendarConfig({ icalUrl, clientId, accessToken });
+        btn.disabled = true;
+        btn.textContent = 'Sincronizando...';
+        const res = await syncGoogleCalendarEvents();
+        cachedCommsStore = res.store || await loadCommunicationsData();
+        btn.disabled = false;
+
+        if (res.ok) {
+            activeGcalTab = 'events';
+            window.showAlert?.(
+                'Google Calendar Conectado',
+                `Conexión exitosa (${res.syncMethod}). ${res.importedCount} evento(s) importados.`,
+                'success'
+            );
+        } else {
+            window.showAlert?.(
+                'Configuración Guardada',
+                res.errorDetail || 'Credenciales guardadas. Verifica que la URL iCal sea la "Dirección secreta en formato iCal (.ics)" de tu configuración de Google Calendar.',
+                'info'
+            );
+        }
+        window.router.navigate('communications', true);
+    });
+
+    // Connect Google OAuth 2.0 Popup
+    document.getElementById('comm-gcal-oauth-btn')?.addEventListener('click', async () => {
+        const clientId = document.getElementById('comm-gcal-client-id-input')?.value?.trim() || '';
+        if (clientId) saveGoogleCalendarConfig({ clientId });
+        try {
+            const { syncRes } = await connectGoogleCalendarOAuth();
+            cachedCommsStore = syncRes?.store || await loadCommunicationsData();
+            activeGcalTab = 'events';
+            window.showAlert?.(
+                'Google OAuth Conectado',
+                `Cuenta vinculada con éxito. Se importaron ${syncRes?.importedCount || 0} eventos de Google Calendar.`,
+                'success'
+            );
+            window.router.navigate('communications', true);
+        } catch (err) {
+            window.showAlert?.('Conexión OAuth', err.message, 'info');
+        }
+    });
+
+    // Delete / Complete Calendar Event from List
+    document.querySelectorAll('.comm-delete-gcal-ev-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const evId = btn.dataset.evId;
+            if (!evId) return;
+            cachedCommsStore = await deleteCalendarEvent(evId);
+            window.router.navigate('communications', true);
+        });
+    });
+
     // Download .ICS Calendar Event
     document.querySelectorAll('.comm-download-ics-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const idx = Number(btn.dataset.evIdx || 0);
-            const allEvents = [];
-            (cachedCommsStore?.contacts || []).forEach(c => {
-                if (['hijos', 'novia', 'trabajo', 'amigos'].includes(c.circle)) {
-                    (c.detected_calendar_events || []).forEach(ev => {
-                        allEvents.push({ ...ev, contact: c.name, phone: c.phone, circle: c.circle });
-                    });
-                }
-            });
+            const allEvents = collectAllCalendarEvents(cachedCommsStore || {});
             const targetEv = allEvents[idx];
             if (targetEv) {
                 downloadCalendarICS(targetEv);
@@ -897,17 +1099,48 @@ export const attachCommunicationsEvents = async () => {
         window.speechSynthesis.speak(utterance);
     });
 
-    // Quick Google Calendar Event Creator
-    document.getElementById('comm-quick-gcal-btn')?.addEventListener('click', () => {
-        const title = document.getElementById('comm-quick-gcal-title')?.value?.trim() || 'Recordatorio Asistente Lucas';
-        const startTime = document.getElementById('comm-quick-gcal-time')?.value || '18:00';
-        const url = buildGoogleCalendarLink({
-            title,
-            date: getArgentinaDate(),
+    // Quick Google Calendar Event Creator (Guarda en la lista en Supabase + Crea/Abre en Google Calendar)
+    const handleCreateQuickGcalEvent = async () => {
+        const titleInput = document.getElementById('comm-quick-gcal-title');
+        const rawTitle = titleInput?.value?.trim() || 'Recordatorio Asistente Lucas';
+        const date = document.getElementById('comm-quick-gcal-date')?.value || getArgentinaDate();
+        let startTime = document.getElementById('comm-quick-gcal-time')?.value || '18:00';
+
+        // Si el usuario escribió una hora dentro del texto (ej. "Buscar a los chicos 17:30hs") y dejó las 18:00 por defecto, extraerla
+        const inlineTime = rawTitle.match(/\b(\d{1,2})[:.](\d{2})\s*(hs|horas)?\b/i) || rawTitle.match(/\b(\d{1,2})\s*(hs|horas)\b/i);
+        if (inlineTime && startTime === '18:00') {
+            const hh = Math.min(23, Math.max(0, parseInt(inlineTime[1], 10)));
+            const mm = inlineTime[2] && /^\d+$/.test(inlineTime[2]) ? parseInt(inlineTime[2], 10) : 0;
+            startTime = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+        }
+
+        const { store, createdInGoogleApi } = await addQuickCalendarEvent({
+            title: rawTitle,
+            date,
             startTime,
-            description: 'Creado desde el Asistente Personal de Comunicaciones GrowFit.'
+            description: 'Creado desde el Asistente Personal de Comunicaciones GrowFit.',
+            openGoogleTab: true
         });
-        window.open(url, '_blank', 'noopener');
+
+        cachedCommsStore = store;
+        activeGcalTab = 'events';
+        if (titleInput) titleInput.value = '';
+        window.showAlert?.(
+            createdInGoogleApi ? 'Agendado en Google Calendar API' : 'Recordatorio Agendado',
+            createdInGoogleApi
+                ? `"${rawTitle}" (${date} ${startTime} hs) fue creado directamente en tu Google Calendar y guardado en tu lista.`
+                : `"${rawTitle}" (${date} ${startTime} hs) quedó guardado en tu lista y se abrió Google Calendar para confirmar.`,
+            'success'
+        );
+        window.router.navigate('communications', true);
+    };
+
+    document.getElementById('comm-quick-gcal-btn')?.addEventListener('click', handleCreateQuickGcalEvent);
+    document.getElementById('comm-quick-gcal-title')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleCreateQuickGcalEvent();
+        }
     });
 
     // Open Modal to Send New WhatsApp to any number

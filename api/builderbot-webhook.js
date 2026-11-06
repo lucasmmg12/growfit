@@ -31,21 +31,53 @@ function classifyCircle(name = '', body = '', currentCircle = 'otros') {
     /urgente|importante|hoy|mañana|reuni[oó]n|turno|confirm|avisame/.test(text);
 
   let detectedEvent = null;
-  const timeMatch = body.match(/(\d{1,2})[:.]?(\d{2})?\s*(hs|horas|am|pm)?/i);
-  if (/mañana|hoy|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|turno|reuni[oó]n|cena|acto|partido/i.test(body)) {
-    const hour = timeMatch ? Math.min(23, Math.max(7, parseInt(timeMatch[1], 10))) : 18;
-    const minute = timeMatch && timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+  const timeMatch = body.match(/(?:a\s+las\s+)?(\d{1,2})(?:[:.](\d{2}))?\s*(hs|horas|hr|am|pm)?/i);
+  const hasExplicitTime = Boolean(
+    body.match(/\b(\d{1,2})[:.](\d{2})\b/) ||
+    body.match(/\b(\d{1,2})\s*(hs|horas|hr|am|pm)\b/i) ||
+    body.match(/a\s+las\s+\d{1,2}/i)
+  );
+  const hasEventKeyword =
+    /mañana|hoy|pasado\s+mañana|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|turno|reuni[oó]n|cena|almuerzo|desayuno|merienda|acto|partido|f[uú]tbol|padel|asado|buscar|llevar|retirar|cole|escuela|jard[ií]n|m[eé]dico|pediatra|dentista|cumple|juntada|llamada|meet|zoom|auditor[ií]a|entrega|visita/i.test(
+      body
+    );
+
+  if (hasEventKeyword || hasExplicitTime) {
+    let hour = 18;
+    let minute = 0;
+    const strictTime =
+      body.match(/\b(\d{1,2})[:.](\d{2})\s*(hs|horas|am|pm)?\b/i) ||
+      body.match(/\b(\d{1,2})\s*(hs|horas|am|pm)\b/i) ||
+      body.match(/a\s+las\s+(\d{1,2})(?:[:.](\d{2}))?\s*(hs|horas|am|pm)?/i);
+
+    if (strictTime) {
+      hour = parseInt(strictTime[1], 10);
+      minute = strictTime[2] && /^\d+$/.test(strictTime[2]) ? parseInt(strictTime[2], 10) : 0;
+      const mer = (strictTime[3] || '').toLowerCase();
+      if (mer === 'pm' && hour < 12) hour += 12;
+      if (mer === 'am' && hour === 12) hour = 0;
+      hour = Math.min(23, Math.max(0, hour));
+    } else if (timeMatch) {
+      hour = Math.min(23, Math.max(7, parseInt(timeMatch[1], 10)));
+    }
+
     const now = new Date(Date.now() - 3 * 60 * 60 * 1000);
-    if (/mañana/i.test(body)) now.setDate(now.getDate() + 1);
+    if (/pasado\s+mañana/i.test(body)) {
+      now.setDate(now.getDate() + 2);
+    } else if (/mañana/i.test(body)) {
+      now.setDate(now.getDate() + 1);
+    }
     const dateStr = now.toISOString().split('T')[0];
 
     detectedEvent = {
-      title: `${name || 'WhatsApp'}: ${body.slice(0, 48)}`,
+      id: `wa-ev-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      title: `${name || 'WhatsApp'}: ${body.slice(0, 54)}`,
       date: dateStr,
       startTime: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
       durationMinutes: 60,
       description: `Agendado automáticamente desde WhatsApp BuilderBot.\nContacto: ${name}\nMensaje: "${body}"`,
-      circle
+      circle,
+      source: 'whatsapp'
     };
   }
 

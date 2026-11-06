@@ -42,25 +42,140 @@ function classifyCircleAndImportance(name = "", body = "", existingCircle = "otr
     /urgente|importante|hoy|mañana|reuni[oó]n|turno|avisame|confirm/.test(text);
 
   let detectedEvent = null;
-  const timeMatch = body.match(/(\d{1,2})[:.]?(\d{2})?\s*(hs|horas|am|pm)?/i);
-  if (/mañana|hoy|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|turno|reuni[oó]n|cena|acto|partido/i.test(body)) {
-    const hour = timeMatch ? Math.min(23, Math.max(7, parseInt(timeMatch[1], 10))) : 18;
-    const minute = timeMatch && timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+  const timeMatch = body.match(/(?:a\s+las\s+)?(\d{1,2})(?:[:.](\d{2}))?\s*(hs|horas|hr|am|pm)?/i);
+  const hasExplicitTime = Boolean(
+    body.match(/\b(\d{1,2})[:.](\d{2})\b/) ||
+    body.match(/\b(\d{1,2})\s*(hs|horas|hr|am|pm)\b/i) ||
+    body.match(/a\s+las\s+\d{1,2}/i)
+  );
+  const hasEventKeyword =
+    /mañana|hoy|pasado\s+mañana|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|turno|reuni[oó]n|cena|almuerzo|desayuno|merienda|acto|partido|f[uú]tbol|padel|asado|buscar|llevar|retirar|cole|escuela|jard[ií]n|m[eé]dico|pediatra|dentista|cumple|juntada|llamada|meet|zoom|auditor[ií]a|entrega|visita/i.test(
+      body
+    );
+
+  if (hasEventKeyword || hasExplicitTime) {
+    let hour = 18;
+    let minute = 0;
+    const strictTime =
+      body.match(/\b(\d{1,2})[:.](\d{2})\s*(hs|horas|am|pm)?\b/i) ||
+      body.match(/\b(\d{1,2})\s*(hs|horas|am|pm)\b/i) ||
+      body.match(/a\s+las\s+(\d{1,2})(?:[:.](\d{2}))?\s*(hs|horas|am|pm)?/i);
+
+    if (strictTime) {
+      hour = parseInt(strictTime[1], 10);
+      minute = strictTime[2] && /^\d+$/.test(strictTime[2]) ? parseInt(strictTime[2], 10) : 0;
+      const mer = (strictTime[3] || "").toLowerCase();
+      if (mer === "pm" && hour < 12) hour += 12;
+      if (mer === "am" && hour === 12) hour = 0;
+      hour = Math.min(23, Math.max(0, hour));
+    } else if (timeMatch) {
+      hour = Math.min(23, Math.max(7, parseInt(timeMatch[1], 10)));
+    }
+
     const now = new Date(Date.now() - 3 * 60 * 60 * 1000);
-    if (/mañana/i.test(body)) now.setDate(now.getDate() + 1);
+    if (/pasado\s+mañana/i.test(body)) {
+      now.setDate(now.getDate() + 2);
+    } else if (/mañana/i.test(body)) {
+      now.setDate(now.getDate() + 1);
+    }
     const dateStr = now.toISOString().split("T")[0];
 
     detectedEvent = {
-      title: `${name || "WhatsApp"}: ${body.slice(0, 48)}`,
+      id: `wa-ev-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      title: `${name || "WhatsApp"}: ${body.slice(0, 54)}`,
       date: dateStr,
       startTime: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
       durationMinutes: 60,
       description: `Agendado automáticamente desde WhatsApp BuilderBot.\nContacto: ${name}\nMensaje: "${body}"`,
       circle,
+      source: "whatsapp",
     };
   }
 
   return { circle, isImportant, detectedEvent };
+}
+
+function parseICalFeed(icsText: string) {
+  const events: Array<Record<string, unknown>> = [];
+  const blocks = icsText.split("BEGIN:VEVENT").slice(1);
+  const nowMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const maxMs = Date.now() + 90 * 24 * 60 * 60 * 1000;
+
+  for (const rawBlock of blocks) {
+    const block = rawBlock.split("END:VEVENT")[0] || "";
+    const unfolded = block.replace(/\r?\n[ \t]/g, "");
+    const lines = unfolded.split(/\r?\n/);
+
+    let uid = "";
+    let summary = "";
+    let description = "";
+    let location = "";
+    let dtStartRaw = "";
+
+    for (const line of lines) {
+      if (line.startsWith("UID:")) uid = line.slice(4).trim();
+      else if (line.startsWith("SUMMARY")) summary = line.split(":").slice(1).join(":").trim();
+      else if (line.startsWith("DESCRIPTION")) description = line.split(":").slice(1).join(":").trim().replace(/\\n/g, "\n");
+      else if (line.startsWith("LOCATION")) location = line.split(":").slice(1).join(":").trim();
+      else if (line.startsWith("DTSTART")) dtStartRaw = line.split(":").slice(1).join(":").trim();
+    }
+
+    if (!dtStartRaw || !summary) continue;
+
+    const cleanDt = dtStartRaw.replace(/[^0-9TZ]/g, "");
+    const y = Number(cleanDt.slice(0, 4));
+    const m = Number(cleanDt.slice(4, 6));
+    const d = Number(cleanDt.slice(6, 8));
+    if (!y || !m || !d) continue;
+
+    let hh = 9;
+    let mm = 0;
+    if (cleanDt.includes("T") && cleanDt.length >= 13) {
+      const timePart = cleanDt.split("T")[1];
+      hh = Number(timePart.slice(0, 2)) || 0;
+      mm = Number(timePart.slice(2, 4)) || 0;
+      if (cleanDt.endsWith("Z")) {
+        const utcDate = new Date(Date.UTC(y, m - 1, d, hh, mm));
+        const argDate = new Date(utcDate.getTime() - 3 * 60 * 60 * 1000);
+        const dateStr = argDate.toISOString().split("T")[0];
+        const startTime = `${String(argDate.getUTCHours()).padStart(2, "0")}:${String(argDate.getUTCMinutes()).padStart(2, "0")}`;
+        const evTime = utcDate.getTime();
+        if (evTime >= nowMs && evTime <= maxMs) {
+          events.push({
+            id: uid || `ical-${dateStr}-${startTime}-${summary.slice(0, 12)}`,
+            title: summary,
+            date: dateStr,
+            startTime,
+            durationMinutes: 60,
+            description: description || location || "Sincronizado desde Google Calendar",
+            contact: "Google Calendar",
+            circle: "trabajo",
+            source: "gcal_ical",
+          });
+        }
+        continue;
+      }
+    }
+
+    const evDate = new Date(y, m - 1, d, hh, mm);
+    if (evDate.getTime() >= nowMs && evDate.getTime() <= maxMs) {
+      const dateStr = `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const startTime = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+      events.push({
+        id: uid || `ical-${dateStr}-${startTime}-${summary.slice(0, 12)}`,
+        title: summary,
+        date: dateStr,
+        startTime,
+        durationMinutes: 60,
+        description: description || location || "Sincronizado desde Google Calendar",
+        contact: "Google Calendar",
+        circle: "trabajo",
+        source: "gcal_ical",
+      });
+    }
+  }
+
+  return events.sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));
 }
 
 serve(async (req: Request) => {
@@ -160,6 +275,37 @@ serve(async (req: Request) => {
         status: oaiRes.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Acción 2B: Proxy para leer feed iCal (.ics) de Google Calendar sin bloqueo CORS
+    if (payload.action === "fetch_ical") {
+      const icalUrl = String(payload.icalUrl || "").trim();
+      if (!icalUrl) {
+        return new Response(
+          JSON.stringify({ ok: false, error: "URL iCal vacía", events: [] }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const icsRes = await fetch(icalUrl);
+      if (!icsRes.ok) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            status: icsRes.status,
+            error: `Google Calendar devolvió HTTP ${icsRes.status}. Verifica que sea la Dirección secreta en formato iCal (.ics) o que el calendario sea público.`,
+            events: [],
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const icsText = await icsRes.text();
+      const parsedEvents = parseICalFeed(icsText);
+      return new Response(
+        JSON.stringify({ ok: true, count: parsedEvents.length, events: parsedEvents }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Acción 3: Eventos de Webhook BuilderBot

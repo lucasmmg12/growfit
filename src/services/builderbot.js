@@ -8,6 +8,8 @@ const BUILDERBOT_KEY_STORAGE = 'growfit_builderbot_api_key';
 const BUILDERBOT_BOT_ID_STORAGE = 'growfit_builderbot_bot_id';
 const GCAL_CLIENT_ID_STORAGE = 'growfit_gcal_client_id';
 const GCAL_TOKEN_STORAGE = 'growfit_gcal_access_token';
+const GCAL_ICAL_STORAGE = 'growfit_gcal_ical_url';
+const GCAL_EMAIL_STORAGE = 'growfit_gcal_email';
 
 export const getBuilderBotConfig = () => {
     const apiKey = localStorage.getItem(BUILDERBOT_KEY_STORAGE) || import.meta.env.VITE_BUILDERBOT_API_KEY || '';
@@ -29,16 +31,26 @@ export const saveBuilderBotConfig = ({ apiKey, botId }) => {
 };
 
 export const getGoogleCalendarConfig = () => {
+    const clientId = localStorage.getItem(GCAL_CLIENT_ID_STORAGE) || import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+    const accessToken = localStorage.getItem(GCAL_TOKEN_STORAGE) || '';
+    const icalUrl = localStorage.getItem(GCAL_ICAL_STORAGE) || import.meta.env.VITE_GOOGLE_ICAL_URL || '';
+    const primaryEmail = localStorage.getItem(GCAL_EMAIL_STORAGE) || 'lucasmmarinerosanarg@gmail.com';
+    const embedUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(primaryEmail)}&ctz=America%2FArgentina%2FSan_Juan&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0&showTz=0`;
     return {
-        clientId: localStorage.getItem(GCAL_CLIENT_ID_STORAGE) || import.meta.env.VITE_GOOGLE_CLIENT_ID || '',
-        accessToken: localStorage.getItem(GCAL_TOKEN_STORAGE) || '',
-        primaryEmail: 'lucasmmarinerosanarg@gmail.com'
+        clientId,
+        accessToken,
+        icalUrl,
+        primaryEmail,
+        embedUrl,
+        isApiConnected: Boolean(accessToken || icalUrl)
     };
 };
 
-export const saveGoogleCalendarConfig = ({ clientId, accessToken }) => {
+export const saveGoogleCalendarConfig = ({ clientId, accessToken, icalUrl, primaryEmail }) => {
     if (clientId !== undefined) localStorage.setItem(GCAL_CLIENT_ID_STORAGE, clientId.trim());
     if (accessToken !== undefined) localStorage.setItem(GCAL_TOKEN_STORAGE, accessToken.trim());
+    if (icalUrl !== undefined) localStorage.setItem(GCAL_ICAL_STORAGE, icalUrl.trim());
+    if (primaryEmail !== undefined && primaryEmail.trim()) localStorage.setItem(GCAL_EMAIL_STORAGE, primaryEmail.trim());
 };
 
 export const CIRCLE_META = {
@@ -107,24 +119,53 @@ export const classifyMessageContext = (name = '', body = '', currentCircle = 'ot
     const isImportant = ['hijos', 'novia', 'trabajo', 'amigos'].includes(circle) ||
         /urgente|importante|hoy|mañana|reuni[oó]n|turno|confirm|avisame/.test(text);
 
-    // Extraer evento para Google Calendar si menciona día/hora
+    // Extraer evento para Google Calendar si menciona día/hora o actividad agendable
     let detectedEvent = null;
-    const timeMatch = body.match(/(\d{1,2})[:.]?(\d{2})?\s*(hs|horas|am|pm)?/i);
-    if (/mañana|hoy|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|turno|reuni[oó]n|cena|acto|partido/i.test(body)) {
-        const hour = timeMatch ? Math.min(23, Math.max(7, parseInt(timeMatch[1], 10))) : 18;
-        const minute = timeMatch && timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
-        const isTomorrow = /mañana/i.test(body);
+    const timeMatch = body.match(/(?:a\s+las\s+)?(\d{1,2})(?:[:.](\d{2}))?\s*(hs|horas|hr|am|pm)?/i);
+    const hasExplicitTime = Boolean(
+        body.match(/\b(\d{1,2})[:.](\d{2})\b/) ||
+        body.match(/\b(\d{1,2})\s*(hs|horas|hr|am|pm)\b/i) ||
+        body.match(/a\s+las\s+\d{1,2}/i)
+    );
+    const hasEventKeyword = /mañana|hoy|pasado\s+mañana|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|turno|reuni[oó]n|cena|almuerzo|desayuno|merienda|acto|partido|f[uú]tbol|padel|asado|buscar|llevar|retirar|cole|escuela|jard[ií]n|m[eé]dico|pediatra|dentista|cumple|juntada|llamada|meet|zoom|auditor[ií]a|entrega|visita/i.test(body);
+
+    if (hasEventKeyword || hasExplicitTime) {
+        let hour = 18;
+        let minute = 0;
+        const strictTime =
+            body.match(/\b(\d{1,2})[:.](\d{2})\s*(hs|horas|am|pm)?\b/i) ||
+            body.match(/\b(\d{1,2})\s*(hs|horas|am|pm)\b/i) ||
+            body.match(/a\s+las\s+(\d{1,2})(?:[:.](\d{2}))?\s*(hs|horas|am|pm)?/i);
+
+        if (strictTime) {
+            hour = parseInt(strictTime[1], 10);
+            minute = strictTime[2] && /^\d+$/.test(strictTime[2]) ? parseInt(strictTime[2], 10) : 0;
+            const mer = (strictTime[3] || '').toLowerCase();
+            if (mer === 'pm' && hour < 12) hour += 12;
+            if (mer === 'am' && hour === 12) hour = 0;
+            hour = Math.min(23, Math.max(0, hour));
+        } else if (timeMatch) {
+            hour = Math.min(23, Math.max(7, parseInt(timeMatch[1], 10)));
+        }
+
         const eventDateObj = new Date();
-        if (isTomorrow) eventDateObj.setDate(eventDateObj.getDate() + 1);
+        if (/pasado\s+mañana/i.test(body)) {
+            eventDateObj.setDate(eventDateObj.getDate() + 2);
+        } else if (/mañana/i.test(body)) {
+            eventDateObj.setDate(eventDateObj.getDate() + 1);
+        }
         const dateStr = eventDateObj.toISOString().split('T')[0];
 
         detectedEvent = {
-            title: `${CIRCLE_META[circle]?.emoji || '📅'} ${name || 'WhatsApp'}: ${body.slice(0, 46)}`,
+            id: `wa-ev-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            title: `${CIRCLE_META[circle]?.emoji || '📅'} ${name || 'WhatsApp'}: ${body.slice(0, 52)}`,
             date: dateStr,
             startTime: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
             durationMinutes: 60,
             description: `Agendado automáticamente por Asistente IA de Lucas desde WhatsApp.\nContacto: ${name}\nMensaje original: "${body}"`,
-            circle
+            contact: name || 'WhatsApp',
+            circle,
+            source: 'whatsapp'
         };
     }
 
@@ -143,8 +184,24 @@ const getInitialSeedData = () => {
             updated_at: new Date().toISOString()
         },
         contacts: [],
-        messages: []
+        messages: [],
+        calendarEvents: []
     };
+};
+
+const deduplicateCalendarEvents = (events = []) => {
+    const map = new Map();
+    for (const ev of events) {
+        if (!ev || !ev.title) continue;
+        const key = ev.id || `${ev.date || ''}|${ev.startTime || ''}|${ev.title.trim().toLowerCase()}`;
+        if (!map.has(key)) {
+            map.set(key, {
+                ...ev,
+                id: ev.id || `ev-${Date.now()}-${Math.floor(Math.random() * 10000)}`
+            });
+        }
+    }
+    return Array.from(map.values()).sort((a, b) => `${a.date || ''} ${a.startTime || ''}`.localeCompare(`${b.date || ''} ${b.startTime || ''}`));
 };
 
 const deduplicateMessages = (messages = []) => {
@@ -182,6 +239,9 @@ export const loadCommunicationsData = async () => {
     if (!localData || !Array.isArray(localData.contacts) || !Array.isArray(localData.messages)) {
         localData = getInitialSeedData();
     }
+    if (!Array.isArray(localData.calendarEvents)) {
+        localData.calendarEvents = [];
+    }
 
     // 1. Sync with Supabase growfit_profiles hub row (user_id = 'lmarinero_whatsapp_hub')
     try {
@@ -195,6 +255,20 @@ export const loadCommunicationsData = async () => {
             const remoteHub = hubProfile.data;
             if (remoteHub.botStatus) {
                 localData.botStatus = remoteHub.botStatus;
+            }
+            if (remoteHub.gcalConfig && typeof remoteHub.gcalConfig === 'object') {
+                const currentGcal = getGoogleCalendarConfig();
+                saveGoogleCalendarConfig({
+                    clientId: currentGcal.clientId || remoteHub.gcalConfig.clientId || '',
+                    icalUrl: currentGcal.icalUrl || remoteHub.gcalConfig.icalUrl || '',
+                    primaryEmail: remoteHub.gcalConfig.primaryEmail || currentGcal.primaryEmail
+                });
+            }
+            if (Array.isArray(remoteHub.calendarEvents) && remoteHub.calendarEvents.length > 0) {
+                localData.calendarEvents = deduplicateCalendarEvents([
+                    ...localData.calendarEvents,
+                    ...remoteHub.calendarEvents
+                ]);
             }
             if (Array.isArray(remoteHub.contacts) && remoteHub.contacts.length > 0) {
                 const byPhone = new Map();
@@ -247,7 +321,7 @@ export const loadCommunicationsData = async () => {
             localData.messages = deduplicateMessages([...localData.messages, ...remoteMessages]);
         }
 
-        // Ensure every contact in messages exists in contacts list
+        // Ensure every contact in messages exists in contacts list & extract any message-level detected_event
         const contactByPhone = new Map();
         localData.contacts.forEach(c => contactByPhone.set(c.phone, c));
         localData.messages.forEach(m => {
@@ -268,6 +342,12 @@ export const loadCommunicationsData = async () => {
                     last_message_at: m.created_at || new Date().toISOString(),
                     total_messages: 1
                 });
+            } else if (m.detected_event) {
+                const existingC = contactByPhone.get(m.phone);
+                existingC.detected_calendar_events = deduplicateCalendarEvents([
+                    ...(existingC.detected_calendar_events || []),
+                    { ...m.detected_event, contact: existingC.name, phone: existingC.phone, circle: existingC.circle }
+                ]);
             }
         });
 
@@ -284,12 +364,21 @@ export const loadCommunicationsData = async () => {
 };
 
 export const saveCommunicationsDataLocal = (data) => {
-    localStorage.setItem(LOCAL_COMMS_KEY, JSON.stringify(data));
+    const gcal = getGoogleCalendarConfig();
+    const payloadToSave = {
+        ...data,
+        gcalConfig: {
+            clientId: gcal.clientId,
+            icalUrl: gcal.icalUrl,
+            primaryEmail: gcal.primaryEmail
+        }
+    };
+    localStorage.setItem(LOCAL_COMMS_KEY, JSON.stringify(payloadToSave));
     supabase.from('growfit_profiles').upsert({
         user_id: HUB_USER_ID,
         full_name: 'WhatsApp Hub (lmarinero)',
         display_name: 'WhatsApp Hub',
-        data,
+        data: payloadToSave,
         updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' }).then(() => {}).catch(() => {});
 };
@@ -596,14 +685,24 @@ export const analyzeContactConversationWithAI = async (phone) => {
         {
             role: 'system',
             content: `Eres el Asistente Ejecutivo Personal de Lucas Marinero.
+Fecha actual en Argentina: ${getArgentinaDate()}.
 Analiza esta conversación de WhatsApp con "${contact.name}" (${contact.phone}).
 Clasifícala en uno de los 4 círculos prioritarios de Lucas: "hijos", "novia", "trabajo", "amigos" (o "otros").
+Extrae además cualquier reunión, turno, cena, acto, partido, horario o evento mencionado para Google Calendar.
 Devuelve ÚNICAMENTE un JSON válido:
 {
   "circle": "hijos" | "novia" | "trabajo" | "amigos" | "otros",
   "short_summary": "Resumen ejecutivo corto (1-2 líneas) de quién escribió y qué necesitó",
   "detailed_analysis": "Análisis profundo: intención, contexto emocional, qué pidió exactamente y qué respondió o acordó Lucas",
   "pending_promises": ["Tarea o compromiso 1", "Tarea 2"],
+  "detected_calendar_events": [
+    {
+      "title": "Título claro del evento",
+      "date": "YYYY-MM-DD",
+      "startTime": "HH:MM",
+      "description": "Contexto del evento acordado por WhatsApp"
+    }
+  ],
   "smart_replies": ["Respuesta sugerida 1", "Respuesta sugerida 2", "Respuesta sugerida 3"]
 }`
         },
@@ -657,6 +756,24 @@ Devuelve ÚNICAMENTE un JSON válido:
             contact.short_summary = parsed.short_summary || contact.short_summary;
             contact.detailed_analysis = parsed.detailed_analysis || contact.detailed_analysis;
             contact.pending_promises = parsed.pending_promises || contact.pending_promises;
+            if (Array.isArray(parsed.detected_calendar_events) && parsed.detected_calendar_events.length > 0) {
+                const aiEvents = parsed.detected_calendar_events.map((ev, i) => ({
+                    id: ev.id || `ai-ev-${contact.phone}-${i}-${Date.now()}`,
+                    title: ev.title || `Evento con ${contact.name}`,
+                    date: ev.date || getArgentinaDate(),
+                    startTime: ev.startTime || '18:00',
+                    durationMinutes: 60,
+                    description: ev.description || `Detectado por IA en conversación con ${contact.name}`,
+                    contact: contact.name,
+                    phone: contact.phone,
+                    circle: contact.circle,
+                    source: 'whatsapp_ai'
+                }));
+                contact.detected_calendar_events = deduplicateCalendarEvents([
+                    ...aiEvents,
+                    ...(contact.detected_calendar_events || [])
+                ]);
+            }
             contact.smart_replies = parsed.smart_replies || [];
             saveCommunicationsDataLocal(store);
             try {
@@ -719,9 +836,306 @@ export const subscribeToCommunicationsRealtime = (onRealtimeChange) => {
 };
 
 /**
+ * Reúne todos los eventos de Google Calendar:
+ * 1) Recordatorios rápidos guardados y eventos sincronizados desde Google Calendar API / iCal (store.calendarEvents)
+ * 2) Eventos detectados en TODOS los contactos de WhatsApp (sin excluir ningún círculo)
+ * 3) Eventos detectados en mensajes individuales (store.messages)
+ */
+export const collectAllCalendarEvents = (store = {}) => {
+    const rawList = [];
+
+    if (Array.isArray(store.calendarEvents)) {
+        store.calendarEvents.forEach(ev => {
+            if (ev && ev.title) {
+                rawList.push({
+                    ...ev,
+                    contact: ev.contact || (ev.source?.startsWith('gcal') ? 'Google Calendar' : 'Recordatorio Lucas'),
+                    circle: ev.circle || 'trabajo'
+                });
+            }
+        });
+    }
+
+    if (Array.isArray(store.contacts)) {
+        store.contacts.forEach(c => {
+            (c.detected_calendar_events || []).forEach(ev => {
+                if (ev && ev.title) {
+                    rawList.push({
+                        ...ev,
+                        contact: ev.contact || c.name || c.phone,
+                        phone: c.phone,
+                        circle: c.circle || ev.circle || 'otros',
+                        source: ev.source || 'whatsapp'
+                    });
+                }
+            });
+        });
+    }
+
+    if (Array.isArray(store.messages)) {
+        store.messages.forEach(m => {
+            if (m?.detected_event && m.detected_event.title) {
+                rawList.push({
+                    ...m.detected_event,
+                    contact: m.contact_name || m.phone || 'WhatsApp',
+                    phone: m.phone,
+                    circle: m.circle || 'otros',
+                    source: 'whatsapp'
+                });
+            }
+        });
+    }
+
+    return deduplicateCalendarEvents(rawList);
+};
+
+/**
+ * Guarda un evento/recordatorio en la Agenda Cloud (Supabase) y opcionalmente lo crea en Google Calendar API v3 o abre la ventana de Google Calendar
+ */
+export const addQuickCalendarEvent = async ({
+    title,
+    date = getArgentinaDate(),
+    startTime = '18:00',
+    durationMinutes = 60,
+    description = '',
+    contact = 'Lucas Marinero',
+    circle = 'trabajo',
+    openGoogleTab = true
+}) => {
+    const cleanTitle = (title || '').trim() || 'Recordatorio Asistente Lucas';
+    const cleanDate = date || getArgentinaDate();
+    const cleanTime = startTime || '18:00';
+
+    const store = await loadCommunicationsData();
+    if (!Array.isArray(store.calendarEvents)) {
+        store.calendarEvents = [];
+    }
+
+    const newEvent = {
+        id: `manual-gcal-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        title: cleanTitle,
+        date: cleanDate,
+        startTime: cleanTime,
+        durationMinutes,
+        description: description || `Creado desde el Asistente Personal de Comunicaciones GrowFit (${cleanDate} ${cleanTime} hs).`,
+        contact,
+        circle,
+        source: 'manual',
+        created_at: new Date().toISOString()
+    };
+
+    // Si hay un OAuth Access Token activo, insertar también vía Google Calendar API v3 directamente
+    let createdInGoogleApi = false;
+    const { accessToken, primaryEmail } = getGoogleCalendarConfig();
+    if (accessToken) {
+        try {
+            const [hh, mm] = cleanTime.split(':').map(Number);
+            const startIso = `${cleanDate}T${String(hh || 18).padStart(2, '0')}:${String(mm || 0).padStart(2, '0')}:00-03:00`;
+            const endHour = Math.min(23, (hh || 18) + 1);
+            const endIso = `${cleanDate}T${String(endHour).padStart(2, '0')}:${String(mm || 0).padStart(2, '0')}:00-03:00`;
+
+            const apiRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(primaryEmail || 'primary')}/events`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({
+                    summary: cleanTitle,
+                    description: newEvent.description,
+                    start: { dateTime: startIso, timeZone: 'America/Argentina/San_Juan' },
+                    end: { dateTime: endIso, timeZone: 'America/Argentina/San_Juan' }
+                })
+            });
+            if (apiRes.ok) {
+                const createdData = await apiRes.json();
+                newEvent.id = createdData.id || newEvent.id;
+                newEvent.htmlLink = createdData.htmlLink || null;
+                newEvent.source = 'gcal_api';
+                createdInGoogleApi = true;
+            }
+        } catch (err) {
+            console.warn('[GrowFit GCal] Fallback a link directo:', err);
+        }
+    }
+
+    store.calendarEvents = deduplicateCalendarEvents([newEvent, ...store.calendarEvents]);
+    saveCommunicationsDataLocal(store);
+
+    if (openGoogleTab && !createdInGoogleApi && typeof window !== 'undefined') {
+        const url = buildGoogleCalendarLink(newEvent);
+        window.open(url, '_blank', 'noopener');
+    }
+
+    return { store, event: newEvent, createdInGoogleApi };
+};
+
+/**
+ * Elimina un evento de la lista de agenda en GrowFit y Supabase
+ */
+export const deleteCalendarEvent = async (eventId) => {
+    const store = await loadCommunicationsData();
+    if (Array.isArray(store.calendarEvents)) {
+        store.calendarEvents = store.calendarEvents.filter(ev => String(ev.id) !== String(eventId));
+    }
+    if (Array.isArray(store.contacts)) {
+        store.contacts.forEach(c => {
+            if (Array.isArray(c.detected_calendar_events)) {
+                c.detected_calendar_events = c.detected_calendar_events.filter(
+                    ev => String(ev.id || `${ev.date}|${ev.startTime}|${ev.title}`) !== String(eventId)
+                );
+            }
+        });
+    }
+    saveCommunicationsDataLocal(store);
+    return store;
+};
+
+/**
+ * Sincroniza eventos reales desde Google Calendar (vía API v3 OAuth Token o vía feed iCal .ics en Edge Function)
+ */
+export const syncGoogleCalendarEvents = async () => {
+    const store = await loadCommunicationsData();
+    if (!Array.isArray(store.calendarEvents)) store.calendarEvents = [];
+
+    const { accessToken, icalUrl, primaryEmail } = getGoogleCalendarConfig();
+    const { edgeFunctionUrl } = getBuilderBotConfig();
+    let importedEvents = [];
+    let syncMethod = null;
+    let errorDetail = null;
+
+    // 1. Intentar con Google Calendar API v3 si hay Access Token OAuth
+    if (accessToken) {
+        try {
+            const timeMin = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            const calTarget = encodeURIComponent(primaryEmail || 'primary');
+            const res = await fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/${calTarget}/events?timeMin=${encodeURIComponent(timeMin)}&maxResults=50&singleEvents=true&orderBy=startTime`,
+                {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                }
+            );
+            if (res.ok) {
+                const data = await res.json();
+                importedEvents = (data.items || []).map(item => {
+                    const rawStart = item.start?.dateTime || item.start?.date || new Date().toISOString();
+                    const datePart = rawStart.split('T')[0];
+                    const timePart = rawStart.includes('T') ? rawStart.split('T')[1].slice(0, 5) : '09:00';
+                    return {
+                        id: item.id || `gcal-api-${datePart}-${timePart}`,
+                        title: item.summary || 'Evento Google Calendar',
+                        date: datePart,
+                        startTime: timePart,
+                        durationMinutes: 60,
+                        description: item.description || item.location || 'Sincronizado desde Google Calendar API',
+                        contact: 'Google Calendar',
+                        circle: 'trabajo',
+                        source: 'gcal_api',
+                        htmlLink: item.htmlLink || null
+                    };
+                });
+                syncMethod = 'Google Calendar API v3 (OAuth)';
+            } else {
+                const errJson = await res.json().catch(() => ({}));
+                errorDetail = errJson?.error?.message || `Token OAuth expirado o inválido (HTTP ${res.status})`;
+            }
+        } catch (e) {
+            errorDetail = e.message;
+        }
+    }
+
+    // 2. Intentar vía iCal URL (.ics) usando el proxy en Supabase Edge Function (sin bloqueo CORS)
+    const targetIcalUrl = icalUrl || `https://calendar.google.com/calendar/ical/${encodeURIComponent(primaryEmail)}/public/basic.ics`;
+    if (importedEvents.length === 0 && targetIcalUrl) {
+        try {
+            const res = await fetch(edgeFunctionUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'fetch_ical',
+                    icalUrl: targetIcalUrl
+                })
+            });
+            const data = await res.json();
+            if (data.ok && Array.isArray(data.events)) {
+                importedEvents = data.events;
+                syncMethod = icalUrl ? 'Feed iCal Secreto (.ics)' : 'Calendario Público Google (.ics)';
+            } else if (data.error && !errorDetail) {
+                errorDetail = data.error;
+            }
+        } catch (e) {
+            if (!errorDetail) errorDetail = e.message;
+        }
+    }
+
+    if (importedEvents.length > 0) {
+        store.calendarEvents = deduplicateCalendarEvents([...importedEvents, ...store.calendarEvents]);
+        saveCommunicationsDataLocal(store);
+    }
+
+    return {
+        ok: Boolean(syncMethod),
+        syncMethod,
+        importedCount: importedEvents.length,
+        totalEvents: collectAllCalendarEvents(store).length,
+        errorDetail,
+        store
+    };
+};
+
+/**
+ * Inicia conexión OAuth 2.0 en ventana emergente con Google Identity Services para leer/crear eventos en Google Calendar
+ */
+export const connectGoogleCalendarOAuth = () => {
+    return new Promise((resolve, reject) => {
+        const { clientId, primaryEmail } = getGoogleCalendarConfig();
+        if (!clientId) {
+            reject(new Error('Para usar OAuth 1-Clic ingresa un Google Client ID, o bien pega directamente tu "Dirección secreta en formato iCal (.ics)" de Google Calendar (no requiere Client ID).'));
+            return;
+        }
+
+        const startTokenFlow = () => {
+            try {
+                const tokenClient = window.google.accounts.oauth2.initTokenClient({
+                    client_id: clientId,
+                    scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly',
+                    hint: primaryEmail,
+                    callback: async (tokenResponse) => {
+                        if (tokenResponse && tokenResponse.access_token) {
+                            saveGoogleCalendarConfig({ accessToken: tokenResponse.access_token });
+                            const syncRes = await syncGoogleCalendarEvents();
+                            resolve({ token: tokenResponse.access_token, syncRes });
+                        } else {
+                            reject(new Error(tokenResponse?.error_description || 'No se recibió token de Google.'));
+                        }
+                    }
+                });
+                tokenClient.requestAccessToken({ prompt: 'consent' });
+            } catch (err) {
+                reject(err);
+            }
+        };
+
+        if (window.google?.accounts?.oauth2) {
+            startTokenFlow();
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => startTokenFlow();
+        script.onerror = () => reject(new Error('No se pudo cargar Google Identity Services.'));
+        document.head.appendChild(script);
+    });
+};
+
+/**
  * Construye link directo de 1 clic para Google Calendar + Descarga ICS
  */
 export const buildGoogleCalendarLink = (eventData = {}) => {
+    const { primaryEmail } = getGoogleCalendarConfig();
     const title = encodeURIComponent(eventData.title || 'Evento Asistente Lucas');
     const dateStr = (eventData.date || getArgentinaDate()).replace(/-/g, '');
     const [hh, mm] = (eventData.startTime || '18:00').split(':').map(Number);
@@ -732,7 +1146,7 @@ export const buildGoogleCalendarLink = (eventData = {}) => {
 
     const dates = `${dateStr}T${startH}${startM}00/${dateStr}T${endH}${startM}00`;
     const details = encodeURIComponent(eventData.description || 'Agendado desde GrowFit Comunicaciones & WhatsApp IA');
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${details}&authuser=lucasmmarinerosanarg@gmail.com`;
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${details}&authuser=${encodeURIComponent(primaryEmail)}`;
 };
 
 /**
